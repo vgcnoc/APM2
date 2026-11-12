@@ -55,13 +55,16 @@
     <div class="box">
         <!-- Header -->
         <div class="header">
-            <div class="brand">
+            <div class="brand" style="display: flex; align-items: center; gap: 14px;">
                 @if($companyLogo)
-                    <img src="{{ asset('storage/' . $companyLogo) }}" alt="Logo" style="max-height: 50px; margin-bottom: 5px;">
+                    <img src="{{ asset('storage/' . $companyLogo) }}" alt="Logo" style="max-height: 58px; max-width: 175px; object-fit: contain;">
+                    <div style="width: 2px; height: 50px; background-color: #cbd5e1;"></div>
                 @endif
-                <h1>{{ $companyName }}</h1>
-                <p>{{ $companyAddress }}</p>
-                @if($companyPhone) <p>NOC / Call Center: {{ $companyPhone }}</p> @endif
+                <div>
+                    <h1>{{ $companyName }}</h1>
+                    <p>{{ $companyAddress }}</p>
+                    @if($companyPhone) <p>NOC / Call Center: {{ $companyPhone }}</p> @endif
+                </div>
             </div>
             <div class="title-section">
                 <h2>SURAT PERINTAH KERJA & BERITA ACARA</h2>

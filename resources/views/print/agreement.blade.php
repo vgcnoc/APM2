@@ -49,10 +49,11 @@
                 padding-bottom: 8px;
             }
             .kop-logo-img {
-                max-height: 52px;
-                max-width: 120px;
+                max-height: 62px;
+                max-width: 190px;
             }
             .kop-divider-v {
+                height: 56px !important;
                 background-color: #cbd5e1 !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
@@ -139,22 +140,22 @@
         }
         .kop-logo-box {
             flex-shrink: 0;
-            width: 130px;
+            max-width: 200px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
         .kop-logo-img {
-            max-height: 54px;
-            max-width: 125px;
+            max-height: 64px;
+            max-width: 195px;
             width: auto;
             height: auto;
             object-fit: contain;
             display: block;
         }
         .kop-divider-v {
-            width: 1.5px;
-            height: 48px;
+            width: 2px;
+            height: 58px;
             background-color: #cbd5e1;
             flex-shrink: 0;
         }

@@ -585,14 +585,22 @@
     <div class="sheet">
         <!-- HEADER KOP SURAT -->
         <div class="header">
-            <div class="company-info">
-                <h1>{{ $company['name'] }}</h1>
-                <p>{{ $company['address'] }}</p>
-                <p>
-                    @if(!empty($company['phone'])) Telp/WA: {{ $company['phone'] }} @endif
-                    @if(!empty($company['email'])) &bull; Email: {{ $company['email'] }} @endif
-                    @if(!empty($company['website'])) &bull; Website: {{ $company['website'] }} @endif
-                </p>
+            <div style="display: flex; align-items: center; gap: 16px;">
+                @if(!empty($logoUrl))
+                    <div style="flex-shrink: 0; max-width: 195px;">
+                        <img src="{{ $logoUrl }}" alt="{{ $company['name'] }}" style="max-height: 62px; max-width: 190px; width: auto; height: auto; object-fit: contain; display: block;" onerror="this.style.display='none'">
+                    </div>
+                    <div style="width: 2px; height: 54px; background-color: #cbd5e1; flex-shrink: 0;"></div>
+                @endif
+                <div class="company-info">
+                    <h1>{{ $company['name'] }}</h1>
+                    <p>{{ $company['address'] }}</p>
+                    <p>
+                        @if(!empty($company['phone'])) Telp/WA: {{ $company['phone'] }} @endif
+                        @if(!empty($company['email'])) &bull; Email: {{ $company['email'] }} @endif
+                        @if(!empty($company['website'])) &bull; Website: {{ $company['website'] }} @endif
+                    </p>
+                </div>
             </div>
             <div class="doc-title">
                 <h2>INVOICE PSB & AKTIVASI</h2>

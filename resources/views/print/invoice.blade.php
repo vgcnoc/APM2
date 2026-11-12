@@ -188,11 +188,11 @@
             gap: 16px;
         }
         .modern-logo {
-            max-height: 55px;
-            max-width: 130px;
+            max-height: 62px;
+            max-width: 190px;
             object-fit: contain;
             background: #ffffff;
-            padding: 6px 10px;
+            padding: 6px 12px;
             border-radius: 10px;
         }
         .modern-company-name {
@@ -625,9 +625,11 @@
             gap: 16px;
         }
         .mesh-logo {
-            max-height: 54px;
+            max-height: 62px;
+            max-width: 190px;
+            object-fit: contain;
             background: rgba(255, 255, 255, 0.95);
-            padding: 6px;
+            padding: 6px 12px;
             border-radius: 10px;
             border: 1px solid rgba(56, 189, 248, 0.4);
         }

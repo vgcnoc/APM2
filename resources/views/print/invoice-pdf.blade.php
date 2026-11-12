@@ -260,13 +260,19 @@
     <!-- HEADER PERUSAHAAN -->
     <table class="header-table">
         <tr>
-            <td style="width: 62%;">
+            <td style="width: 66%;">
                 <table>
                     <tr>
                         @if(!empty($logoBase64))
-                            <td style="width: 65px; padding-right: 10px; vertical-align: middle;">
-                                <img src="{{ $logoBase64 }}" alt="Logo" style="max-width: 58px; max-height: 52px;">
+                            <td style="padding-right: 14px; vertical-align: middle; border-right: 2px solid #cbd5e1;">
+                                <img src="{{ $logoBase64 }}" alt="Logo" style="max-width: 175px; max-height: 58px; width: auto; height: auto; object-fit: contain; display: block;">
                             </td>
+                            <td style="width: 12px;"></td>
+                        @elseif(!empty($company['logo']))
+                            <td style="padding-right: 14px; vertical-align: middle; border-right: 2px solid #cbd5e1;">
+                                <img src="{{ asset('storage/' . $company['logo']) }}" alt="Logo" style="max-width: 175px; max-height: 58px; width: auto; height: auto; object-fit: contain; display: block;" onerror="this.style.display='none'">
+                            </td>
+                            <td style="width: 12px;"></td>
                         @endif
                         <td style="vertical-align: middle;">
                             <div class="company-name">{{ $company['name'] ?? 'VIZBILL ISP NETWORK' }}</div>
@@ -279,7 +285,7 @@
                     </tr>
                 </table>
             </td>
-            <td style="width: 38%; text-align: right;">
+            <td style="width: 34%; text-align: right;">
                 <div style="font-size: 10px; font-weight: bold; color: #475569; text-transform: uppercase;">
                     {{ $isPaid ? 'KWITANSI LUNAS / INVOICE' : 'TAGIHAN INVOICE PELANGGAN' }}
                 </div>

@@ -356,17 +356,19 @@
     <div class="sheet">
         <table class="header-table">
             <tr>
-                <td style="width: 72%;">
+                <td style="width: 76%;">
                     <table>
                         <tr>
                             @if(!empty($logoBase64))
-                                <td style="width: 64px; padding-right: 12px; vertical-align: middle;">
-                                    <img src="{{ $logoBase64 }}" alt="Logo" style="max-height: 52px; max-width: 60px;">
+                                <td style="padding-right: 18px; vertical-align: middle; border-right: 2px solid #cbd5e1;">
+                                    <img src="{{ $logoBase64 }}" alt="Logo" style="max-height: 64px; max-width: 195px; width: auto; height: auto; object-fit: contain; display: block;">
                                 </td>
+                                <td style="width: 16px;"></td>
                             @elseif(!empty($company['logo']) && !($isPdf ?? false))
-                                <td style="width: 64px; padding-right: 12px; vertical-align: middle;">
-                                    <img src="{{ asset('storage/' . $company['logo']) }}" alt="Logo" style="max-height: 52px; max-width: 60px;" onerror="this.style.display='none'">
+                                <td style="padding-right: 18px; vertical-align: middle; border-right: 2px solid #cbd5e1;">
+                                    <img src="{{ asset('storage/' . $company['logo']) }}" alt="Logo" style="max-height: 64px; max-width: 195px; width: auto; height: auto; object-fit: contain; display: block;" onerror="this.style.display='none'">
                                 </td>
+                                <td style="width: 16px;"></td>
                             @endif
                             <td class="company-info" style="vertical-align: middle;">
                                 <h1>{{ $company['name'] ?? 'ISP PROVIDER NETWORK' }}</h1>
@@ -379,7 +381,7 @@
                         </tr>
                     </table>
                 </td>
-                <td style="width: 28%; text-align: right;">
+                <td style="width: 24%; text-align: right; vertical-align: middle;">
                     <span class="doc-badge">DOKUMEN RESMI</span>
                 </td>
             </tr>

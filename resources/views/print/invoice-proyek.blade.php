@@ -122,8 +122,8 @@
             margin-bottom: 20px;
         }
         .logo-img {
-            max-height: 55px;
-            max-width: 180px;
+            max-height: 64px;
+            max-width: 195px;
             object-fit: contain;
         }
         .company-title {
@@ -619,19 +619,28 @@
         <!-- HEADER KOP -->
         <table class="header-table">
             <tr>
-                <td style="width: 60%; vertical-align: top;">
-                    @if(!empty($company['logo']))
-                        <img src="{{ $company['logo'] }}" alt="Logo" class="logo-img"><br>
-                    @endif
-                    <div class="company-title">{{ $company['name'] }}</div>
-                    <div class="company-meta">
-                        {{ $company['address'] }}<br>
-                        @if(!empty($company['phone'])) Telp / WhatsApp: {{ $company['phone'] }} @endif
-                        @if(!empty($company['email'])) | Email: {{ $company['email'] }} @endif
-                        @if(!empty($company['npwp'])) <br>NPWP: {{ $company['npwp'] }} @endif
-                    </div>
+                <td style="width: 64%; vertical-align: middle;">
+                    <table>
+                        <tr>
+                            @if(!empty($company['logo']))
+                                <td style="padding-right: 14px; vertical-align: middle; border-right: 2px solid #cbd5e1;">
+                                    <img src="{{ $company['logo'] }}" alt="Logo" class="logo-img" style="max-height: 64px; max-width: 195px; width: auto; height: auto; object-fit: contain; display: block;">
+                                </td>
+                                <td style="width: 12px;"></td>
+                            @endif
+                            <td style="vertical-align: middle;">
+                                <div class="company-title">{{ $company['name'] }}</div>
+                                <div class="company-meta">
+                                    {{ $company['address'] }}<br>
+                                    @if(!empty($company['phone'])) Telp / WhatsApp: {{ $company['phone'] }} @endif
+                                    @if(!empty($company['email'])) | Email: {{ $company['email'] }} @endif
+                                    @if(!empty($company['npwp'])) <br>NPWP: {{ $company['npwp'] }} @endif
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
                 </td>
-                <td class="inv-badge-wrap">
+                <td class="inv-badge-wrap" style="width: 36%; vertical-align: middle;">
                     <div class="inv-main-title">INVOICE PROYEK</div>
                     <div class="inv-sub-title">COMMERCIAL INVOICE</div>
                     <div style="margin-top: 8px;">

@@ -243,19 +243,33 @@
         <!-- HEADER -->
         <table class="header-table">
             <tr>
-                <td style="width: 52%;">
-                    @if($logoBase64)
-                        <img src="{{ $logoBase64 }}" alt="Logo" style="max-height: 40px; margin-bottom: 4px; display: block;">
-                    @endif
-                    <div class="brand-title">{{ $companyName }}</div>
-                    @if($companyAddress)
-                        <div class="brand-sub">{{ $companyAddress }}</div>
-                    @endif
-                    @if($companyPhone)
-                        <div class="brand-sub">Layanan Pelanggan / NOC: {{ $companyPhone }}</div>
-                    @endif
+                <td style="width: 58%; vertical-align: middle;">
+                    <table>
+                        <tr>
+                            @if($logoBase64)
+                                <td style="padding-right: 14px; vertical-align: middle; border-right: 2px solid #a7f3d0;">
+                                    <img src="{{ $logoBase64 }}" alt="Logo" style="max-height: 58px; max-width: 180px; width: auto; height: auto; object-fit: contain; display: block;">
+                                </td>
+                                <td style="width: 12px;"></td>
+                            @elseif(!empty($companyLogo) && $mode === 'print')
+                                <td style="padding-right: 14px; vertical-align: middle; border-right: 2px solid #a7f3d0;">
+                                    <img src="{{ asset('storage/' . $companyLogo) }}" alt="Logo" style="max-height: 58px; max-width: 180px; width: auto; height: auto; object-fit: contain; display: block;" onerror="this.style.display='none'">
+                                </td>
+                                <td style="width: 12px;"></td>
+                            @endif
+                            <td style="vertical-align: middle;">
+                                <div class="brand-title">{{ $companyName }}</div>
+                                @if($companyAddress)
+                                    <div class="brand-sub">{{ $companyAddress }}</div>
+                                @endif
+                                @if($companyPhone)
+                                    <div class="brand-sub">Layanan Pelanggan / NOC: {{ $companyPhone }}</div>
+                                @endif
+                            </td>
+                        </tr>
+                    </table>
                 </td>
-                <td style="width: 48%; text-align: right;">
+                <td style="width: 42%; text-align: right; vertical-align: middle;">
                     <div class="doc-title">SURAT TUGAS & BERITA ACARA</div>
                     <div style="font-size: 10.5px; font-weight: bold; color: #475569;">KUNJUNGAN SOSIALISASI & PENDAMPINGAN PELANGGAN</div>
                     <div class="doc-no">{{ $visit->visit_number }}</div>

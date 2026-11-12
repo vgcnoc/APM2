@@ -172,13 +172,19 @@
     <div class="sheet">
         <table class="header-table">
             <tr>
-                <td style="width: 55%;">
+                <td style="width: 58%;">
                     <table>
                         <tr>
                             @if(!empty($logoBase64))
-                                <td style="width: 55px; padding-right: 10px; vertical-align: middle;">
-                                    <img src="{{ $logoBase64 }}" alt="Logo" style="max-width: 50px; max-height: 46px;">
+                                <td style="padding-right: 14px; vertical-align: middle; border-right: 2px solid #cbd5e1;">
+                                    <img src="{{ $logoBase64 }}" alt="Logo" style="max-width: 170px; max-height: 54px; width: auto; height: auto; object-fit: contain; display: block;">
                                 </td>
+                                <td style="width: 12px;"></td>
+                            @elseif(!empty($company['logo']) && !($isPdf ?? false))
+                                <td style="padding-right: 14px; vertical-align: middle; border-right: 2px solid #cbd5e1;">
+                                    <img src="{{ asset('storage/' . $company['logo']) }}" alt="Logo" style="max-width: 170px; max-height: 54px; width: auto; height: auto; object-fit: contain; display: block;" onerror="this.style.display='none'">
+                                </td>
+                                <td style="width: 12px;"></td>
                             @endif
                             <td style="vertical-align: middle;">
                                 <div class="company-name">{{ $company['name'] ?? 'VIZBILL ISP NETWORK' }}</div>
@@ -190,7 +196,7 @@
                         </tr>
                     </table>
                 </td>
-                <td style="width: 45%;">
+                <td style="width: 42%;">
                     <div class="report-title">{{ $reportTitle }}</div>
                     <div class="report-meta">
                         Dicetak pada: <strong>{{ $printDate }} WIB</strong> | Operator: <strong>{{ $operatorName }}</strong>

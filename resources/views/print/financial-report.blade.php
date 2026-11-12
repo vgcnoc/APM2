@@ -6,6 +6,9 @@
     <title>Laporan Keuangan & Buku Kas Umum - {{ $periodLabel }}</title>
     @php
         $rp = fn($v) => 'Rp ' . number_format((float) $v, 0, ',', '.');
+        $companyName = \App\Models\Setting::get('company_name', 'VIZBILL INTERNET & NETWORK');
+        $companyLogo = \App\Models\Setting::get('company_logo', null);
+        $logoUrl = $companyLogo ? asset('storage/' . ltrim($companyLogo, '/')) : null;
     @endphp
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -243,9 +246,15 @@
     <div class="sheet">
         <!-- Header Kop -->
         <div class="header">
-            <div class="header-brand">
-                <h1>VIZBILL INTERNET & NETWORK</h1>
-                <p>Master Laporan Keuangan & Rekapitulasi Buku Kas Umum</p>
+            <div style="display: flex; align-items: center; gap: 14px;">
+                @if($logoUrl)
+                    <img src="{{ $logoUrl }}" alt="Logo" style="max-height: 56px; max-width: 175px; object-fit: contain;">
+                    <div style="width: 2px; height: 46px; background-color: #cbd5e1;"></div>
+                @endif
+                <div class="header-brand">
+                    <h1>{{ $companyName }}</h1>
+                    <p>Master Laporan Keuangan & Rekapitulasi Buku Kas Umum</p>
+                </div>
             </div>
             <div class="header-doc">
                 <div class="title">Buku Kas Umum</div>

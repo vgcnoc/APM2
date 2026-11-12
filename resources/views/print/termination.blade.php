@@ -4,6 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Berita Acara Berhenti Berlangganan - {{ $customer->name }} ({{ $customer->customer_code }})</title>
+    @php
+        $rawLogo = $company['logo'] ?? \App\Models\Setting::get('company_logo', null);
+        $logoUrl = null;
+        if (!empty($rawLogo)) {
+            if (str_starts_with($rawLogo, 'http://') || str_starts_with($rawLogo, 'https://') || str_starts_with($rawLogo, 'data:')) {
+                $logoUrl = $rawLogo;
+            } elseif (str_starts_with($rawLogo, 'storage/') || str_starts_with($rawLogo, '/storage/')) {
+                $logoUrl = asset(ltrim($rawLogo, '/'));
+            } else {
+                $logoUrl = asset('storage/' . ltrim($rawLogo, '/'));
+            }
+        }
+        if (empty($logoUrl)) {
+            $logoUrl = asset('images/company_logo.png');
+        }
+    @endphp
     <style>
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -227,10 +243,18 @@
     <div class="sheet">
         <!-- HEADER -->
         <div class="header">
-            <div class="company-info">
-                <h1>{{ $company['name'] ?? 'ISP PROVIDER' }}</h1>
-                <p>{{ $company['address'] ?? 'Layanan Akses Internet Cepat, Stabil & Terpercaya' }}</p>
-                <p>Telp / WA: {{ $company['phone'] ?? '-' }} &bull; Email: {{ $company['email'] ?? '-' }}</p>
+            <div style="display: flex; align-items: center; gap: 16px;">
+                @if(!empty($logoUrl))
+                    <div style="flex-shrink: 0; max-width: 195px;">
+                        <img src="{{ $logoUrl }}" alt="{{ $company['name'] ?? 'Logo' }}" style="max-height: 62px; max-width: 190px; width: auto; height: auto; object-fit: contain; display: block;" onerror="this.style.display='none'">
+                    </div>
+                    <div style="width: 2px; height: 54px; background-color: #cbd5e1; flex-shrink: 0;"></div>
+                @endif
+                <div class="company-info">
+                    <h1>{{ $company['name'] ?? 'ISP PROVIDER' }}</h1>
+                    <p>{{ $company['address'] ?? 'Layanan Akses Internet Cepat, Stabil & Terpercaya' }}</p>
+                    <p>Telp / WA: {{ $company['phone'] ?? '-' }} &bull; Email: {{ $company['email'] ?? '-' }}</p>
+                </div>
             </div>
             <div class="doc-title">
                 <h2>Berita Acara</h2>
