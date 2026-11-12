@@ -451,16 +451,16 @@
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div class="md:col-span-2">
                                         <label class="block text-xs font-bold text-gray-700 mb-1">Nama Paket <span class="text-red-500">*</span></label>
-                                        <input v-model="form.name" type="text" @input="form.name = form.name.toUpperCase()" class="input-text uppercase" required placeholder="Contoh: INTERNET 20 MBPS">
+                                        <input v-model="form.name" type="text" @input="form.name = form.name.toUpperCase()" class="input-text w-full uppercase" required placeholder="Contoh: INTERNET 20 MBPS">
                                     </div>
 
                                     <div>
                                         <label class="block text-xs font-bold text-gray-700 mb-1">Type Akses <span class="text-red-500">*</span></label>
-                                        <select v-model="form.access_mode" class="input-text" required>
-                                            <option value="pppoe">PPPoE</option>
-                                            <option value="hotspot">Hotspot</option>
-                                            <option value="voucher">Voucher</option>
-                                            <option value="static_ip">Static IP</option>
+                                        <select v-model="form.access_mode" class="input-text w-full cursor-pointer bg-white" required>
+                                            <option value="pppoe">PPPoE (Broadband Fiber)</option>
+                                            <option value="hotspot">Hotspot (Member / WiFi)</option>
+                                            <option value="voucher">Voucher (Prabayar)</option>
+                                            <option value="static_ip">Static IP (Dedicated)</option>
                                             <option value="lainnya">Lainnya</option>
                                         </select>
                                     </div>
@@ -468,15 +468,21 @@
                                     <div>
                                         <label class="block text-xs font-bold text-gray-700 mb-1">Kecepatan (Mbps) <span class="text-red-500">*</span></label>
                                         <div class="relative">
-                                            <input v-model="form.speed_mbps" type="number" class="input-text pr-12" required min="1" placeholder="20">
-                                            <span class="absolute right-3 top-2 text-xs font-bold text-gray-400">Mbps</span>
+                                            <input v-model="form.speed_mbps" type="number" class="input-text w-full pr-14" required min="1" placeholder="Contoh: 20">
+                                            <span class="absolute right-3 top-2.5 text-xs font-bold text-gray-400">Mbps</span>
+                                        </div>
+                                        <div class="flex items-center gap-1.5 mt-2">
+                                            <span class="text-[10px] text-gray-400 font-semibold">Preset Cepat:</span>
+                                            <button v-for="spd in [10, 20, 30, 50, 100]" :key="spd" type="button" @click="form.speed_mbps = spd" class="px-2 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer" :class="Number(form.speed_mbps) === spd ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-200'">
+                                                {{ spd }}M
+                                            </button>
                                         </div>
                                     </div>
 
 
                                     <div class="md:col-span-2">
                                         <label class="block text-xs font-bold text-gray-700 mb-1">Deskripsi Singkat</label>
-                                        <input v-model="form.description" type="text" class="input-text" placeholder="Keterangan singkat paket ini...">
+                                        <input v-model="form.description" type="text" class="input-text w-full" placeholder="Keterangan singkat paket ini...">
                                     </div>
 
                                     <div class="md:col-span-2">
@@ -665,14 +671,14 @@
                                             <label class="block text-xs font-bold text-gray-700 mb-1">Harga Jual Normal <span class="text-red-500">*</span></label>
                                             <div class="relative">
                                                 <span class="absolute left-3 top-2.5 text-sm font-bold text-gray-400">Rp</span>
-                                                <input v-model="form.price" type="number" min="0" class="input-text pl-10 text-lg font-bold" required>
+                                                <input v-model="form.price" type="number" min="0" class="input-text w-full pl-10 text-lg font-bold" placeholder="Contoh: 150000" required>
                                             </div>
                                         </div>
                                         <div v-if="form.is_promo">
                                             <label class="block text-xs font-bold text-rose-700 mb-1">Harga Promo (Saat Ini) <span class="text-red-500">*</span></label>
                                             <div class="relative">
                                                 <span class="absolute left-3 top-2.5 text-sm font-bold text-rose-400">Rp</span>
-                                                <input v-model="form.promo_price" type="number" min="0" class="input-text border-rose-300 focus:border-rose-500 focus:ring-rose-500 pl-10 text-lg font-bold text-rose-700" required>
+                                                <input v-model="form.promo_price" type="number" min="0" class="input-text w-full border-rose-300 focus:border-rose-500 focus:ring-rose-500 pl-10 text-lg font-bold text-rose-700" placeholder="Contoh: 120000" required>
                                             </div>
                                         </div>
                                     </div>
@@ -682,7 +688,7 @@
                                         <p class="text-[10px] text-indigo-700 mb-2">Tarif dasar pasang baru. Digunakan otomatis sebagai nilai acuan standar saat booking.</p>
                                         <div class="relative max-w-sm">
                                             <span class="absolute left-3 top-2.5 text-sm font-bold text-indigo-400">Rp</span>
-                                            <input v-model="form.installation_fee" type="number" min="0" class="input-text border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500 pl-10 font-bold" required>
+                                            <input v-model="form.installation_fee" type="number" min="0" class="input-text w-full border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500 pl-10 font-bold" placeholder="0" required>
                                         </div>
                                     </div>
 
@@ -827,7 +833,7 @@
                                             </label>
                                             <div class="flex shadow-sm">
                                                 <span class="inline-flex items-center px-3 text-sm text-gray-700 bg-gray-50 border border-r-0 border-gray-200 rounded-l-md font-medium">Rp</span>
-                                                <input v-model="form.fee_reseller" type="number" min="0" placeholder="min : 0" class="input-text rounded-l-none flex-1 border-gray-200" required>
+                                                <input v-model="form.fee_reseller" type="number" min="0" placeholder="0" class="input-text w-full rounded-l-none flex-1 border-gray-200" required>
                                             </div>
                                         </div>
                                     </div>
@@ -883,11 +889,11 @@
                                     <ul class="space-y-3 mb-6">
                                         <li class="flex items-center gap-3 text-sm text-gray-700">
                                             <div class="p-1 rounded-full bg-blue-50 text-blue-500"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>
-                                            <span class="font-bold">{{ form.speed_mbps || 0 }} Mbps</span>
+                                            <span class="font-bold">{{ form.speed_mbps ? form.speed_mbps + ' Mbps' : '0 Mbps (Belum diisi)' }}</span>
                                         </li>
                                         <li class="flex items-center gap-3 text-sm text-gray-700">
                                             <div class="p-1 rounded-full bg-orange-50 text-orange-500"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>
-                                            <span>Maks. <strong>{{ form.shared_device }}</strong> Perangkat (Simultan)</span>
+                                            <span>Maks. <strong>{{ form.shared_device || 1 }}</strong> Perangkat (Simultan)</span>
                                         </li>
                                         <li class="flex items-center gap-3 text-sm text-gray-700">
                                             <div class="p-1 rounded-full bg-purple-50 text-purple-500"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg></div>
@@ -910,15 +916,26 @@
                 </div>
 
                 <!-- Modal Footer -->
-                <div class="flex-shrink-0 bg-white p-4 sm:px-6 border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] flex justify-between items-center z-10">
-                    <div class="hidden sm:block text-xs text-gray-500 font-medium">
-                        Pastikan data diisi dengan benar sebelum menyimpan.
+                <div class="flex-shrink-0 bg-white p-4 sm:px-6 border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] flex flex-col sm:flex-row justify-between items-center gap-3 z-10">
+                    <div class="flex items-center gap-2">
+                        <div v-if="!isFormValid" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-800">
+                            <svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            <span>Lengkapi <b>Nama Paket</b>, <b>Kecepatan</b>, dan <b>Harga Jual</b></span>
+                        </div>
+                        <div v-else-if="marginBersih < 0" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-800">
+                            <svg class="w-4 h-4 text-rose-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span>Fee Reseller melebihi Harga Jual</span>
+                        </div>
+                        <div v-else class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800">
+                            <svg class="w-4 h-4 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            <span>Form lengkap dan siap disimpan</span>
+                        </div>
                     </div>
                     <div class="flex gap-3 w-full sm:w-auto">
-                        <button type="button" @click="closeModal" class="flex-1 sm:flex-none px-6 py-2.5 border border-gray-300 text-gray-700 font-bold text-sm rounded-lg hover:bg-gray-50 transition-colors">Batal</button>
-                        <button type="button" @click="openSummary" class="flex-1 sm:flex-none px-6 py-2.5 bg-indigo-600 text-white font-bold text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all"
-                                :disabled="!isFormValid || marginBersih < 0">
-                            {{ editMode ? 'Lanjutkan Perubahan' : 'Lanjutkan Simpan' }}
+                        <button type="button" @click="closeModal" class="flex-1 sm:flex-none px-6 py-2.5 border border-gray-300 text-gray-700 font-bold text-sm rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">Batal</button>
+                        <button type="button" @click="openSummary" class="flex-1 sm:flex-none px-6 py-2.5 bg-indigo-600 text-white font-bold text-sm rounded-lg hover:bg-indigo-700 shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2">
+                            <span>{{ editMode ? 'Lanjutkan Perubahan' : 'Lanjutkan Simpan' }}</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                         </button>
                     </div>
                 </div>
@@ -1484,7 +1501,12 @@ const generatedRateLimit = computed(() => {
     const rx = rlGen.value.maxUl || '0';
     const tx = rlGen.value.maxDl || '0';
     
-    // Default format Rx/Tx
+    // If no burst, no limit-at, and priority default 8, return clean rx/tx
+    if (!rlGen.value.useBurst && !rlGen.value.useLimitAt && (Number(rlGen.value.priority) === 8 || !rlGen.value.priority)) {
+        return `${rx}/${tx}`;
+    }
+    
+    // Full MikroTik Rate-Limit format
     let rate = `${rx}/${tx}`;
     
     // Burst
@@ -1720,12 +1742,35 @@ const closeModal = () => {
 };
 
 const openSummary = () => {
-    // Trigger HTML5 validation first
+    // 1. Trigger HTML5 validation first
     const formEl = document.getElementById('packageForm');
     if (formEl && !formEl.checkValidity()) {
         formEl.reportValidity();
         return;
     }
+
+    // 2. Explicit field validations with helpful feedback
+    if (!form.name || !form.name.trim()) {
+        showToast('Mohon isi Nama Paket terlebih dahulu.');
+        return;
+    }
+    if (!form.speed_mbps || Number(form.speed_mbps) <= 0) {
+        showToast('Mohon isi Kecepatan Paket (Mbps).');
+        return;
+    }
+    if (form.price === '' || form.price === null || Number(form.price) < 0) {
+        showToast('Mohon isi Harga Jual Normal.');
+        return;
+    }
+    if (form.is_promo && (form.promo_price === '' || form.promo_price === null || Number(form.promo_price) < 0)) {
+        showToast('Mode Promo aktif: Mohon tentukan Harga Promo.');
+        return;
+    }
+    if (marginBersih.value < 0) {
+        showToast('Fee Reseller tidak boleh melebihi harga jual paket.');
+        return;
+    }
+
     showSummaryModal.value = true;
 };
 

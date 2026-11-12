@@ -170,8 +170,12 @@ class InternetPackageController extends Controller
     {
         $validated = $request->validate($this->getValidationRules());
         
-        if ($validated['fee_reseller'] > $validated['price']) {
-            return redirect()->back()->with('error', 'Fee Reseller tidak boleh melebihi harga jual.');
+        $effectivePrice = (!empty($validated['is_promo']) && isset($validated['promo_price']) && is_numeric($validated['promo_price']))
+            ? (float) $validated['promo_price']
+            : (float) $validated['price'];
+
+        if ((float) $validated['fee_reseller'] > $effectivePrice) {
+            return redirect()->back()->with('error', 'Fee Reseller tidak boleh melebihi harga jual paket.');
         }
 
         $validated = $this->cleanAreaInstallationFees($validated);
@@ -191,8 +195,12 @@ class InternetPackageController extends Controller
     {
         $validated = $request->validate($this->getValidationRules());
         
-        if ($validated['fee_reseller'] > $validated['price']) {
-            return redirect()->back()->with('error', 'Fee Reseller tidak boleh melebihi harga jual.');
+        $effectivePrice = (!empty($validated['is_promo']) && isset($validated['promo_price']) && is_numeric($validated['promo_price']))
+            ? (float) $validated['promo_price']
+            : (float) $validated['price'];
+
+        if ((float) $validated['fee_reseller'] > $effectivePrice) {
+            return redirect()->back()->with('error', 'Fee Reseller tidak boleh melebihi harga jual paket.');
         }
 
         $validated = $this->cleanAreaInstallationFees($validated);
