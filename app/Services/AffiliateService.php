@@ -32,22 +32,18 @@ class AffiliateService
     }
 
     /**
-     * Fee booking (Rp 35.000), survey, dan pemasangan HANYA berlaku bagi pelanggan baru
-     * (bukan migrasi) yang terdaftar/aktif mulai 1 Oktober 2026.
-     * Pelanggan hasil migrasi/impor TIDAK mendapatkan fee booking 35.000.
+     * Fee booking (Rp 35.000), survey (Rp 15.000), dan pemasangan (Rp 35.000)
+     * berlaku bagi seluruh pelanggan (termasuk hasil migrasi) yang terdaftar/aktif mulai 1 Oktober 2026.
      */
     public static function isOperationalFeeEligible(Customer $customer): bool
     {
         if ($customer->isPureReseller()) {
             return false;
         }
-        if ($customer->is_migrated) {
-            return false;
-        }
 
-        $bookingDate = $customer->registration_date ?: $customer->created_at;
+        $refDate = $customer->activation_date ?: ($customer->registration_date ?: $customer->created_at);
 
-        return $bookingDate && Carbon::parse($bookingDate)->startOfDay()->greaterThanOrEqualTo(
+        return $refDate && Carbon::parse($refDate)->startOfDay()->greaterThanOrEqualTo(
             Carbon::parse(self::OPERATIONAL_FEE_START_DATE)->startOfDay()
         );
     }
