@@ -9,7 +9,7 @@
                     'bg-white rounded-2xl p-5 border shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer select-none',
                     tab === 'menunggak' ? 'border-rose-400 ring-2 ring-rose-200/70 shadow-rose-50' : 'border-gray-100 hover:border-rose-200'
                 ]"
-                title="Klik untuk membuka tab Sering Menunggak (reset filter tingkat tunggakan)"
+                title="Klik untuk membuka tab Pelanggan Menunggak (reset filter tingkat tunggakan)"
             >
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Pelanggan Menunggak</span>
@@ -147,7 +147,7 @@
         <!-- Tab Header Section -->
         <div class="bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden mb-6">
             <div class="flex border-b border-gray-200 px-4 pt-3 overflow-x-auto gap-2">
-                <!-- Tab 1: Sering Menunggak -->
+                <!-- Tab 1: Pelanggan Menunggak -->
                 <button
                     @click="switchTab('menunggak')"
                     :class="[
@@ -158,7 +158,7 @@
                     ]"
                 >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    Sering Menunggak
+                    Pelanggan Menunggak
                     <span :class="['px-2 py-0.5 rounded-full text-xs font-extrabold', tab === 'menunggak' ? 'bg-rose-100 text-rose-700' : 'bg-gray-100 text-gray-600']">
                         {{ stats.total_menunggak_count }}
                     </span>
