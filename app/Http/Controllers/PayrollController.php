@@ -166,7 +166,6 @@ class PayrollController extends Controller
             ->with([
                 'area:id,name',
                 'employee.area:id,name',
-                'employee.position:id,name',
                 'incentives' => function($q) use ($month, $year) {
                     $q->where(function($sub) use ($month, $year) {
                         $sub->where(function($dateQ) use ($month, $year) {
@@ -330,7 +329,7 @@ class PayrollController extends Controller
                     'role' => $user->role,
                     'area_name' => $user->area ? $user->area->name : ($emp && $emp->area ? $emp->area->name : 'Kantor Pusat'),
                     'employee_code' => $emp && !empty($emp->code) ? $emp->code : ('EMP-' . str_pad($user->id, 4, '0', STR_PAD_LEFT)),
-                    'position_name' => $emp && $emp->position ? $emp->position->name : ucfirst($user->role),
+                    'position_name' => ($emp && !empty($emp->position)) ? (is_object($emp->position) ? ($emp->position->name ?? ucfirst($user->role)) : (string) $emp->position) : ($user->job_position ?? ucfirst($user->role)),
                     'join_date' => $emp && $emp->join_date ? $emp->join_date->format('d M Y') : ($user->created_at ? $user->created_at->format('d M Y') : null),
                     'base_salary' => $baseSalary,
                     'auto_incentive_rate' => (float) $user->incentive_rate,
