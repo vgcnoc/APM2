@@ -8,7 +8,7 @@ const commands = [
   'git pull origin main',
   'php artisan geo:clean-addresses',
   'php artisan migrate --force',
-  'php artisan permissions:sync --roles="finance,hrd,hrd & finance,teknisi,teknisi-2,tim serbu,teknisi tim serbu"',
+  'php artisan permissions:sync',
   'php artisan network:sync-hotspot-vlans',
   'php artisan optimize:clear',
   'php artisan cache:clear',

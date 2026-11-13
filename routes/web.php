@@ -867,9 +867,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('settings/roles/{role}/delete', [\App\Http\Controllers\RoleController::class, 'destroy'])->name('roles.destroy.post');
     });
 
-    Route::resource('internet-packages', \App\Http\Controllers\InternetPackageController::class)->except(['create', 'show', 'edit']);
-    Route::post('internet-packages/{internet_package}/update', [\App\Http\Controllers\InternetPackageController::class, 'update'])->name('internet-packages.update.post');
-    Route::post('internet-packages/{internet_package}/delete', [\App\Http\Controllers\InternetPackageController::class, 'destroy'])->name('internet-packages.destroy.post');
+    // ── Master Paket Internet & Tarif ─────────────────────────
+    Route::middleware(['permission:menu_internet_packages'])->group(function () {
+        Route::resource('internet-packages', \App\Http\Controllers\InternetPackageController::class)->except(['create', 'show', 'edit']);
+        Route::post('internet-packages/{internet_package}/update', [\App\Http\Controllers\InternetPackageController::class, 'update'])->name('internet-packages.update.post');
+        Route::post('internet-packages/{internet_package}/delete', [\App\Http\Controllers\InternetPackageController::class, 'destroy'])->name('internet-packages.destroy.post');
+    });
 
     // ── Data Router & RADIUS ───────────────────────────────────
     Route::middleware(['permission:menu_routers|menu_radius_nas'])->group(function () {

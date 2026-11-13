@@ -1269,7 +1269,6 @@ class PermissionRegistry
                 'menu_operational_progress', 'menu_network_maintenance', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'operational_progress_send_wa', 'network_maintenance_create', 'network_maintenance_update', 'operational_progress_view_area',
                 'menu_chronic_monitoring', 'chronic_monitoring_card_stats', 'chronic_monitoring_tab_customers', 'chronic_monitoring_tab_paths', 'chronic_monitoring_tab_visits', 'chronic_monitoring_filter', 'chronic_socialization_manage', 'chronic_socialization_report', 'chronic_socialization_delete', 'chronic_monitoring_schedule_maintenance', 'chronic_monitoring_whatsapp', 'chronic_monitoring_export', 'chronic_monitoring_view_all',
                 'menu_vouchers_free', 'voucher_free_card_stats', 'voucher_free_tab_generated', 'voucher_free_tab_customers', 'vouchers_free_create', 'vouchers_free_print', 'vouchers_free_delete', 'vouchers_free_toggle', 'vouchers_free_sync_customer', 'voucher_free_filter_connection', 'voucher_free_color_indicator',
-                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
                 'menu_profit_sharing', 'profit_sharing_manage',
             ],
             'teknisi' => [
@@ -1301,7 +1300,6 @@ class PermissionRegistry
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_area', 'monitoring_teknisi_view_own',
                 'menu_operational_progress', 'menu_network_maintenance', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'network_maintenance_create', 'network_maintenance_update', 'operational_progress_view_area',
                 'menu_vouchers_free', 'voucher_free_card_stats', 'voucher_free_tab_customers', 'vouchers_free_sync_customer', 'voucher_free_filter_connection', 'voucher_free_color_indicator',
-                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
             ],
             'maintenance' => [
                 'menu_dashboard', 'menu_dashboard_realtime', 'dashboard_card_realtime', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_filter_area', 'dashboard_btn_refresh',
@@ -1334,7 +1332,6 @@ class PermissionRegistry
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_area', 'monitoring_teknisi_view_own',
                 'menu_operational_progress', 'menu_network_maintenance', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'network_maintenance_create', 'network_maintenance_update', 'operational_progress_view_area',
                 'menu_chronic_monitoring', 'chronic_monitoring_card_stats', 'chronic_monitoring_tab_customers', 'chronic_monitoring_tab_paths', 'chronic_monitoring_tab_visits', 'chronic_monitoring_filter', 'chronic_socialization_manage', 'chronic_socialization_report', 'chronic_socialization_delete', 'chronic_monitoring_schedule_maintenance', 'chronic_monitoring_whatsapp', 'chronic_monitoring_export', 'chronic_monitoring_view_area',
-                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
             ],
             'kepala teknisi' => [
                 'menu_dashboard', 'menu_dashboard_realtime', 'dashboard_card_realtime', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_card_stats', 'dashboard_filter_area', 'dashboard_btn_refresh',
@@ -1366,7 +1363,6 @@ class PermissionRegistry
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_export', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_all',
                 'menu_operational_progress', 'menu_network_maintenance', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'operational_progress_send_wa', 'network_maintenance_create', 'network_maintenance_update', 'operational_progress_view_area',
                 'menu_vouchers_free', 'voucher_free_card_stats', 'voucher_free_tab_customers', 'vouchers_free_sync_customer', 'voucher_free_filter_connection', 'voucher_free_color_indicator',
-                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
             ],
             'dispatcher' => [
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_filter_area', 'dashboard_btn_refresh',
@@ -1406,7 +1402,6 @@ class PermissionRegistry
                 'menu_customer_billing', 'customer_billing_collect',
                 'menu_whatsapp_blast', 'whatsapp_card_gateway_status', 'whatsapp_card_blast_summary',
                 'whatsapp_tab_device', 'whatsapp_tab_blast', 'whatsapp_tab_history', 'whatsapp_tab_settings',
-                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view', 
                 'menu_attendances', 'attendance_tab_reguler', 'attendances_view_own', 'menu_attendance_reports', 'attendance_report_btn_print', 'attendance_report_btn_export', 'attendance_report_btn_delete',
                 'menu_payroll', 'payroll_view_own', 'payroll_btn_print_slip',
                 'menu_vouchers', 'menu_vouchers_monitoring', 'voucher_monitoring_card_stats', 'voucher_monitoring_tab_online', 'voucher_monitoring_tab_offline', 'voucher_monitoring_filter', 'voucher_monitoring_btn_kick', 'voucher_monitoring_btn_toggle',
@@ -1438,7 +1433,6 @@ class PermissionRegistry
                 'menu_whatsapp_blast', 'whatsapp_card_gateway_status', 'whatsapp_card_blast_summary',
                 'whatsapp_tab_device', 'whatsapp_tab_blast', 'whatsapp_tab_history', 'whatsapp_tab_settings',
                 'whatsapp_filter_target', 'whatsapp_btn_scan_qr', 'whatsapp_btn_test_send', 'whatsapp_btn_start_blast', 'whatsapp_btn_pause_blast',
-                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view', 'internet_packages_create', 'internet_packages_edit',
                 'menu_attendances', 'attendance_tab_reguler', 'attendances_view_own', 'menu_attendance_reports', 'attendance_report_btn_print', 'attendance_report_btn_export', 'attendance_report_btn_delete',
                 'menu_payroll', 'payroll_view_own', 'payroll_btn_print_slip',
                 'menu_vouchers', 'menu_vouchers_monitoring', 'voucher_monitoring_card_stats', 'voucher_monitoring_tab_online', 'voucher_monitoring_tab_offline', 'voucher_monitoring_filter', 'voucher_monitoring_btn_kick', 'voucher_monitoring_btn_toggle',
@@ -1459,14 +1453,12 @@ class PermissionRegistry
                 'menu_customers_gratis', 'menu_customers_free_home',
                 'menu_marketing_affiliates',
                 'menu_vouchers_free', 'voucher_free_card_stats', 'voucher_free_tab_generated', 'voucher_free_tab_customers', 'vouchers_free_create', 'vouchers_free_print', 'voucher_free_filter_connection', 'voucher_free_color_indicator',
-                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
                 'menu_attendances', 'attendance_tab_reguler', 'attendances_view_own', 'menu_attendance_reports', 'attendance_report_btn_print', 'attendance_report_btn_export', 'attendance_report_btn_delete',
                 'menu_payroll', 'payroll_view_own', 'payroll_btn_print_slip',
             ],
             'affiliate' => [
                 'menu_dashboard',
                 'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_create', 'customers_booking_view', 'customers_booking_print', 'customers_booking_whatsapp', 'customers_booking_view_own',
-                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
                 'menu_vouchers_free', 'voucher_free_card_stats', 'voucher_free_tab_generated', 'voucher_free_tab_customers', 'vouchers_free_create', 'vouchers_free_print', 'voucher_free_filter_connection', 'voucher_free_color_indicator',
             ],
             'finance' => [
@@ -1489,7 +1481,6 @@ class PermissionRegistry
                 'menu_customers_all', 'customers_card_summary', 'customers_all_view_all', 'customers_tab_invoices', 'customers_tax_toggle',
                 'menu_customers_gratis', 'menu_customers_free_home', 'menu_customers_terminated',
                 'menu_monitoring_pelanggan', 'monitoring_pelanggan_card_stats', 'monitoring_pelanggan_tab_menunggak', 'monitoring_pelanggan_tab_janji_bayar', 'monitoring_pelanggan_tab_stop_sementara', 'monitoring_pelanggan_filter', 'monitoring_pelanggan_btn_whatsapp', 'monitoring_pelanggan_btn_action',
-                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
                 'menu_settings_areas', 'settings_areas_create', 'settings_areas_edit',
                 'menu_attendances', 'attendance_tab_reguler', 'attendances_view_own', 'menu_attendance_reports', 'attendance_report_btn_print', 'attendance_report_btn_export', 'attendance_report_btn_delete', 'menu_attendance_leaves', 'attendance_leaves_manage', 'attendance_leaves_delete',
             ],
@@ -1526,7 +1517,6 @@ class PermissionRegistry
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_export', 'monitoring_teknisi_view_all',
                 'menu_operational_progress', 'menu_network_maintenance', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'operational_progress_send_wa', 'network_maintenance_create', 'network_maintenance_update', 'operational_progress_view_all',
                 'menu_chronic_monitoring', 'chronic_monitoring_card_stats', 'chronic_monitoring_tab_customers', 'chronic_monitoring_tab_paths', 'chronic_monitoring_tab_visits', 'chronic_monitoring_filter', 'chronic_socialization_manage', 'chronic_socialization_report', 'chronic_socialization_delete', 'chronic_monitoring_schedule_maintenance', 'chronic_monitoring_whatsapp', 'chronic_monitoring_export', 'chronic_monitoring_view_all',
-                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view', 'internet_packages_create', 'internet_packages_edit', 'internet_packages_delete',
             ],
             'hrd' => [
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_filter_area', 'dashboard_btn_refresh',
@@ -1562,7 +1552,6 @@ class PermissionRegistry
                 'menu_customers_survey', 'customers_survey_card_stats', 'customers_survey_filter', 'customers_survey_view_all',
                 'menu_customers_all', 'customers_card_summary', 'customers_btn_whatsapp', 'customers_all_view_all',
                 'menu_vouchers_free', 'voucher_free_card_stats', 'voucher_free_tab_generated', 'voucher_free_tab_customers', 'vouchers_free_create', 'vouchers_free_print', 'voucher_free_filter_connection', 'voucher_free_color_indicator',
-                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
                 'menu_attendances', 'attendance_tab_reguler', 'attendances_view_own', 'menu_attendance_reports', 'attendance_report_btn_print', 'attendance_report_btn_export', 'attendance_report_btn_delete',
                 'menu_payroll', 'payroll_view_own', 'payroll_btn_print_slip',
             ],
@@ -1624,7 +1613,6 @@ class PermissionRegistry
             'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_area', 'monitoring_teknisi_view_own',
             'menu_operational_progress', 'menu_network_maintenance', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'network_maintenance_create', 'network_maintenance_update',
             'menu_chronic_monitoring', 'chronic_monitoring_card_stats', 'chronic_monitoring_tab_customers', 'chronic_monitoring_tab_paths', 'chronic_monitoring_tab_visits', 'chronic_monitoring_filter', 'chronic_socialization_manage', 'chronic_socialization_report', 'chronic_socialization_delete', 'chronic_monitoring_schedule_maintenance', 'chronic_monitoring_whatsapp', 'chronic_monitoring_export', 'chronic_monitoring_view_area',
-            'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
         ];
 
         // Preset khusus Teknisi Tim Serbu (FOKUS 3: PENGERJAAN LAPANGAN, TARIK KABEL, QC OPM & AUTO-COMMISSIONING)
