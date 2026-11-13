@@ -1534,12 +1534,11 @@ class OperationalDailyProgressController extends Controller
         $lines[] = "👷‍♂️ *PETUGAS BERTUGAS :*";
         $lines[] = "• Teknisi: {$tekDutyStr}";
         $lines[] = "• Maintenance: {$maintDutyStr}";
-        $lines[] = "";
-        $lines[] = "";
 
         // 1. GANGGUAN PGS/PGK
-        $lines[] = "🆘 *GANGGUAN PGS/PGK*";
         if (!empty($gangguanList)) {
+            $lines[] = "";
+            $lines[] = "🆘 *GANGGUAN PGS/PGK*";
             // Group by teknisi
             $groupedGangguan = collect($gangguanList)->groupBy('technicians');
             foreach ($groupedGangguan as $techName => $tItems) {
@@ -1557,16 +1556,12 @@ class OperationalDailyProgressController extends Controller
                     $idx++;
                 }
             }
-        } else {
-            $lines[] = "👷 Petugas Teknisi : -";
-            $lines[] = "(Nihil / Belum ada gangguan)";
         }
-        $lines[] = "";
-        $lines[] = "";
 
         // 2. PEMASANGAN BARU
-        $lines[] = "🛜 *PEMASANGAN BARU*";
         if (!empty($pemasanganList)) {
+            $lines[] = "";
+            $lines[] = "🛜 *PEMASANGAN BARU*";
             $groupedPasang = collect($pemasanganList)->groupBy('technicians');
             foreach ($groupedPasang as $techName => $pItems) {
                 $lines[] = "";
@@ -1582,16 +1577,12 @@ class OperationalDailyProgressController extends Controller
                     $idx++;
                 }
             }
-        } else {
-            $lines[] = "👷 Petugas Teknisi : -";
-            $lines[] = "(Nihil / Belum ada pemasangan)";
         }
-        $lines[] = "";
-        $lines[] = "";
 
         // 3. SURVEY PELANGGAN BARU
-        $lines[] = "🔎 *SURVEY PELANGGAN BARU*";
         if (!empty($surveyList)) {
+            $lines[] = "";
+            $lines[] = "🔎 *SURVEY PELANGGAN BARU*";
             $groupedSurvey = collect($surveyList)->groupBy('technicians');
             foreach ($groupedSurvey as $techName => $sItems) {
                 $lines[] = "";
@@ -1606,16 +1597,12 @@ class OperationalDailyProgressController extends Controller
                     $idx++;
                 }
             }
-        } else {
-            $lines[] = "👷 Petugas Survey/Teknisi : -";
-            $lines[] = "(Nihil / Belum ada survey)";
         }
-        $lines[] = "";
-        $lines[] = "";
 
         // 4. PENCABUTAN / CBP
-        $lines[] = "🔌 *PENCABUTAN/CBP*";
         if (!empty($cbpList)) {
+            $lines[] = "";
+            $lines[] = "🔌 *PENCABUTAN/CBP*";
             $groupedCbp = collect($cbpList)->groupBy('technicians');
             foreach ($groupedCbp as $techName => $cItems) {
                 $lines[] = "";
@@ -1631,16 +1618,12 @@ class OperationalDailyProgressController extends Controller
                     $idx++;
                 }
             }
-        } else {
-            $lines[] = "👷 Petugas Teknisi/CBP : -";
-            $lines[] = "(Nihil / Belum ada pencabutan)";
         }
-        $lines[] = "";
-        $lines[] = "";
 
         // 5. PERAPIHAN & PENGECEKAN JALUR (ODP / ODC / JALUR UTAMA)
-        $lines[] = "🛠️ *PERAPIHAN & PENGECEKAN JALUR (ODP/ODC/JALUR UTAMA)*";
         if (!empty($maintenanceList)) {
+            $lines[] = "";
+            $lines[] = "🛠️ *PERAPIHAN & PENGECEKAN JALUR (ODP/ODC/JALUR UTAMA)*";
             $groupedMnt = collect($maintenanceList)->groupBy('technicians');
             foreach ($groupedMnt as $techName => $mItems) {
                 $lines[] = "";
@@ -1672,9 +1655,6 @@ class OperationalDailyProgressController extends Controller
                     $idx++;
                 }
             }
-        } else {
-            $lines[] = "🛠️ Petugas Maintenance/Teknisi : -";
-            $lines[] = "(Nihil / Belum ada perapihan & pengecekan jalur)";
         }
         $lines[] = "";
 
