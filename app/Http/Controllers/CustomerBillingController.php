@@ -104,8 +104,13 @@ class CustomerBillingController extends Controller
                 if ($request->filled('end_date')) {
                     $q->whereDate('due_date', '<=', $request->end_date);
                 }
-                $q->whereIn('status', ['unpaid', 'partial'])
-                  ->where('due_date', '<', Carbon::today());
+                $q->where('status', 'unpaid')
+                  ->where('due_date', '<', Carbon::today())
+                  ->where(function($sq) {
+                      // Janji bayar aktif mendatang difokuskan ke tab Janji Bayar agar tidak duplikasi
+                      $sq->whereNull('promise_date')
+                         ->orWhereDate('promise_date', '<', Carbon::today());
+                  });
             } elseif ($tabType === 'partial') {
                 if ($request->filled('start_date')) {
                     $q->whereDate('due_date', '>=', $request->start_date);

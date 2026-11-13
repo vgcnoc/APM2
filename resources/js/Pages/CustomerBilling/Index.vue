@@ -147,7 +147,7 @@
                         <div class="flex items-center justify-between gap-1 mb-2">
                             <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-amber-800 flex items-center gap-1.5 min-w-0 truncate">
                                 <span class="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
-                                <span class="truncate">Belum Lunas</span>
+                                <span class="truncate">Total Belum Lunas</span>
                             </span>
                             <span v-if="activeTab === 'unpaid'" class="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-amber-200/80 text-amber-900 border border-amber-300 shrink-0">
                                 Aktif
@@ -231,7 +231,7 @@
                         <div class="flex items-center justify-between gap-1 mb-2">
                             <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-rose-800 flex items-center gap-1.5 min-w-0 truncate">
                                 <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse shrink-0"></span>
-                                <span class="truncate">Jatuh Tempo</span>
+                                <span class="truncate">Jatuh Tempo (Nunggak)</span>
                             </span>
                             <span v-if="activeTab === 'overdue'" class="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-rose-200/80 text-rose-900 border border-rose-300 shrink-0">
                                 Aktif
@@ -241,7 +241,7 @@
                             Rp {{ formatRupiah(stats?.overdue?.total || 0) }}
                         </div>
                         <div class="mt-2 flex flex-wrap items-center justify-between gap-1 text-[11px] sm:text-xs text-rose-700 font-medium">
-                            <span>{{ stats?.overdue?.count || 0 }} Lewat Tempo</span>
+                            <span>{{ stats?.overdue?.count || 0 }} Nunggak</span>
                             <span class="text-[10px] font-bold underline">&rarr;</span>
                         </div>
                     </div>
