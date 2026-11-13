@@ -128,13 +128,13 @@ createInertiaApp({
             const isChunkError = 
                 err?.message?.includes('Failed to fetch dynamically imported module') ||
                 err?.message?.includes('Importing a module script failed') ||
-                err?.name === 'TypeError';
+                (err?.message && err.message.toLowerCase().includes('failed to load module script'));
             if (isChunkError && typeof window !== 'undefined') {
                 const retryKey = `chunk_retry_${name}`;
                 if (!sessionStorage.getItem(retryKey)) {
                     sessionStorage.setItem(retryKey, '1');
                     window.location.reload();
-                    return;
+                    return new Promise(() => {}); // Keep promise pending while page reloads to prevent reading undefined.default
                 }
                 sessionStorage.removeItem(retryKey);
             }

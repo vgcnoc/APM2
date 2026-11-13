@@ -1334,16 +1334,104 @@ const openSlipModal = (user) => {
 };
 
 const printSlip = () => {
-    // Reset scroll positions before printing so nothing is scrolled out or clipped
     const slipCard = document.getElementById('slip-modal-card');
-    if (slipCard) {
-        slipCard.scrollTop = 0;
-        const scrollables = slipCard.querySelectorAll('.overflow-y-auto');
-        scrollables.forEach(el => el.scrollTop = 0);
+    if (!slipCard) return;
+
+    slipCard.scrollTop = 0;
+    const scrollables = slipCard.querySelectorAll('.overflow-y-auto');
+    scrollables.forEach(el => el.scrollTop = 0);
+
+    // Buka jendela cetak mandiri (isolated print window) agar 100% bebas dari elemen dashboard / tabel lain
+    const printWin = window.open('', '_blank', 'width=900,height=1200');
+    if (printWin) {
+        const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+            .map(el => el.outerHTML)
+            .join('\n');
+
+        const clone = slipCard.cloneNode(true);
+        // Hapus toolbar aksi bawah (sticky toolbar)
+        const toolbar = clone.querySelector('.sticky.bottom-0');
+        if (toolbar) toolbar.remove();
+        // Hapus elemen berkelas no-print
+        clone.querySelectorAll('.no-print').forEach(el => el.remove());
+
+        const empName = selectedSlipUser.value?.name || 'Karyawan';
+        printWin.document.open();
+        printWin.document.write(`<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Slip Gaji - ${empName}</title>
+    ${styles}
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 6mm 8mm;
+        }
+        html, body {
+            background: #ffffff !important;
+            color: #0f172a !important;
+            margin: 0 !important;
+            padding: 4px !important;
+            height: auto !important;
+            min-height: 100% !important;
+            overflow: visible !important;
+            font-family: inherit;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        #slip-modal-card {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 14px !important;
+            box-shadow: none !important;
+            margin: 0 auto !important;
+            page-break-inside: auto !important;
+        }
+        #slip-modal-card .overflow-y-auto,
+        #slip-modal-card [class*="overflow-y-auto"],
+        #slip-modal-card [class*="max-h-"] {
+            overflow: visible !important;
+            max-height: none !important;
+            height: auto !important;
+        }
+        .no-print {
+            display: none !important;
+        }
+    </style>
+</head>
+<body class="bg-white">
+    ${clone.outerHTML}
+    <script>
+        window.onload = function() {
+            setTimeout(function() {
+                window.focus();
+                window.print();
+                setTimeout(function() { window.close(); }, 800);
+            }, 150);
+        };
+    <\/script>
+</body>
+</html>`);
+        printWin.document.close();
+    } else {
+        // Fallback jika browser memblokir popup
+        document.body.classList.add('is-printing-slip');
+        const cleanup = () => {
+            document.body.classList.remove('is-printing-slip');
+            window.removeEventListener('afterprint', cleanup);
+        };
+        window.addEventListener('afterprint', cleanup);
+        setTimeout(() => {
+            window.print();
+            setTimeout(cleanup, 2000);
+        }, 150);
     }
-    setTimeout(() => {
-        window.print();
-    }, 60);
 };
 
 const terbilangRupiah = (val) => {
@@ -1951,31 +2039,28 @@ const disburseAll = () => {
         size: A4 portrait;
         margin: 6mm 8mm;
     }
-    html, body {
+    /* Cetak lembar slip gaji saat fallback in-page */
+    body.is-printing-slip {
+        background: #ffffff !important;
         height: auto !important;
-        min-height: 100% !important;
         overflow: visible !important;
-        background: white !important;
     }
-    body * {
+    body.is-printing-slip > #app {
         visibility: hidden !important;
-    }
-    #slip-modal-card, #slip-modal-card * {
-        visibility: visible !important;
-    }
-    .fixed, [class*="fixed"] {
-        position: static !important;
-        height: auto !important;
-        max-height: none !important;
-        overflow: visible !important;
-        display: block !important;
-        background: transparent !important;
+        height: 0 !important;
+        max-height: 0 !important;
+        overflow: hidden !important;
+        margin: 0 !important;
         padding: 0 !important;
     }
-    #slip-modal-card {
-        position: relative !important;
-        left: auto !important;
-        top: auto !important;
+    body.is-printing-slip #slip-modal-card,
+    body.is-printing-slip #slip-modal-card * {
+        visibility: visible !important;
+    }
+    body.is-printing-slip #slip-modal-card {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
         width: 100% !important;
         max-width: 100% !important;
         height: auto !important;
@@ -1987,19 +2072,19 @@ const disburseAll = () => {
         border: 1px solid #cbd5e1 !important;
         border-radius: 14px !important;
         box-shadow: none !important;
-        background: white !important;
+        background: #ffffff !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
         page-break-inside: auto !important;
     }
-    #slip-modal-card .overflow-y-auto,
-    #slip-modal-card [class*="overflow-y-auto"],
-    #slip-modal-card [class*="max-h-"] {
+    body.is-printing-slip #slip-modal-card .overflow-y-auto,
+    body.is-printing-slip #slip-modal-card [class*="overflow-y-auto"],
+    body.is-printing-slip #slip-modal-card [class*="max-h-"] {
         overflow: visible !important;
         max-height: none !important;
         height: auto !important;
     }
-    .no-print {
+    body.is-printing-slip .no-print {
         display: none !important;
     }
 }
