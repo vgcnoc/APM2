@@ -303,8 +303,8 @@ class AreaMonitoringController extends Controller
         $lunasCount = $allAreasSummary['billing']['lunas']['count'];
         $collectionRate = $totalTagihanCount > 0 ? round(($lunasCount / $totalTagihanCount) * 100, 2) : 0.0;
 
-        $unpaidCount = $allAreasSummary['billing']['belum_bayar']['count'] + $allAreasSummary['billing']['nunggak']['count'] + $allAreasSummary['billing']['bayar_sebagian']['count'];
-        $unpaidAmount = $allAreasSummary['billing']['belum_bayar']['amount'] + $allAreasSummary['billing']['nunggak']['amount'] + $allAreasSummary['billing']['bayar_sebagian']['amount'];
+        $unpaidCount = $allAreasSummary['billing']['belum_bayar']['count'] + $allAreasSummary['billing']['nunggak']['count'] + $allAreasSummary['billing']['bayar_sebagian']['count'] + $allAreasSummary['billing']['janji_bayar']['count'];
+        $unpaidAmount = $allAreasSummary['billing']['belum_bayar']['amount'] + $allAreasSummary['billing']['nunggak']['amount'] + $allAreasSummary['billing']['bayar_sebagian']['amount'] + $allAreasSummary['billing']['janji_bayar']['amount'];
 
         $kpis = [
             'collection_rate' => $collectionRate,

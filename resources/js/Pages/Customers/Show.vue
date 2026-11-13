@@ -184,8 +184,8 @@
                     <button v-if="customer.status !== 'booking' && customer.status !== 'survey'" @click="activeTab = 'installation'" :class="activeTab === 'installation' ? 'bg-emerald-50 text-emerald-600 shadow-sm ring-1 ring-emerald-100' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'" class="flex-1 py-2 px-3 text-xs sm:text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2">
                         🚀 Instalasi
                     </button>
-                    <button v-if="isAudit || customer.status === 'active'" @click="activeTab = 'audit'" :class="activeTab === 'audit' ? 'bg-purple-50 text-purple-600 shadow-sm ring-1 ring-purple-100' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'" class="flex-1 py-2 px-3 text-xs sm:text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2">
-                        ✅ {{ (customer.is_audited || customer.status === 'active') && source !== 'instalasi' ? 'Aktivasi Layanan' : 'Audit Instalasi' }}
+                    <button v-if="isAudit || ['active', 'suspended', 'stop_sementara', 'stop_permanen', 'terminated'].includes(customer.status)" @click="activeTab = 'audit'" :class="activeTab === 'audit' ? 'bg-purple-50 text-purple-600 shadow-sm ring-1 ring-purple-100' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'" class="flex-1 py-2 px-3 text-xs sm:text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2">
+                        ✅ {{ (customer.is_audited || customer.status !== 'installing') && source !== 'instalasi' ? 'Aktivasi Layanan' : 'Audit Instalasi' }}
                     </button>
                 </div>
                 
@@ -291,7 +291,7 @@
                 </div>
 
                 <!-- Konfigurasi Layanan & ONT Section -->
-                <div v-show="activeTab === 'audit' && (customer.status === 'active' || isAudit) && source !== 'instalasi'" class="glass-card p-6 mt-6 animate-fade-in-up border border-indigo-100 shadow-md">
+                <div v-show="activeTab === 'audit' && (['active', 'suspended', 'stop_sementara', 'stop_permanen', 'terminated'].includes(customer.status) || isAudit) && source !== 'instalasi'" class="glass-card p-6 mt-6 animate-fade-in-up border border-indigo-100 shadow-md">
                     <div class="flex items-center justify-between mb-6">
                         <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
                             <span class="bg-indigo-100 text-indigo-600 p-2 rounded-lg">⚙️</span>
@@ -442,7 +442,7 @@
                     </div>
                 </div>
                 
-                <div v-show="(!isEditingInstallation && !isLaporanPasang) && (source === 'instalasi' || ((activeTab === 'audit' || activeTab === 'installation') && (isAudit || customer.status === 'active' || customer.status === 'installing')))" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-amber-500/20">
+                <div v-show="(!isEditingInstallation && !isLaporanPasang) && (source === 'instalasi' || activeTab === 'installation' || (activeTab === 'audit' && (isAudit || (customer.status !== 'booking' && customer.status !== 'survey'))))" class="glass-card p-6 mt-6 animate-fade-in-up border-2 border-amber-500/20">
                     <div v-if="source !== 'instalasi'" class="flex items-center justify-between mb-4">
                         <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
                             <span class="bg-amber-100 text-amber-600 p-2 rounded-lg">🚀</span>
@@ -694,7 +694,7 @@
                         
                         <div class="pt-4 border-t border-gray-200 mt-4">
                             <p class="text-xs text-gray-500 mb-3 uppercase font-semibold">Hasil Dokumentasi Lapangan:</p>
-                            <div class="flex gap-4 overflow-x-auto pb-2">
+                            <div v-if="customer.ont?.photo_odp || customer.ont?.photo_installation || customer.ont?.photo_ont || customer.ont?.photo_customer || customer.ont?.photo_redaman" class="flex gap-4 overflow-x-auto pb-2">
                                 <div v-if="customer.ont?.photo_odp" class="shrink-0 group relative">
                                     <img :src="`/storage/${customer.ont?.photo_odp}`" class="h-32 w-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:border-amber-500 transition-colors" @click="openImage(`/storage/${customer.ont?.photo_odp}`, 'Foto ODP / Port')" />
                                     <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto ODP</div>
@@ -715,6 +715,10 @@
                                     <img :src="`/storage/${customer.ont?.photo_redaman}`" class="h-32 w-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:border-amber-500 transition-colors" @click="openImage(`/storage/${customer.ont?.photo_redaman}`, 'Foto Redaman')" />
                                     <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-1 rounded-b-lg text-[10px] text-center text-white truncate pointer-events-none">Foto Redaman</div>
                                 </div>
+                            </div>
+                            <div v-else class="py-3 px-4 bg-gray-50 border border-gray-200/80 rounded-xl text-xs text-gray-500 italic flex items-center gap-2">
+                                <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                <span>Tidak ada lampiran foto dokumentasi fisik lapangan (Data Terpasang / Migrasi Sistem).</span>
                             </div>
                         </div>
 
@@ -3758,7 +3762,7 @@ const activeTab = ref(
     isLaporanPasang.value ? 'installation' :
     (isAudit.value ? 'audit' : 
     (props.customer.status === 'installing' ? 'installation' : 
-    (props.customer.status === 'active' ? 'audit' : 'booking')))
+    (['active', 'suspended', 'stop_sementara', 'stop_permanen', 'terminated'].includes(props.customer.status) ? 'audit' : 'booking')))
 );
 
 
