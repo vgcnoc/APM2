@@ -38,96 +38,113 @@
 
             <!-- Stats Overview -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] relative overflow-hidden group hover:border-indigo-100 transition-colors">
-                    <div class="absolute -right-4 -top-4 w-16 h-16 bg-blue-50/50 rounded-full group-hover:scale-110 transition-transform duration-300"></div>
-                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Total ODC</p>
-                    <h3 class="text-3xl font-black text-gray-800">{{ formatNumber(stats.total_odc) }}</h3>
-                    <p class="text-xs text-blue-600 mt-2 font-medium flex items-center gap-1">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                <div class="bg-gradient-to-br from-white via-blue-50/20 to-white p-5 rounded-2xl border border-blue-100/80 shadow-xs relative overflow-hidden group hover:border-blue-200 hover:shadow-sm transition-all">
+                    <div class="absolute -right-4 -top-4 w-16 h-16 bg-blue-100/50 rounded-full group-hover:scale-125 transition-transform duration-500 pointer-events-none"></div>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Total ODC</p>
+                    <h3 class="text-3xl font-black text-slate-800 tracking-tight">{{ formatNumber(stats.total_odc) }}</h3>
+                    <p class="text-xs text-blue-600 mt-2 font-bold flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                         Total ODC Master
                     </p>
                 </div>
-                <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] relative overflow-hidden group hover:border-indigo-100 transition-colors">
-                    <div class="absolute -right-4 -top-4 w-16 h-16 bg-indigo-50/50 rounded-full group-hover:scale-110 transition-transform duration-300"></div>
-                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Total ODP</p>
-                    <h3 class="text-3xl font-black text-gray-800">{{ formatNumber(stats.total_odp) }}</h3>
-                    <p class="text-xs text-indigo-600 mt-2 font-medium flex items-center gap-1">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+
+                <div class="bg-gradient-to-br from-white via-indigo-50/20 to-white p-5 rounded-2xl border border-indigo-100/80 shadow-xs relative overflow-hidden group hover:border-indigo-200 hover:shadow-sm transition-all">
+                    <div class="absolute -right-4 -top-4 w-16 h-16 bg-indigo-100/50 rounded-full group-hover:scale-125 transition-transform duration-500 pointer-events-none"></div>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Total ODP</p>
+                    <h3 class="text-3xl font-black text-slate-800 tracking-tight">{{ formatNumber(stats.total_odp) }}</h3>
+                    <p class="text-xs text-indigo-600 mt-2 font-bold flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
                         Total ODP Aktif
                     </p>
                 </div>
-                <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] relative overflow-hidden group hover:border-indigo-100 transition-colors">
-                    <div class="absolute -right-4 -top-4 w-16 h-16 bg-emerald-50/50 rounded-full group-hover:scale-110 transition-transform duration-300"></div>
-                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Port Tersedia</p>
-                    <h3 class="text-3xl font-black text-gray-800">{{ formatNumber(stats.port_tersedia) }}</h3>
-                    <p class="text-xs text-emerald-600 mt-2 font-medium flex items-center gap-1">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        Dari {{ formatNumber(stats.total_port) }} Port
+
+                <div class="bg-gradient-to-br from-white via-emerald-50/20 to-white p-5 rounded-2xl border border-emerald-100/80 shadow-xs relative overflow-hidden group hover:border-emerald-200 hover:shadow-sm transition-all">
+                    <div class="absolute -right-4 -top-4 w-16 h-16 bg-emerald-100/50 rounded-full group-hover:scale-125 transition-transform duration-500 pointer-events-none"></div>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Port Tersedia</p>
+                    <h3 class="text-3xl font-black text-emerald-700 tracking-tight">{{ formatNumber(stats.port_tersedia) }}</h3>
+                    <p class="text-xs text-emerald-600 mt-2 font-bold flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        Dari {{ formatNumber(stats.total_port) }} Port Fisik
                     </p>
                 </div>
-                <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] relative overflow-hidden group hover:border-indigo-100 transition-colors">
-                    <div class="absolute -right-4 -top-4 w-16 h-16 bg-amber-50/50 rounded-full group-hover:scale-110 transition-transform duration-300"></div>
-                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Pelanggan Aktif</p>
+
+                <div class="bg-gradient-to-br from-white via-amber-50/20 to-white p-5 rounded-2xl border border-amber-100/80 shadow-xs relative overflow-hidden group hover:border-amber-200 hover:shadow-sm transition-all">
+                    <div class="absolute -right-4 -top-4 w-16 h-16 bg-amber-100/50 rounded-full group-hover:scale-125 transition-transform duration-500 pointer-events-none"></div>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Pelanggan Aktif</p>
                     <div class="flex items-baseline justify-between flex-wrap gap-1">
-                        <h3 class="text-3xl font-black text-gray-800">{{ formatNumber(stats.pelanggan_aktif) }}</h3>
-                        <span v-if="stats.pelanggan_gratis > 0" class="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs" title="Pelanggan Gratis Aktif">
+                        <h3 class="text-3xl font-black text-slate-800 tracking-tight">{{ formatNumber(stats.pelanggan_aktif) }}</h3>
+                        <span v-if="stats.pelanggan_gratis > 0" class="text-[11px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs" title="Pelanggan Gratis Aktif">
                             <span>🎁</span> {{ stats.pelanggan_gratis }} Gratis
                         </span>
                     </div>
-                    <p class="text-xs text-amber-600 mt-2 font-medium flex items-center gap-1">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                    <p class="text-xs text-amber-600 mt-2 font-bold flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                         Online Users
                     </p>
                 </div>
-                <div @click="showTerminated = true" class="bg-white p-5 rounded-xl border border-rose-100 shadow-[0_2px_10px_-3px_rgba(244,63,94,0.08)] relative overflow-hidden group hover:border-rose-300 transition-all cursor-pointer">
-                    <div class="absolute -right-4 -top-4 w-16 h-16 bg-rose-50 rounded-full group-hover:scale-110 transition-transform duration-300"></div>
-                    <p class="text-[10px] font-bold text-rose-500 uppercase tracking-wider mb-1 flex items-center justify-between">
+
+                <div @click="showTerminated = true" class="bg-gradient-to-br from-white via-rose-50/25 to-white p-5 rounded-2xl border border-rose-100/90 shadow-xs relative overflow-hidden group hover:border-rose-300 hover:shadow-sm transition-all cursor-pointer">
+                    <div class="absolute -right-4 -top-4 w-16 h-16 bg-rose-100/60 rounded-full group-hover:scale-125 transition-transform duration-500 pointer-events-none"></div>
+                    <p class="text-[10px] font-black text-rose-500 uppercase tracking-wider mb-1 flex items-center justify-between">
                         <span>Proses CBP & Stop</span>
                         <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
                     </p>
                     <div class="flex items-baseline gap-1.5">
-                        <h3 class="text-3xl font-black text-rose-600">{{ formatNumber(stats.proses_cbp || 0) }}</h3>
-                        <span class="text-xs font-semibold text-gray-400">/ {{ formatNumber(stats.stop_permanen || 0) }} Stop</span>
+                        <h3 class="text-3xl font-black text-rose-600 tracking-tight">{{ formatNumber(stats.proses_cbp || 0) }}</h3>
+                        <span class="text-xs font-bold text-slate-400">/ {{ formatNumber(stats.stop_permanen || 0) }} Stop</span>
                     </div>
-                    <p class="text-xs text-rose-600 mt-2 font-medium flex items-center gap-1">
-                        <svg class="w-3 h-3 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <p class="text-xs text-rose-600 mt-2 font-bold flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         Belum Cabut Perangkat
                     </p>
                 </div>
             </div>
 
             <!-- Filters -->
-            <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)]">
-                <div class="flex flex-col md:flex-row gap-4 items-center">
+            <div class="bg-white p-4 md:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+                <div class="flex flex-col lg:flex-row gap-3.5 items-stretch lg:items-center">
                     <!-- Global Search -->
-                    <div class="relative w-full md:w-64 shrink-0">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    <div class="relative w-full lg:w-72 shrink-0">
+                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                         </div>
-                        <input v-model="form.search" @input="debouncedSearch" type="text" class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 placeholder-gray-400" placeholder="Cari ODC, ODP, Pelanggan..." />
+                        <input
+                            v-model="form.search"
+                            @input="debouncedSearch"
+                            type="text"
+                            class="w-full pl-10 pr-9 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-400 transition-all"
+                            placeholder="Cari ODC, ODP, Pelanggan..."
+                        />
+                        <button
+                            v-if="form.search"
+                            @click="form.search = ''; debouncedSearch();"
+                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
                     </div>
 
-                    <div class="w-full h-px md:h-8 md:w-px bg-gray-200 hidden md:block"></div>
+                    <div class="w-full h-px lg:h-8 lg:w-px bg-slate-200 hidden lg:block"></div>
 
                     <!-- Filter Selects -->
-                    <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 w-full">
-                        <select v-model="form.olt_id" @change="applyFilters" class="w-full border-gray-200 rounded-lg text-sm text-gray-700 py-2 focus:ring-1 focus:ring-indigo-500">
+                    <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2.5 w-full">
+                        <select v-model="form.olt_id" @change="applyFilters" class="w-full bg-slate-50 border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 py-2.5 px-3 focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
                             <option value="">Semua Server</option>
                             <option v-for="olt in olts" :key="olt.id" :value="olt.id">{{ olt.name }}</option>
                         </select>
-                        <select v-model="form.odc_id" @change="applyFilters" class="w-full border-gray-200 rounded-lg text-sm text-gray-700 py-2 focus:ring-1 focus:ring-indigo-500">
+                        <select v-model="form.odc_id" @change="applyFilters" class="w-full bg-slate-50 border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 py-2.5 px-3 focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
                             <option value="">Semua ODC</option>
                             <option v-for="odc in filteredOdcs" :key="odc.id" :value="odc.id">{{ formatOdcDropdownLabel(odc) }}</option>
                         </select>
-                        <select v-model="form.odp_id" @change="applyFilters" class="w-full border-gray-200 rounded-lg text-sm text-gray-700 py-2 focus:ring-1 focus:ring-indigo-500">
+                        <select v-model="form.odp_id" @change="applyFilters" class="w-full bg-slate-50 border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 py-2.5 px-3 focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
                             <option value="">Semua ODP</option>
                             <option v-for="odp in filteredOdpsDropdown" :key="odp.id" :value="odp.id">{{ formatOdpDropdownLabel(odp) }}</option>
                         </select>
-                        <select v-model="form.area_id" @change="applyFilters" class="w-full border-gray-200 rounded-lg text-sm text-gray-700 py-2 focus:ring-1 focus:ring-indigo-500">
+                        <select v-model="form.area_id" @change="applyFilters" class="w-full bg-slate-50 border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 py-2.5 px-3 focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
                             <option value="">Semua Area</option>
                             <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
                         </select>
-                        <select v-model="form.status" @change="applyFilters" class="w-full border-gray-200 rounded-lg text-sm text-gray-700 py-2 focus:ring-1 focus:ring-indigo-500">
+                        <select v-model="form.status" @change="applyFilters" class="w-full bg-slate-50 border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 py-2.5 px-3 focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
                             <option value="">Semua Status</option>
                             <option value="active">Active (Tersedia)</option>
                             <option value="full">Full (Penuh)</option>
@@ -135,8 +152,9 @@
                         </select>
                     </div>
 
-                    <button @click="resetFilters" class="px-3 py-2 text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100 shrink-0">
-                        Reset Filter
+                    <button @click="resetFilters" class="px-3.5 py-2.5 text-xs sm:text-sm font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all border border-slate-200 hover:border-rose-200 shrink-0 flex items-center justify-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <span>Reset</span>
                     </button>
                 </div>
             </div>
@@ -150,7 +168,7 @@
                     <!-- CONNECTED ODC SPLIT PAIR FRAME (Berdampingan Induk <-> Lanjutan) -->
                     <div
                         v-if="unit.isSplitPair"
-                        class="network-split-pair rounded-2xl border border-gray-200 bg-gray-50/50 p-3 md:p-4 shadow-sm space-y-4"
+                        class="network-split-pair rounded-3xl border border-slate-200/90 bg-gradient-to-b from-slate-50/60 via-white to-slate-50/30 p-4 md:p-6 shadow-xs space-y-5"
                     >
                         <SplitConnectionHeader
                             kind="ODC"
@@ -161,11 +179,11 @@
                                 detail: 'PON ' + (item.odc.pon_port || '—'),
                             }))"
                         >
-                            <span class="rounded-lg bg-gray-50 border border-gray-200 px-3 py-1.5 text-gray-700">
+                            <span class="rounded-xl bg-white border border-slate-200 px-3 py-1.5 text-slate-800 font-bold text-xs shadow-2xs">
                                 <strong>{{ getOdcUnitTotalOdps(unit.items) }}</strong> ODP
                             </span>
-                            <span class="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-emerald-800">
-                                <strong>{{ getOdcUnitFreePorts(unit.items) }}</strong> port tersedia total
+                            <span class="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-emerald-800 font-bold text-xs shadow-2xs">
+                                <strong>{{ getOdcUnitFreePorts(unit.items) }}</strong> Port Free Total
                             </span>
                         </SplitConnectionHeader>
 

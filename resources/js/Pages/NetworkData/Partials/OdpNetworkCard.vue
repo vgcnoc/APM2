@@ -1,34 +1,34 @@
 <template>
     <div
-        class="min-w-0 rounded-xl transition-all group bg-white flex flex-col relative overflow-hidden"
+        class="min-w-0 rounded-2xl transition-all group bg-white flex flex-col relative overflow-hidden shadow-xs hover:shadow-md"
         :class="[
             splitInfo?.role === 'induk'
-                ? 'border-2 border-emerald-300/90 hover:border-emerald-400 shadow-xs hover:shadow-md'
+                ? 'border-2 border-emerald-300 hover:border-emerald-400'
                 : splitInfo?.role === 'lanjutan'
-                    ? 'border-2 border-purple-300/90 hover:border-purple-400 shadow-xs hover:shadow-md'
+                    ? 'border-2 border-purple-300 hover:border-purple-400'
                     : splitInfo?.isSplit
-                        ? 'border-2 border-amber-300/80 hover:border-amber-400 shadow-xs hover:shadow-md'
-                        : 'border border-gray-200 hover:border-indigo-300 hover:shadow-md'
+                        ? 'border-2 border-amber-300 hover:border-amber-400'
+                        : 'border border-slate-200/90 hover:border-indigo-300'
         ]"
     >
-        <!-- Status Strip -->
-        <div class="w-full h-1" :class="getOdpStatusColor(odp)"></div>
+        <!-- Top Status Stripe -->
+        <div class="w-full h-1.5" :class="getOdpStatusColor(odp)"></div>
 
-        <!-- Split Relationship Banner on Card -->
+        <!-- Split Relationship Banner (if Split) -->
         <div
             v-if="splitInfo?.isSplit"
-            class="px-3.5 py-2 border-b text-[10px] flex flex-col gap-1"
+            class="px-4 py-2 border-b text-[10px] flex flex-col gap-1"
             :class="[
                 splitInfo.role === 'induk'
-                    ? 'bg-gradient-to-r from-emerald-50 via-teal-50/70 to-white border-emerald-200/80 text-emerald-900'
+                    ? 'bg-gradient-to-r from-emerald-50 via-teal-50/70 to-white border-emerald-200/80 text-emerald-950'
                     : splitInfo.role === 'lanjutan'
-                        ? 'bg-gradient-to-r from-purple-50 via-fuchsia-50/70 to-white border-purple-200/80 text-purple-900'
-                        : 'bg-gradient-to-r from-amber-50 to-white border-amber-200/80 text-amber-900'
+                        ? 'bg-gradient-to-r from-purple-50 via-fuchsia-50/70 to-white border-purple-200/80 text-purple-950'
+                        : 'bg-gradient-to-r from-amber-50 to-white border-amber-200/80 text-amber-950'
             ]"
         >
             <div class="flex items-center justify-between gap-2 flex-wrap">
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-black uppercase tracking-wider text-[9px] shadow-2xs"
+                    class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-black uppercase tracking-wider text-[9px] shadow-2xs"
                     :class="[
                         splitInfo.role === 'induk'
                             ? 'bg-emerald-600 text-white'
@@ -37,218 +37,317 @@
                                 : 'bg-amber-500 text-white'
                     ]"
                 >
-                    <span v-if="splitInfo.role === 'induk'">🟢 SPLIT 2 • UNIT INDUK</span>
-                    <span v-else-if="splitInfo.role === 'lanjutan'">🟣 SPLIT 2 • UNIT LANJUTAN</span>
-                    <span v-else>⚡ ODP TIPE SPLIT 2</span>
+                    <span v-if="splitInfo.role === 'induk'">🟢 SPLIT 2 • INDUK</span>
+                    <span v-else-if="splitInfo.role === 'lanjutan'">🟣 SPLIT 2 • LANJUTAN</span>
+                    <span v-else>⚡ ODP SPLIT 2</span>
                 </span>
 
                 <span
                     v-if="splitInfo.partnerLabel"
-                    class="flex w-full min-w-0 flex-wrap items-baseline gap-x-1 gap-y-0.5 font-bold text-[11px] px-2 py-1.5 rounded-md border bg-white/90"
+                    class="flex items-center gap-1 font-bold text-[10px] px-2 py-0.5 rounded-md border bg-white/90"
                     :class="splitInfo.role === 'induk' ? 'border-emerald-200 text-emerald-800' : 'border-purple-200 text-purple-800'"
                     :title="splitInfo.partnerLabel"
                 >
-                    <span v-if="splitInfo.role === 'induk'">↱ Lanjutan:</span>
-                    <span v-else>↳ Dari Induk:</span>
-                    <strong class="min-w-0 break-words">{{ splitInfo.partnerLabel }}</strong>
+                    <span>{{ splitInfo.role === 'induk' ? '➔ Ke:' : '↳ Dari:' }}</span>
+                    <strong class="truncate max-w-[140px]">{{ splitInfo.partnerLabel }}</strong>
                 </span>
             </div>
 
             <div
                 v-if="odp.start_point || odp.end_point || odp.cable_pull"
-                class="flex items-center gap-1.5 text-[9px] font-medium opacity-85 truncate"
-                :title="`Rute: ${odp.start_point || 'Induk'} ➔ ${odp.end_point || odp.name}`"
+                class="flex items-center gap-1.5 text-[9px] font-medium opacity-85 truncate mt-0.5"
             >
-                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                <svg class="w-3 h-3 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
                 <span class="truncate">
                     Rute: <strong>{{ odp.start_point || splitInfo.partnerLabel || 'Sumber' }}</strong> &rarr; <strong>{{ odp.end_point || odp.name }}</strong>
                 </span>
-                <span v-if="odp.cable_pull" class="ml-auto px-1.5 py-0.2 rounded bg-white/80 border border-current/20 font-bold shrink-0">
+                <span v-if="odp.cable_pull" class="ml-auto px-1.5 py-0.2 rounded bg-white/80 border border-current/20 font-bold shrink-0 font-mono">
                     {{ odp.cable_pull }}
                 </span>
             </div>
         </div>
 
-        <div class="p-4 flex-1 flex flex-col">
-            <div class="flex justify-between items-start mb-3 gap-2">
+        <!-- Main Card Body -->
+        <div class="p-4 md:p-5 flex-1 flex flex-col">
+            <!-- Header: Name, Code, and Status Badge -->
+            <div class="flex justify-between items-start gap-2 mb-3">
                 <div class="min-w-0">
-                    <h4 class="font-bold text-gray-800 text-lg leading-tight break-words">{{ odp.name }}</h4>
-                    <p class="text-[11px] font-medium text-gray-500 mt-0.5">{{ odp.kode_odp || '-' }}</p>
+                    <h4 class="font-extrabold text-slate-900 text-lg leading-tight break-words group-hover:text-indigo-600 transition-colors">
+                        {{ odp.name }}
+                    </h4>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="text-[11px] font-mono font-bold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded">
+                            {{ odp.kode_odp || '-' }}
+                        </span>
+                        <span class="text-[11px] text-slate-500 font-medium">
+                            Area: <strong class="text-slate-700">{{ odp.area?.name || 'Semua Area' }}</strong>
+                        </span>
+                    </div>
                 </div>
-                <div class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider shrink-0" :class="getOdpStatusBadge(odp)">
+
+                <div class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shrink-0 shadow-2xs border" :class="getOdpStatusBadge(odp)">
                     {{ odp.status }}
                 </div>
             </div>
 
-            <!-- Address & Coord Pills -->
-            <div class="flex flex-wrap gap-2 mb-3">
-                <div v-if="odp.address && odp.address !== '-'" class="bg-gray-50 border border-gray-200 text-gray-600 text-[10px] px-2 py-1 rounded-md flex items-center gap-1" :title="odp.address">
-                    <svg class="w-3 h-3 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                    <span class="truncate max-w-[150px]">{{ odp.address }}</span>
+            <!-- Capacity & Port Utilization Meter -->
+            <div class="bg-slate-50 rounded-xl p-3 border border-slate-200/70 mb-3.5">
+                <div class="flex items-center justify-between text-xs mb-1.5">
+                    <span class="text-slate-600 font-bold flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                        Okupansi Port:
+                        <strong class="text-slate-900">{{ odp.used_ports }} / {{ odp.total_ports }}</strong>
+                    </span>
+                    <span class="font-mono font-bold text-xs" :class="utilizationColorText">
+                        {{ utilizationPercent }}%
+                    </span>
                 </div>
 
-                <div class="bg-gray-50 border border-gray-200 text-gray-700 text-[10px] px-2 py-1 rounded-md flex items-center gap-1 font-mono">
-                    <svg class="w-3 h-3 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    <span class="font-bold text-slate-500 uppercase">Lat:</span>
-                    <span :class="odp.latitude ? 'text-gray-900 font-semibold' : 'text-gray-400 italic'">{{ odp.latitude || '-' }}</span>
+                <!-- Progress Bar -->
+                <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden flex">
+                    <div
+                        class="h-full rounded-full transition-all duration-500"
+                        :class="utilizationColorBar"
+                        :style="{ width: `${utilizationPercent}%` }"
+                    ></div>
                 </div>
 
-                <div class="bg-gray-50 border border-gray-200 text-gray-700 text-[10px] px-2 py-1 rounded-md flex items-center gap-1 font-mono">
-                    <svg class="w-3 h-3 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    <span class="font-bold text-slate-500 uppercase">Long:</span>
-                    <span :class="odp.longitude ? 'text-gray-900 font-semibold' : 'text-gray-400 italic'">{{ odp.longitude || '-' }}</span>
-                </div>
-
-                <a v-if="odp.latitude && odp.longitude" :href="`https://www.google.com/maps?q=${odp.latitude},${odp.longitude}`" target="_blank" class="bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 text-[10px] font-bold px-1.5 py-1 rounded-md flex items-center gap-1 transition-colors" title="Buka Titik Koordinat di Google Maps">
-                    <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                    Maps
-                </a>
-
-                <div class="bg-gray-50 border border-gray-200 text-gray-800 font-bold text-[10px] px-2 py-1 rounded-md flex items-center gap-1">
-                    <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                    {{ odp.total_ports }} Port
-                </div>
-
-                <div class="bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] px-2 py-1 rounded-md flex items-center gap-1">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    {{ odp.area?.name || 'Belum ada area' }}
-                </div>
-
-                <div v-if="odpCbpCount > 0" class="bg-rose-50 border border-rose-300 text-rose-700 font-black text-[10px] px-2 py-1 rounded-md flex items-center gap-1 shadow-xs">
-                    <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
-                    ⏳ {{ odpCbpCount }} Port Proses CBP
-                </div>
-
-                <div v-if="odpGratisCount > 0" class="bg-emerald-50 border border-emerald-300 text-emerald-800 font-black text-[10px] px-2 py-1 rounded-md flex items-center gap-1 shadow-xs" title="Terdapat pelanggan gratis pada ODP ini">
-                    <span>🎁</span>
-                    <span>{{ odpGratisCount }} Gratis</span>
+                <div class="flex items-center justify-between text-[11px] mt-2 pt-1.5 border-t border-slate-200/60 font-medium">
+                    <span class="text-emerald-700 font-bold flex items-center gap-1">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        {{ availablePortsCount }} Port Siap Pakai
+                    </span>
+                    <span class="text-slate-500 font-mono text-[10px]">
+                        Total {{ odp.total_ports }} Port Fisik
+                    </span>
                 </div>
             </div>
 
-            <!-- VLAN Sinkron OLT PON -->
-            <div class="mb-4 p-2 bg-indigo-50/60 rounded-lg border border-indigo-100/80">
-                <div class="flex items-center justify-between mb-1">
-                    <span class="text-[10px] font-bold text-indigo-900 uppercase tracking-wider flex items-center gap-1">
-                        <svg class="w-3 h-3 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <!-- Hardware Socket Matrix Bar (Visual LED Matrix at a Glance) -->
+            <div class="mb-3.5 pb-3 border-b border-slate-100">
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-[10px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                        <span>⚡ Status Socket Port</span>
+                    </span>
+                    <span class="text-[9px] text-slate-400 font-medium">Klik socket untuk melihat</span>
+                </div>
+                <div class="flex items-center gap-1 flex-wrap">
+                    <div
+                        v-for="portNum in Number(odp.total_ports || 0)"
+                        :key="'matrix-' + portNum"
+                        class="w-7 h-7 rounded-lg flex flex-col items-center justify-center border transition-all text-center select-none"
+                        :class="getSocketBoxClass(portNum)"
+                        :title="getSocketTooltip(portNum)"
+                    >
+                        <span class="text-[9px] font-mono font-bold leading-none">{{ portNum }}</span>
+                        <span class="w-1.5 h-1.5 rounded-full mt-0.5" :class="getSocketLedClass(portNum)"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Address & Location Row -->
+            <div class="flex flex-wrap items-center gap-1.5 mb-3 text-xs">
+                <div v-if="odp.address && odp.address !== '-'" class="bg-slate-50 border border-slate-200 text-slate-700 text-[10px] px-2 py-1 rounded-md flex items-center gap-1 max-w-full" :title="odp.address">
+                    <svg class="w-3 h-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                    <span class="truncate max-w-[180px]">{{ odp.address }}</span>
+                </div>
+
+                <a
+                    v-if="odp.latitude && odp.longitude"
+                    :href="`https://www.google.com/maps?q=${odp.latitude},${odp.longitude}`"
+                    target="_blank"
+                    class="bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded-md flex items-center gap-1 transition-colors"
+                    title="Buka Koordinat di Google Maps"
+                >
+                    <svg class="w-3 h-3 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    Maps
+                </a>
+
+                <div v-if="odpCbpCount > 0" class="bg-rose-50 border border-rose-300 text-rose-700 font-black text-[10px] px-2 py-1 rounded-md flex items-center gap-1 shadow-2xs">
+                    <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                    ⏳ {{ odpCbpCount }} Port CBP
+                </div>
+
+                <div v-if="odpGratisCount > 0" class="bg-emerald-50 border border-emerald-300 text-emerald-800 font-black text-[10px] px-2 py-1 rounded-md flex items-center gap-1 shadow-2xs" title="Terdapat pelanggan gratis pada ODP ini">
+                    <span>🎁 {{ odpGratisCount }} Gratis</span>
+                </div>
+            </div>
+
+            <!-- VLAN Sinkron OLT PON Header Banner -->
+            <div class="mb-3.5 p-2.5 bg-gradient-to-r from-indigo-50/80 via-purple-50/40 to-indigo-50/80 rounded-xl border border-indigo-100">
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-[10px] font-extrabold text-indigo-950 uppercase tracking-wider flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                         VLAN Sinkron OLT
                     </span>
-                    <span v-if="odp.odc?.pon_port" class="text-[9px] font-bold text-indigo-600 bg-indigo-100 px-1.5 py-0.2 rounded">PON {{ odp.odc.pon_port }}</span>
+                    <span v-if="odp.odc?.pon_port" class="text-[9px] font-bold text-indigo-700 bg-white border border-indigo-200 px-2 py-0.5 rounded-full shadow-2xs">
+                        PON {{ odp.odc.pon_port }}
+                    </span>
                 </div>
+
                 <div v-if="ponVlans.length > 0" class="flex flex-wrap gap-1.5">
-                    <div v-for="(vlan, vIdx) in ponVlans" :key="vIdx" class="inline-flex items-center gap-1 bg-white border border-indigo-200 px-1.5 py-0.5 rounded text-[10px] shadow-xs">
-                        <span class="font-bold text-indigo-700">VLAN {{ vlan.vlan_id || vlan }}</span>
-                        <span v-if="vlan.name" class="text-gray-600 text-[9px]">({{ vlan.name }})</span>
-                        <span :class="['px-1 py-0.2 text-[8px] font-bold rounded-full uppercase', getModeBadgeClass(getVlanAccessMode(vlan))]">
+                    <div
+                        v-for="(vlan, vIdx) in ponVlans"
+                        :key="vIdx"
+                        class="inline-flex items-center gap-1 bg-white border border-indigo-200/80 px-2 py-0.5 rounded-md text-[10px] shadow-2xs"
+                    >
+                        <span class="font-bold text-indigo-800">VLAN {{ vlan.vlan_id || vlan }}</span>
+                        <span v-if="vlan.name && vlan.name !== (vlan.vlan_id || vlan)" class="text-slate-500 text-[9px]">({{ vlan.name }})</span>
+                        <span :class="['px-1.5 py-0.2 text-[8px] font-bold rounded-full uppercase', getModeBadgeClass(getVlanAccessMode(vlan))]">
                             {{ getVlanAccessMode(vlan) }}
                         </span>
                     </div>
                 </div>
-                <span v-else class="text-[10px] text-gray-400 italic">Tidak ada VLAN diset pada OLT</span>
+                <span v-else class="text-[10px] text-slate-400 italic">Tidak ada VLAN diset pada OLT</span>
             </div>
 
-            <!-- Ports List (Directly in Card) -->
-            <div class="space-y-2 mb-4 max-h-56 overflow-y-auto pr-1 text-xs flex-1">
-                <div v-for="portNum in Number(odp.total_ports || 0)" :key="portNum" class="flex items-start gap-2 py-1 border-b border-gray-50 last:border-b-0">
-                    <span class="text-gray-400 font-mono w-4 text-right pt-0.5 shrink-0">{{ portNum }}</span>
+            <!-- Ports List: Clean, Unrestricted for <=8 Ports, Custom Scroll for >8 Ports -->
+            <div
+                class="space-y-1.5 mb-4 flex-1 text-xs"
+                :class="Number(odp.total_ports || 0) > 8 ? 'max-h-[380px] overflow-y-auto pr-1 custom-scrollbar' : 'max-h-none'"
+            >
+                <div
+                    v-for="portNum in Number(odp.total_ports || 0)"
+                    :key="portNum"
+                    :id="`odp-${odp.id}-port-${portNum}`"
+                    class="transition-colors"
+                >
+                    <!-- Port Row Item -->
                     <template v-if="getPortData(portNum)">
-                        <div class="w-2.5 h-2.5 rounded-full shrink-0 mt-1" :class="getCustomerStatusColor(getPortData(portNum).customer?.status, getCbpForCustomer(getPortData(portNum).customer))"></div>
-                        <div v-if="getPortData(portNum).customer" class="flex flex-col min-w-0 flex-1">
-                            <div class="flex items-center gap-1.5 flex-wrap leading-tight">
-                                <span v-if="getCbpForCustomer(getPortData(portNum).customer)" class="text-rose-700 font-black text-[10px] bg-rose-100 px-1.5 py-0.2 rounded border border-rose-300 uppercase tracking-wider">
-                                    ⏳ Proses CBP
-                                </span>
-                                <span v-else-if="getPortData(portNum).customer.status === 'active'" class="text-emerald-600 font-bold text-xs">Aktif</span>
-                                <span v-else-if="getPortData(portNum).customer.status === 'installing'" class="text-amber-600 font-bold text-xs">Proses Instalasi</span>
-                                <span v-else-if="getPortData(portNum).customer.status === 'suspended'" class="text-orange-600 font-bold text-xs">Isolir</span>
-                                <span v-else-if="getPortData(portNum).customer.status === 'terminated'" class="text-rose-700 font-bold text-xs">Stop Permanen</span>
-                                <span v-else class="text-gray-600 font-bold text-xs">{{ getPortData(portNum).customer.status }}</span>
+                        <div class="flex flex-col py-2 px-2.5 rounded-xl bg-slate-50 border border-slate-200/90 hover:bg-white hover:border-indigo-300 hover:shadow-xs transition-all">
+                            <!-- Upper line: Port number, status pill, customer info -->
+                            <div class="flex items-center justify-between gap-2 flex-wrap">
+                                <div class="flex items-center gap-2 min-w-0 flex-1">
+                                    <span class="w-6 h-6 rounded-md bg-slate-200 text-slate-800 text-[10px] font-mono font-black flex items-center justify-center shrink-0 border border-slate-300">
+                                        {{ String(portNum).padStart(2, '0') }}
+                                    </span>
 
-                                <span class="text-gray-400 text-xs">•</span>
+                                    <!-- Customer status badge -->
+                                    <span
+                                        v-if="getCbpForCustomer(getPortData(portNum).customer)"
+                                        class="text-rose-700 font-black text-[9px] bg-rose-100 px-2 py-0.5 rounded-full border border-rose-300 uppercase tracking-wider shrink-0 flex items-center gap-1 shadow-2xs"
+                                    >
+                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+                                        CBP
+                                    </span>
+                                    <span
+                                        v-else
+                                        class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 border"
+                                        :class="getCustomerStatusPillClass(getPortData(portNum).customer?.status)"
+                                    >
+                                        <span class="w-1.5 h-1.5 rounded-full" :class="getCustomerStatusDot(getPortData(portNum).customer?.status)"></span>
+                                        {{ getCustomerStatusLabel(getPortData(portNum).customer?.status) }}
+                                    </span>
 
-                                <span class="font-bold text-gray-800 truncate text-xs">
-                                    {{ getPortData(portNum).customer.customer_code }} - {{ getPortData(portNum).customer.name }}
-                                </span>
+                                    <!-- Customer Name & Code Link -->
+                                    <div v-if="getPortData(portNum).customer" class="min-w-0 flex-1 truncate">
+                                        <a
+                                            :href="`/customers/${getPortData(portNum).customer.id}`"
+                                            class="font-black text-slate-900 hover:text-indigo-600 hover:underline text-xs"
+                                        >
+                                            {{ getPortData(portNum).customer.customer_code }} - {{ getPortData(portNum).customer.name }}
+                                        </a>
+                                    </div>
+                                    <span v-else class="font-medium text-slate-400 italic text-xs">ONT Inventori</span>
+                                </div>
 
-                                <span v-if="getPortData(portNum).customer.service_status === 'gratis'" class="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-xs" title="Pelanggan Bebas Tagihan (Gratis)">
-                                    <span>🎁</span>
-                                    <span>Gratis</span>
+                                <!-- Gratis Pill if Applicable -->
+                                <span
+                                    v-if="getPortData(portNum).customer?.service_status === 'gratis'"
+                                    class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs"
+                                >
+                                    🎁 Gratis
                                 </span>
                             </div>
 
-                            <div class="flex items-center gap-2 mt-0.5 flex-wrap text-[9px] text-gray-500">
-                                <span v-if="getPortData(portNum).customer.status === 'active' && getPortData(portNum).customer.activation_date">
-                                    Tgl: {{ getPortData(portNum).customer.activation_date }}
+                            <!-- Lower line: Date & VLAN info -->
+                            <div class="flex items-center gap-2 mt-1.5 pl-8 flex-wrap text-[10px] text-slate-500">
+                                <span v-if="getPortData(portNum).customer?.activation_date">
+                                    Aktif: <strong>{{ getPortData(portNum).customer.activation_date }}</strong>
                                 </span>
-                                <span v-else-if="getPortData(portNum).start_time">
-                                    Tgl: {{ getPortData(portNum).updated_at ? getPortData(portNum).updated_at.substring(0, 10) : '' }}
-                                </span>
-                                <span v-else>
-                                    Tgl: {{ getPortData(portNum).customer.created_at?.substring(0, 10) }}
+                                <span v-else-if="getPortData(portNum).customer?.created_at">
+                                    Tgl: <strong>{{ getPortData(portNum).customer.created_at.substring(0, 10) }}</strong>
                                 </span>
 
-                                <span v-if="getPortData(portNum).vlan_id" class="bg-purple-100 text-purple-700 px-1 rounded font-bold border border-purple-200">VLAN: {{ getPortData(portNum).vlan_id }}</span>
-                                <span v-if="getPortData(portNum).hotspot_vlan_id" class="bg-orange-100 text-orange-700 px-1 rounded font-bold border border-orange-200">HS: {{ getPortData(portNum).hotspot_vlan_id }}</span>
+                                <span v-if="getPortData(portNum).vlan_id" class="bg-purple-50 text-purple-700 px-1.5 py-0.2 rounded font-mono font-bold border border-purple-200">
+                                    VLAN {{ getPortData(portNum).vlan_id }}
+                                </span>
+                                <span v-if="getPortData(portNum).hotspot_vlan_id" class="bg-amber-50 text-amber-800 px-1.5 py-0.2 rounded font-mono font-bold border border-amber-200">
+                                    HS {{ getPortData(portNum).hotspot_vlan_id }}
+                                </span>
                             </div>
 
-                            <div v-if="getCbpForCustomer(getPortData(portNum).customer)" class="mt-1 p-2 rounded-xl bg-gradient-to-r from-rose-50 to-orange-50 border border-rose-200 text-[10px] space-y-1">
-                                <div class="flex items-center justify-between text-rose-800 font-black">
+                            <!-- CBP Alert Banner (if CBP Active) -->
+                            <div v-if="getCbpForCustomer(getPortData(portNum).customer)" class="mt-2 ml-8 p-2 rounded-xl bg-rose-50 border border-rose-200 text-[10px] space-y-1">
+                                <div class="flex items-center justify-between text-rose-900 font-black">
                                     <span class="flex items-center gap-1">
                                         <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                                        Proses Cabut Perangkat (CBP)
+                                        Cabut Perangkat (CBP)
                                     </span>
-                                    <span class="font-mono bg-white px-1.5 py-0.2 rounded border border-rose-200 text-rose-800 text-[9px] font-bold">
+                                    <span class="font-mono bg-white px-1.5 py-0.2 rounded border border-rose-200 text-rose-800 font-bold">
                                         {{ getCbpForCustomer(getPortData(portNum).customer).cbp_number }}
                                     </span>
                                 </div>
                                 <div class="text-[9px] text-slate-700 flex items-center justify-between flex-wrap gap-1">
-                                    <span>
-                                        Status: <strong :class="getCbpForCustomer(getPortData(portNum).customer).status === 'assigned' ? 'text-blue-700' : 'text-amber-700'">
-                                            {{ getCbpForCustomer(getPortData(portNum).customer).status === 'assigned' ? '🔧 Teknisi Ditugaskan' : '⏳ Menunggu Jadwal' }}
-                                        </strong>
-                                    </span>
-                                    <span v-if="getCbpForCustomer(getPortData(portNum).customer).technicians?.length" class="text-slate-600 font-semibold truncate max-w-[130px]" :title="getCbpForCustomer(getPortData(portNum).customer).technicians.map(t => t.name).join(', ')">
-                                        {{ getCbpForCustomer(getPortData(portNum).customer).technicians.map(t => t.name).join(', ') }}
-                                    </span>
-                                </div>
-                                <div class="text-[9px] text-rose-800/90 italic flex items-center justify-between pt-1 border-t border-rose-100">
-                                    <span>⚠️ Port belum dicabut / belum kosong</span>
+                                    <span>Status: <strong>{{ getCbpForCustomer(getPortData(portNum).customer).status === 'assigned' ? '🔧 Teknisi Ditugaskan' : '⏳ Menunggu Jadwal' }}</strong></span>
                                     <Link :href="route('cbp.jadwal')" class="text-rose-700 hover:text-rose-900 font-bold underline">Kelola Jadwal &rarr;</Link>
                                 </div>
                             </div>
-                            <div v-else-if="getPortData(portNum).customer.status === 'terminated'" class="mt-1 p-1.5 rounded-lg bg-amber-50 border border-amber-200 text-[9px] text-amber-800 flex items-center justify-between">
-                                <span>⛔ Stop Permanen (Perlu Cabut Port)</span>
-                                <Link :href="route('cbp.index')" class="text-amber-900 font-bold underline">Buat CBP &rarr;</Link>
-                            </div>
                         </div>
-                        <span v-else class="font-medium text-gray-400 italic">ONT Inventori</span>
                     </template>
+
+                    <!-- Available / Free Port -->
                     <template v-else>
-                        <div class="w-2 h-2 rounded-full shrink-0 mt-1 bg-gray-300"></div>
-                        <span class="font-medium text-emerald-600/70 italic text-xs">Kosong / Available</span>
+                        <div class="flex items-center justify-between py-1.5 px-2.5 rounded-xl bg-emerald-50/50 border border-emerald-100 hover:bg-emerald-50 hover:border-emerald-300 transition-colors">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-mono font-black flex items-center justify-center border border-emerald-200">
+                                    {{ String(portNum).padStart(2, '0') }}
+                                </span>
+                                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                <span class="text-xs font-semibold text-emerald-900">Port Kosong / Siap Pakai</span>
+                            </div>
+                            <span class="text-[10px] font-mono font-bold text-emerald-600 bg-emerald-100/70 px-2 py-0.5 rounded-full">
+                                AVAILABLE
+                            </span>
+                        </div>
                     </template>
                 </div>
             </div>
 
-            <!-- Pending Installations -->
-            <div v-if="pendingInstallations.length > 0" class="mt-2 pt-3 border-t border-gray-100 mb-3">
-                <h5 class="text-[11px] font-bold text-gray-800 mb-2">Antrean Instalasi (Menunggu Kabel & Port)</h5>
+            <!-- Pending Installations (Queue for this ODP) -->
+            <div v-if="pendingInstallations.length > 0" class="mt-auto pt-2.5 border-t border-slate-100 mb-3">
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-[10px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                        <span>⏳ Antrean Instalasi:</span>
+                    </span>
+                    <span class="text-[9px] font-mono font-bold text-cyan-700 bg-cyan-50 px-1.5 py-0.2 rounded border border-cyan-200">
+                        {{ pendingInstallations.length }} Pelanggan
+                    </span>
+                </div>
                 <div class="space-y-1">
-                    <div v-for="cust in pendingInstallations" :key="cust.id" class="flex items-start gap-1.5 text-[10px]">
-                        <div class="w-1.5 h-1.5 rounded-full bg-cyan-500 shrink-0 mt-1"></div>
-                        <span class="text-gray-600">
-                            <span class="font-medium text-gray-800">{{ cust.customer_code }}</span> - {{ cust.name }}
-                            <span v-if="cust.service_status === 'gratis'" class="inline-flex items-center gap-0.5 px-1 py-0.2 ml-1 rounded text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                🎁 Gratis
-                            </span>
-                            <span class="text-gray-400">[{{ cust.status === 'installing' ? 'Ready Instalasi' : 'Proses Survey' }}]</span>
+                    <div
+                        v-for="cust in pendingInstallations"
+                        :key="cust.id"
+                        class="flex items-center justify-between gap-1 text-[10px] bg-slate-50 p-1.5 rounded-lg border border-slate-200/60"
+                    >
+                        <span class="text-slate-700 truncate font-semibold">
+                            <span class="text-slate-900">{{ cust.customer_code }}</span> - {{ cust.name }}
+                        </span>
+                        <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 shrink-0">
+                            {{ cust.status === 'installing' ? 'Ready Pasang' : 'Survey' }}
                         </span>
                     </div>
                 </div>
             </div>
 
-            <button @click="$emit('open-photo', odp)" class="mt-auto w-full text-center bg-indigo-50 text-indigo-600 hover:bg-indigo-100 text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-1">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                Lihat Foto
+            <!-- Bottom Button: Lihat Foto ODP -->
+            <button
+                @click="$emit('open-photo', odp)"
+                class="mt-auto w-full text-center bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 text-xs font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 shadow-2xs hover:shadow-xs active:scale-[0.99]"
+            >
+                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <span>{{ odp.photo ? 'Lihat Foto ODP (Tersedia)' : 'Lihat Foto ODP' }}</span>
+                <span v-if="odp.photo" class="w-2 h-2 rounded-full bg-emerald-500"></span>
             </button>
         </div>
     </div>
@@ -267,16 +366,39 @@ const props = defineProps({
 
 defineEmits(['open-photo']);
 
+const totalPortsCount = computed(() => Number(props.odp?.total_ports || 0));
+const usedPortsCount = computed(() => Number(props.odp?.used_ports || 0));
+const availablePortsCount = computed(() => Math.max(0, totalPortsCount.value - usedPortsCount.value));
+
+const utilizationPercent = computed(() => {
+    if (totalPortsCount.value === 0) return 0;
+    return Math.min(100, Math.round((usedPortsCount.value / totalPortsCount.value) * 100));
+});
+
+const utilizationColorBar = computed(() => {
+    const p = utilizationPercent.value;
+    if (p >= 90) return 'bg-rose-500';
+    if (p >= 75) return 'bg-amber-500';
+    return 'bg-emerald-500';
+});
+
+const utilizationColorText = computed(() => {
+    const p = utilizationPercent.value;
+    if (p >= 90) return 'text-rose-600';
+    if (p >= 75) return 'text-amber-600';
+    return 'text-emerald-600';
+});
+
 const getOdpStatusColor = (odp) => {
-    if (odp.status === 'full') return 'bg-red-500';
-    if (odp.status === 'maintenance') return 'bg-amber-500';
+    if (odp?.status === 'full') return 'bg-rose-500';
+    if (odp?.status === 'maintenance') return 'bg-amber-500';
     return 'bg-emerald-500';
 };
 
 const getOdpStatusBadge = (odp) => {
-    if (odp.status === 'full') return 'bg-red-100 text-red-700';
-    if (odp.status === 'maintenance') return 'bg-amber-100 text-amber-700';
-    return 'bg-emerald-100 text-emerald-700';
+    if (odp?.status === 'full') return 'bg-rose-100 text-rose-800 border-rose-200';
+    if (odp?.status === 'maintenance') return 'bg-amber-100 text-amber-800 border-amber-200';
+    return 'bg-emerald-100 text-emerald-800 border-emerald-200';
 };
 
 const getVlanAccessMode = (vlan) => {
@@ -301,10 +423,6 @@ const getModeBadgeClass = (mode) => {
             return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
         case 'BRIDGE':
             return 'bg-teal-100 text-teal-800 border border-teal-200';
-        case 'TAGGED':
-            return 'bg-indigo-100 text-indigo-800 border border-indigo-200';
-        case 'UNTAGGED':
-            return 'bg-gray-100 text-gray-800 border border-gray-200';
         default:
             return 'bg-slate-100 text-slate-800 border border-slate-200';
     }
@@ -338,13 +456,27 @@ const odpGratisCount = computed(() => {
     return props.odp.onts.filter(o => o.customer && o.customer.service_status === 'gratis').length;
 });
 
-const getCustomerStatusColor = (status, cbp) => {
-    if (cbp) return 'bg-rose-500 animate-pulse ring-2 ring-rose-300';
+const getCustomerStatusLabel = (status) => {
+    if (status === 'active') return 'Aktif';
+    if (status === 'suspended') return 'Isolir';
+    if (status === 'terminated') return 'Stop';
+    if (status === 'installing') return 'Pasang';
+    if (status === 'survey') return 'Survey';
+    return status || 'Terpakai';
+};
+
+const getCustomerStatusDot = (status) => {
     if (status === 'active') return 'bg-emerald-500';
     if (status === 'suspended') return 'bg-orange-500';
-    if (status === 'terminated') return 'bg-rose-600';
-    if (status === 'installing' || status === 'booking' || status === 'survey') return 'bg-amber-500';
-    return 'bg-gray-400';
+    if (status === 'terminated') return 'bg-rose-500';
+    return 'bg-amber-500';
+};
+
+const getCustomerStatusPillClass = (status) => {
+    if (status === 'active') return 'bg-emerald-50 text-emerald-800 border-emerald-200';
+    if (status === 'suspended') return 'bg-orange-50 text-orange-800 border-orange-200';
+    if (status === 'terminated') return 'bg-rose-50 text-rose-800 border-rose-200';
+    return 'bg-amber-50 text-amber-800 border-amber-200';
 };
 
 const portDataMap = computed(() => {
@@ -380,6 +512,31 @@ const portDataMap = computed(() => {
 
 const getPortData = (portNum) => portDataMap.value.get(Number(portNum)) || null;
 
+const getSocketBoxClass = (portNum) => {
+    const data = getPortData(portNum);
+    if (!data) return 'bg-emerald-50/70 border-emerald-200 text-emerald-800 hover:bg-emerald-100';
+    if (getCbpForCustomer(data.customer)) return 'bg-rose-100 border-rose-300 text-rose-800 animate-pulse';
+    if (data.customer?.status === 'active') return 'bg-slate-100 border-indigo-200 text-indigo-900';
+    if (data.customer?.status === 'suspended') return 'bg-orange-100 border-orange-300 text-orange-900';
+    return 'bg-amber-100 border-amber-300 text-amber-900';
+};
+
+const getSocketLedClass = (portNum) => {
+    const data = getPortData(portNum);
+    if (!data) return 'bg-emerald-400';
+    if (getCbpForCustomer(data.customer)) return 'bg-rose-500 animate-pulse';
+    if (data.customer?.status === 'active') return 'bg-emerald-500';
+    if (data.customer?.status === 'suspended') return 'bg-orange-500';
+    return 'bg-amber-500';
+};
+
+const getSocketTooltip = (portNum) => {
+    const data = getPortData(portNum);
+    if (!data) return `Port ${portNum}: Tersedia / Siap Pakai`;
+    if (getCbpForCustomer(data.customer)) return `Port ${portNum}: ⏳ Proses CBP (${data.customer?.name})`;
+    return `Port ${portNum}: ${data.customer?.status || 'Terpakai'} - ${data.customer?.name || 'Customer'}`;
+};
+
 const pendingInstallations = computed(() => {
     const odp = props.odp;
     if (!odp?.surveys) return [];
@@ -411,3 +568,19 @@ const pendingInstallations = computed(() => {
 });
 </script>
 
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+</style>
