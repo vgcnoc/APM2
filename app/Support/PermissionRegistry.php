@@ -1443,7 +1443,6 @@ class PermissionRegistry
             ],
             'sales' => [
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_filter_area',
-                'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_filter', 'network_capacity_view_area',
                 'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_filter_area', 'customers_booking_create', 'customers_booking_view', 'customers_booking_edit', 'customers_booking_print', 'customers_booking_whatsapp', 'customers_booking_view_area', 'customers_booking_view_own',
                 'menu_customers_survey', 'customers_survey_card_stats', 'customers_survey_view_area',
                 'menu_customers_active', 'customers_active_view_area', 'customers_active_view_own',
