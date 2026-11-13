@@ -36,7 +36,25 @@ class RoleController extends Controller
             ], array_values($missing));
             Permission::insert($records);
             app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
-        \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);
+            \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);
+        }
+    }
+
+    /**
+     * Tandai role sebagai "sudah dikonfigurasi admin" agar tidak pernah ditimpa ulang
+     * oleh permissions:sync / seeder saat deploy atau update menu.
+     */
+    private function markRoleCustomized(Role $role): void
+    {
+        try {
+            $table = config('permission.table_names.roles', 'roles');
+            if (\Illuminate\Support\Facades\Schema::hasColumn($table, 'permissions_customized_at')) {
+                \Illuminate\Support\Facades\DB::table($table)
+                    ->where('id', $role->id)
+                    ->update(['permissions_customized_at' => now()]);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Gagal menandai role customized: ' . $e->getMessage());
         }
     }
 
@@ -77,6 +95,7 @@ class RoleController extends Controller
         if ($request->has('permissions') && is_array($request->permissions)) {
             $role->syncPermissions($request->permissions);
         }
+        $this->markRoleCustomized($role);
 
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
         \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);
@@ -100,16 +119,19 @@ class RoleController extends Controller
             }
             $role->syncPermissions(Permission::where('guard_name', 'web')->get());
             app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
-        \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);
+            \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);
             return redirect()->back()->with('success', "Role Admin terkunci permanen dengan akses penuh.");
         }
 
         $role->update(['name' => $request->name]);
 
-        if ($request->has('permissions')) {
-            $role->syncPermissions($request->permissions);
-        } else {
-            $role->syncPermissions([]);
+        // PENTING: hanya sinkronkan izin jika payload benar-benar mengirim daftar izin.
+        // Sebelumnya aksi "Ubah Nama" (tanpa daftar izin) memanggil syncPermissions([])
+        // sehingga seluruh izin role terhapus, lalu saat deploy role kosong diisi ulang
+        // dengan template preset (menu yang sudah dimatikan admin muncul kembali).
+        if ($request->exists('permissions') && is_array($request->input('permissions'))) {
+            $role->syncPermissions($request->input('permissions'));
+            $this->markRoleCustomized($role);
         }
 
         // Clear permission cache
@@ -136,6 +158,7 @@ class RoleController extends Controller
 
         if ($existingRole) {
             $existingRole->syncPermissions($sourcePermissions);
+            $this->markRoleCustomized($existingRole);
             app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
         \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);
 
@@ -144,6 +167,7 @@ class RoleController extends Controller
 
         $newRole = Role::create(['name' => $targetName, 'guard_name' => 'web']);
         $newRole->syncPermissions($sourcePermissions);
+        $this->markRoleCustomized($newRole);
 
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
         \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);
@@ -175,6 +199,7 @@ class RoleController extends Controller
             $role->syncPermissions(\Spatie\Permission\Models\Permission::all());
         } else {
             $role->syncPermissions($permissions);
+            $this->markRoleCustomized($role);
         }
 
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();

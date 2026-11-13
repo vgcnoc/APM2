@@ -1305,9 +1305,9 @@ const submitForm = () => {
     isSubmitting.value = true;
     const cleanName = formName.value.trim().toLowerCase();
     if (isEditing.value) {
+        // Ubah nama saja: JANGAN kirim daftar izin agar hak akses role tidak ikut berubah/terhapus.
         router.post(`/settings/roles/${editingId.value}/update`, {
             name: cleanName,
-            permissions: selectedRole.value?.id === editingId.value ? selectedPermissions.value : undefined,
         }, {
             preserveScroll: true,
             onSuccess: () => {

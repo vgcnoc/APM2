@@ -14,7 +14,7 @@ class SyncPermissionsCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'permissions:sync {--fresh : Reset ulang seluruh izin role sesuai preset standar} {--roles= : Sinkronkan ulang role tertentu ke preset standar (pisahkan koma)}';
+    protected $signature = 'permissions:sync {--fresh : Reset ulang seluruh izin role sesuai preset standar} {--roles= : Sinkronkan ulang role tertentu ke preset standar (pisahkan koma)} {--force : Timpa paksa role yang hak aksesnya sudah dikunci/diatur manual oleh admin}';
 
     /**
      * The console command description.
@@ -74,6 +74,10 @@ class SyncPermissionsCommand extends Command
             $this->info('Memeriksa role dan mempertahankan konfigurasi hak akses kustom admin...');
         }
 
+        $isForce = (bool) $this->option('force');
+        $rolesTable = config('permission.table_names.roles', 'roles');
+        $hasLockColumn = \Illuminate\Support\Facades\Schema::hasColumn($rolesTable, 'permissions_customized_at');
+
         foreach ($presets as $roleName => $perms) {
             if ($roleName === 'admin') continue;
 
@@ -81,13 +85,18 @@ class SyncPermissionsCommand extends Command
             $validPerms = Permission::whereIn('name', $perms)->pluck('name')->toArray();
 
             $forceSyncThisRole = in_array(strtolower($roleName), $targetRoles);
+            $isLockedByAdmin = $hasLockColumn && !empty($role->permissions_customized_at);
 
-            if ($isFresh || $forceSyncThisRole) {
-                // Hanya timpa seluruh izin jika opsi --fresh dipanggil secara sengaja atau role dipilih via --roles
+            if (($isFresh || $forceSyncThisRole) && $isLockedByAdmin && !$isForce) {
+                // Role sudah diatur manual oleh admin lewat menu Role & Akses → JANGAN DITIMPA.
+                $this->warn("  ⚠ Role '{$roleName}': dilewati, hak akses sudah dikunci admin (gunakan --force untuk menimpa paksa)");
+            } elseif ($isFresh || $forceSyncThisRole) {
+                // Timpa seluruh izin hanya jika --fresh / --roles dipanggil sengaja pada role yang belum dikunci admin
                 $role->syncPermissions($validPerms);
                 $this->line("  ✓ Role '{$roleName}': disinkronkan ke template standar ({$role->permissions()->count()} izin)");
-            } elseif ($role->wasRecentlyCreated || $role->permissions()->count() === 0) {
-                // Role baru yang belum memiliki izin sama sekali: inisialisasi dengan preset awal
+            } elseif ($role->wasRecentlyCreated) {
+                // HANYA role yang benar-benar baru dibuat yang diinisialisasi dengan preset awal.
+                // (Role lama yang izinnya sengaja dikosongkan admin TIDAK diisi ulang.)
                 $role->syncPermissions($validPerms);
                 $this->line("  ✓ Role baru '{$roleName}': diinisialisasi dengan preset awal ({$role->permissions()->count()} izin)");
             } else {
@@ -97,8 +106,9 @@ class SyncPermissionsCommand extends Command
             }
         }
 
-        // Refresh cache
+        // Refresh cache (Spatie + versi RBAC Inertia agar sidebar langsung mengikuti DB)
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);
 
         $this->info('✓ Sinkronisasi Permissions & Role Akses berhasil diselesaikan dengan sempurna!');
         return Command::SUCCESS;

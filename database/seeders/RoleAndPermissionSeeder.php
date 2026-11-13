@@ -33,20 +33,27 @@ class RoleAndPermissionSeeder extends Seeder
             $role = Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
             if ($roleName === 'admin') {
                 $role->syncPermissions(Permission::all());
-            } elseif ($role->wasRecentlyCreated || $role->permissions()->count() === 0) {
+            } elseif ($role->wasRecentlyCreated) {
+                // Hanya role yang benar-benar baru. Role lama (meski izinnya sengaja dikosongkan admin) tidak disentuh.
                 $validPerms = Permission::whereIn('name', $perms)->pluck('name')->toArray();
                 $role->syncPermissions($validPerms);
             }
         }
 
+        // Role yang sudah dikunci admin (permissions_customized_at) tidak boleh ditambah izin otomatis.
+        $rolesTable = config('permission.table_names.roles', 'roles');
+        $unlocked = fn($q) => \Illuminate\Support\Facades\Schema::hasColumn($rolesTable, 'permissions_customized_at')
+            ? $q->whereNull('permissions_customized_at')
+            : $q;
+
         // Auto-grant menu_work_schedules to any role that already had menu_shifts
-        $rolesWithShifts = Role::whereHas('permissions', fn($q) => $q->where('name', 'menu_shifts'))->get();
+        $rolesWithShifts = $unlocked(Role::whereHas('permissions', fn($q) => $q->where('name', 'menu_shifts')))->get();
         foreach ($rolesWithShifts as $r) {
             $r->givePermissionTo(['menu_work_schedules', 'work_schedules_manage']);
         }
 
         // Auto-grant work_schedules_view_all to roles with hr_employees_view_all
-        $rolesWithAll = Role::whereHas('permissions', fn($q) => $q->where('name', 'hr_employees_view_all'))->get();
+        $rolesWithAll = $unlocked(Role::whereHas('permissions', fn($q) => $q->where('name', 'hr_employees_view_all')))->get();
         foreach ($rolesWithAll as $r) {
             $r->givePermissionTo('work_schedules_view_all');
         }

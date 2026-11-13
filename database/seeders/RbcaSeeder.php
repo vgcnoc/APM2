@@ -10,6 +10,13 @@ class RbcaSeeder extends Seeder
 {
     public function run(): void
     {
+        // SEEDER LEGACY: hanya untuk instalasi kosong. Jika sistem sudah memiliki role yang
+        // dikonfigurasi (produksi), JANGAN jalankan karena akan menimpa izin role & role user.
+        if (\Illuminate\Support\Facades\DB::table(config('permission.table_names.role_has_permissions', 'role_has_permissions'))->exists()) {
+            $this->command?->warn('RbcaSeeder dilewati: role & hak akses sudah dikonfigurasi di database.');
+            return;
+        }
+
         // Reset cached roles and permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
