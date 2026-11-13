@@ -51,9 +51,19 @@ class RadAcct extends RadiusModel
     {
         $recorded = (int) ($this->acctsessiontime ?? 0);
 
-        if ($this->acctstarttime && empty($this->acctstoptime)) {
-            $elapsed = (int) abs(now()->getTimestamp() - $this->acctstarttime->getTimestamp());
-            return max($recorded, $elapsed);
+        if (!empty($this->acctstarttime) && empty($this->acctstoptime)) {
+            try {
+                $startTs = $this->acctstarttime instanceof \DateTimeInterface 
+                    ? $this->acctstarttime->getTimestamp() 
+                    : strtotime((string) $this->acctstarttime);
+
+                if ($startTs && $startTs > 0) {
+                    $elapsed = (int) abs(now()->getTimestamp() - $startTs);
+                    return max($recorded, $elapsed);
+                }
+            } catch (\Throwable $e) {
+                return $recorded;
+            }
         }
 
         return $recorded;

@@ -264,7 +264,14 @@ class VoucherController extends Controller
             $accts = collect();
             if (!empty($usernames)) {
                 try {
-                    $accts = \App\Models\Radius\RadAcct::whereIn('username', $usernames)->get()->groupBy('username');
+                    $rawAccts = \App\Models\Radius\RadAcct::whereIn('username', $usernames)->get();
+                    foreach ($rawAccts as $ra) {
+                        $uKey = strtolower(trim((string)$ra->username));
+                        if (!$accts->has($uKey)) {
+                            $accts->put($uKey, collect());
+                        }
+                        $accts->get($uKey)->push($ra);
+                    }
                 } catch (\Exception $e) {
                     $accts = collect();
                 }
@@ -279,7 +286,9 @@ class VoucherController extends Controller
                     continue;
                 }
 
-                $userAccts = $accts->get($voucher->username) ?? $accts->get($voucher->code);
+                $uKey = strtolower(trim((string)$voucher->username));
+                $cKey = strtolower(trim((string)$voucher->code));
+                $userAccts = $accts->get($uKey) ?? $accts->get($cKey);
                 $totalTime = 0;
                 $firstLogin = null;
                 $lastLogout = null;
@@ -679,38 +688,55 @@ class VoucherController extends Controller
 
         // 1. Ambil Sesi Online Aktif dari RADIUS
         try {
-            $onlineSessions = \App\Models\Radius\RadAcct::online()
+            $onlineSessionsRaw = \App\Models\Radius\RadAcct::online()
                 ->orderByDesc('acctstarttime')
                 ->get()
-                ->unique('username')
-                ->keyBy('username');
-            $onlineUsernames = $onlineSessions->keys()->all();
+                ->unique('username');
+
+            $onlineSessions = collect();
+            $onlineUsernames = [];
+            foreach ($onlineSessionsRaw as $s) {
+                $u = trim((string)$s->username);
+                $onlineSessions->put($u, $s);
+                $onlineSessions->put(strtolower($u), $s);
+                $onlineUsernames[] = $u;
+                $onlineUsernames[] = strtolower($u);
+            }
+            $onlineUsernames = array_values(array_unique($onlineUsernames));
         } catch (\Exception $e) {
+            $onlineSessionsRaw = collect();
             $onlineSessions = collect();
             $onlineUsernames = [];
         }
 
-        // 2. Ambil data Voucher yang valid (Murni Voucher Berbayar, Voucher Gratis Diisolasi Mandiri)
+        // 2. Ambil data Voucher yang valid (Voucher Hotspot selain khusus ONT Langganan)
         $vouchersQuery = Voucher::with(['profile', 'reseller.customer.areaModel', 'customer.areaModel'])
-            ->where('is_free', false)
-            ->where(function($q) {
-                $q->whereNull('payment_method')
-                  ->orWhere('payment_method', '!=', 'free');
-            })
             ->whereDoesntHave('profile', function($pq) {
                 $pq->where('is_customer_free', true)
                    ->orWhere('duration', 'Mengikuti Pelanggan')
-                   ->orWhere('name', 'Hotspot Gratis Pelanggan')
-                   ->orWhere('price', 0);
+                   ->orWhere('name', 'Hotspot Gratis Pelanggan');
             });
         $this->applyResellerFilter($vouchersQuery);
         $allVouchers = $vouchersQuery->get();
 
-        $vouchersByUsername = $allVouchers->keyBy('username');
-        $vouchersByCode = $allVouchers->keyBy('code');
+        $vouchersByUsername = collect();
+        $vouchersByCode = collect();
+        foreach ($allVouchers as $v) {
+            if (!empty($v->username)) {
+                $vouchersByUsername->put($v->username, $v);
+                $vouchersByUsername->put(strtolower($v->username), $v);
+            }
+            if (!empty($v->code)) {
+                $vouchersByCode->put($v->code, $v);
+                $vouchersByCode->put(strtolower($v->code), $v);
+            }
+        }
+
+        $targetArea = !empty($areaId) ? \App\Models\Area::find($areaId) : null;
+        $targetAreaName = $targetArea ? $targetArea->name : null;
 
         // Helper filter matcher for a voucher/session item
-        $matchesFilter = function($voucher, $session, $search, $profileId, $resellerId, $areaId) {
+        $matchesFilter = function($voucher, $session, $search, $profileId, $resellerId, $areaId) use ($targetAreaName) {
             // Filter Profile
             if (!empty($profileId)) {
                 if (!$voucher || (int)$voucher->voucher_profile_id !== (int)$profileId) {
@@ -735,8 +761,6 @@ class VoucherController extends Controller
             if (!empty($areaId)) {
                 $voucherAreaId = $voucher?->reseller?->customer?->area_id ?? $voucher?->customer?->area_id;
                 $voucherAreaName = $voucher?->reseller?->customer?->areaModel?->name ?? ($voucher?->reseller?->customer?->area ?? ($voucher?->customer?->areaModel?->name ?? ($voucher?->customer?->area ?? null)));
-                $targetArea = \App\Models\Area::find($areaId);
-                $targetAreaName = $targetArea ? $targetArea->name : null;
 
                 $match = false;
                 if ($voucherAreaId && (int)$voucherAreaId === (int)$areaId) {
@@ -781,8 +805,14 @@ class VoucherController extends Controller
 
         // 3. Build Online List: Hanya sesi online yang benar-benar merupakan voucher aktif
         $onlineList = collect();
-        foreach ($onlineSessions as $username => $s) {
-            $v = $vouchersByUsername->get($username) ?? $vouchersByCode->get($username);
+        $processedOnlineVoucherIds = [];
+        foreach ($onlineSessionsRaw as $s) {
+            $u = trim((string)$s->username);
+            $v = $vouchersByUsername->get($u) 
+                ?? $vouchersByUsername->get(strtolower($u))
+                ?? $vouchersByCode->get($u)
+                ?? $vouchersByCode->get(strtolower($u));
+
             if (!$v) {
                 // Bukan voucher hotspot terdaftar (misal PPPoE test / user luar)
                 continue;
@@ -790,6 +820,10 @@ class VoucherController extends Controller
             if ($v->status === 'expired' || !$v->is_active) {
                 continue;
             }
+            if (in_array($v->id, $processedOnlineVoucherIds)) {
+                continue;
+            }
+            $processedOnlineVoucherIds[] = $v->id;
 
             if (!$matchesFilter($v, $s, $search, $profileId, $resellerId, $areaId)) {
                 continue;
@@ -824,9 +858,17 @@ class VoucherController extends Controller
         // 1. Voucher offline adalah voucher yang SUDAH LOGIN dan SEMPAT TIDAK DI PAKAI (offline).
         // 2. Voucher EXPIRED TIDAK BOLEH masuk ke voucher offline (masuk ke menu Voucher Expired).
         // 3. STOK VOUCHER yang belum dipakai (status available/belum pernah login) TIDAK BOLEH masuk.
-        $offlineCandidates = $allVouchers->filter(function($v) use ($onlineUsernames) {
+        $offlineCandidates = $allVouchers->filter(function($v) use ($onlineUsernames, $processedOnlineVoucherIds) {
             // Jangan masukkan yang sedang online
-            if (in_array($v->username, $onlineUsernames) || in_array($v->code, $onlineUsernames)) {
+            if (in_array($v->id, $processedOnlineVoucherIds)) {
+                return false;
+            }
+            if (
+                in_array($v->username, $onlineUsernames) 
+                || in_array(strtolower($v->username), $onlineUsernames) 
+                || in_array($v->code, $onlineUsernames)
+                || in_array(strtolower($v->code), $onlineUsernames)
+            ) {
                 return false;
             }
             // Stok voucher yang belum dipakai (available) -> JANGAN MASUK
@@ -853,15 +895,33 @@ class VoucherController extends Controller
         });
 
         // Ambil riwayat sesi RADIUS untuk voucher offline ini
-        $voucherUsernames = $offlineCandidates->flatMap(fn($v) => [$v->username, $v->code])->filter()->unique()->toArray();
+        $voucherUsernames = [];
+        foreach ($offlineCandidates as $v) {
+            if ($v->username) {
+                $voucherUsernames[] = $v->username;
+                $voucherUsernames[] = strtolower($v->username);
+            }
+            if ($v->code) {
+                $voucherUsernames[] = $v->code;
+                $voucherUsernames[] = strtolower($v->code);
+            }
+        }
+        $voucherUsernames = array_values(array_unique(array_filter($voucherUsernames)));
+
         $offlineSessionsMap = collect();
         if (!empty($voucherUsernames)) {
             try {
-                $offlineSessionsMap = \App\Models\Radius\RadAcct::whereIn('username', $voucherUsernames)
+                $rawSessions = \App\Models\Radius\RadAcct::whereIn('username', $voucherUsernames)
                     ->whereNotNull('acctstoptime')
                     ->orderByDesc('acctstoptime')
-                    ->get()
-                    ->groupBy('username');
+                    ->get();
+                foreach ($rawSessions as $session) {
+                    $u = strtolower(trim((string)$session->username));
+                    if (!$offlineSessionsMap->has($u)) {
+                        $offlineSessionsMap->put($u, collect());
+                    }
+                    $offlineSessionsMap->get($u)->push($session);
+                }
             } catch (\Exception $e) {
                 $offlineSessionsMap = collect();
             }
@@ -869,7 +929,9 @@ class VoucherController extends Controller
 
         $offlineList = collect();
         foreach ($offlineCandidates as $v) {
-            $userSessions = $offlineSessionsMap->get($v->username) ?? $offlineSessionsMap->get($v->code);
+            $u = strtolower(trim((string)$v->username));
+            $c = strtolower(trim((string)$v->code));
+            $userSessions = $offlineSessionsMap->get($u) ?? $offlineSessionsMap->get($c);
             $lastSession = $userSessions?->first();
 
             // Jika sesi terakhir di RADIUS diputus karena masa aktif habis (Session-Timeout / Expired), tandai expired & lewati
@@ -970,29 +1032,37 @@ class VoucherController extends Controller
 
         $vQuery = Voucher::with(['profile', 'reseller.customer.areaModel', 'customer.areaModel'])
             ->where('status', 'expired')
-            ->where('is_free', false)
-            ->where(function($q) {
-                $q->whereNull('payment_method')
-                  ->orWhere('payment_method', '!=', 'free');
-            })
             ->whereDoesntHave('profile', function($pq) {
                 $pq->where('is_customer_free', true)
                    ->orWhere('duration', 'Mengikuti Pelanggan')
-                   ->orWhere('name', 'Hotspot Gratis Pelanggan')
-                   ->orWhere('price', 0);
+                   ->orWhere('name', 'Hotspot Gratis Pelanggan');
             });
         $this->applyResellerFilter($vQuery);
         $vouchers = $vQuery->latest('vouchers.id')->get();
 
-        $usernames = $vouchers->pluck('username')->filter()->unique()->toArray();
-        $accts = !empty($usernames) 
-            ? \App\Models\Radius\RadAcct::whereIn('username', $usernames)->get()->groupBy('username')
-            : collect();
+        $usernames = $vouchers->flatMap(fn($v) => [$v->username, $v->code])->filter()->unique()->toArray();
+        $accts = collect();
+        if (!empty($usernames)) {
+            try {
+                $rawAccts = \App\Models\Radius\RadAcct::whereIn('username', $usernames)->get();
+                foreach ($rawAccts as $ra) {
+                    $uKey = strtolower(trim((string)$ra->username));
+                    if (!$accts->has($uKey)) {
+                        $accts->put($uKey, collect());
+                    }
+                    $accts->get($uKey)->push($ra);
+                }
+            } catch (\Exception $e) {
+                $accts = collect();
+            }
+        }
 
         $rows = $vouchers->map(function ($v) use ($accts) {
             $resellerCust = $v->reseller?->customer;
             $areaName = $resellerCust?->areaModel?->name ?? ($resellerCust?->area ?: ($v->customer?->areaModel?->name ?? ($v->customer?->area ?: '')));
-            $userAccts = $accts->get($v->username);
+            $uKey = strtolower(trim((string)$v->username));
+            $cKey = strtolower(trim((string)$v->code));
+            $userAccts = $accts->get($uKey) ?? $accts->get($cKey);
             $totalTime = $userAccts ? (int) $userAccts->sum('acctsessiontime') : 0;
             $firstLogin = $userAccts ? $userAccts->min('acctstarttime') : null;
             $expiredAt = $v->used_at ?: ($userAccts ? $userAccts->max('acctstoptime') : null);

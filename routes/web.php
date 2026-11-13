@@ -889,7 +889,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('online-users', [\App\Http\Controllers\Radius\OnlineUserController::class, 'index'])->name('online-users.index');
             Route::post('online-users/disconnect', [\App\Http\Controllers\Radius\OnlineUserController::class, 'disconnect'])
                 ->withoutMiddleware(['permission:menu_routers|menu_radius_nas'])
-                ->middleware(['permission:menu_routers|menu_radius_nas|menu_customers_online|customers_active_suspend'])
+                ->middleware(['permission:menu_routers|menu_radius_nas|menu_customers_online|customers_active_suspend|menu_vouchers_monitoring|voucher_monitoring_btn_kick'])
                 ->name('online-users.disconnect');
 
             Route::get('auth-logs', [\App\Http\Controllers\Radius\AuthLogController::class, 'index'])->name('auth-logs.index');
