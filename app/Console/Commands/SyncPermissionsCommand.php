@@ -106,6 +106,56 @@ class SyncPermissionsCommand extends Command
             }
         }
 
+        // ── PENGAMAN ATURAN BISNIS RBAC & HARMONISASI KHUSUS ─────────
+        // 1. Role teknisi & teknisi-2: Bersihkan menu OSP/Kapasitas & Master Paket jika masih tersisa
+        $forbiddenTeknisiPerms = [
+            'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp',
+            'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter',
+            'network_capacity_view_area', 'menu_network_olt', 'menu_network_odc', 'menu_network_odp',
+            'menu_network_ont', 'menu_network_find_onu', 'menu_infrastructure_work_orders',
+            'menu_internet_packages'
+        ];
+
+        $roleTeknisi = Role::where('name', 'teknisi')->first();
+        if ($roleTeknisi) {
+            $existingForbidden = $roleTeknisi->permissions()->whereIn('name', $forbiddenTeknisiPerms)->pluck('name')->toArray();
+            if (!empty($existingForbidden)) {
+                $roleTeknisi->revokePermissionTo($existingForbidden);
+                $this->line("  ✓ Role 'teknisi': dibersihkan dari " . count($existingForbidden) . " hak akses OSP/Paket yang tidak diizinkan.");
+            }
+        }
+
+        // 2. Samakan role teknisi-2 persis dengan teknisi (Yahya Maulana)
+        $roleTeknisi2 = Role::where('name', 'teknisi-2')->first();
+        if ($roleTeknisi && $roleTeknisi2) {
+            $teknisiPerms = $roleTeknisi->permissions->pluck('name')->toArray();
+            $roleTeknisi2->syncPermissions($teknisiPerms);
+            if ($hasLockColumn) {
+                $roleTeknisi2->update(['permissions_customized_at' => now()]);
+            }
+            $this->line("  ✓ Role 'teknisi-2': disinkronkan persis identik dengan role 'teknisi' (" . count($teknisiPerms) . " izin).");
+        }
+
+        // 3. Role sales: Bersihkan menu_network_capacity & network_capacity_view_area
+        $roleSales = Role::where('name', 'sales')->first();
+        if ($roleSales) {
+            $salesForbidden = $roleSales->permissions()->whereIn('name', ['menu_network_capacity', 'network_capacity_view_area'])->pluck('name')->toArray();
+            if (!empty($salesForbidden)) {
+                $roleSales->revokePermissionTo($salesForbidden);
+                $this->line("  ✓ Role 'sales': dibersihkan dari menu_network_capacity & network_capacity_view_area.");
+            }
+        }
+
+        // 4. Role maintenance & maintenance-1: Pastikan tetap memiliki modul afiliasi
+        $maintRoles = Role::whereIn('name', ['maintenance', 'maintenance-1'])->get();
+        foreach ($maintRoles as $mRole) {
+            $affiliatePerms = array_intersect(['menu_marketing_affiliates', 'menu_affiliate_portal'], $allNames);
+            if (!empty($affiliatePerms)) {
+                $mRole->givePermissionTo($affiliatePerms);
+            }
+        }
+        $this->line("  ✓ Role 'maintenance' & 'maintenance-1': modul marketing afiliasi dipastikan aktif.");
+
         // Refresh cache (Spatie + versi RBAC Inertia agar sidebar langsung mengikuti DB)
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
         \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);

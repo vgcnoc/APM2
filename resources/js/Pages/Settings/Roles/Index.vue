@@ -963,8 +963,13 @@ const filteredGroups = computed(() => {
 
 // ── Methods ────────────────────────────────────────
 const selectRole = (role) => {
+    if (selectedRole.value && selectedRole.value.id !== role.id && hasUnsavedChanges.value) {
+        if (!confirm(`Ada perubahan izin pada role "${selectedRole.value.name}" yang belum disimpan!\n\nKlik "OK" untuk membatalkan perubahan dan beralih ke role "${role.name}", atau klik "Batal" agar Anda dapat menyimpan perubahan terlebih dahulu.`)) {
+            return;
+        }
+    }
     selectedRole.value = role;
-    selectedPermissions.value = [...role.permissions];
+    selectedPermissions.value = [...(role.permissions || [])];
     openGroups.value = props.permissionGroups.map(g => g.group);
 };
 

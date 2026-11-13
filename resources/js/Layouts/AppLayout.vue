@@ -928,7 +928,7 @@ const menuItems = [
     // 1. DASHBOARD & MENU UTAMA
     { type: 'link', href: '/', icon: 'dashboard', label: 'Dashboard', active: (url) => (url || '').length > 0 && url === '/', permission: 'menu_dashboard' },
     { type: 'link', href: '/dashboard/realtime', icon: 'zap', label: 'Dashboard Realtime', active: (url) => (url || '').startsWith('/dashboard/realtime'), permission: 'menu_dashboard_realtime' },
-    { type: 'link', href: '/absen-terbaik', icon: 'trophy', label: 'Absen Terbaik', active: (url) => (url || '').startsWith('/absen-terbaik'), permission: ['attendance_tab_best', 'menu_attendances'] },
+    { type: 'link', href: '/absen-terbaik', icon: 'trophy', label: 'Absen Terbaik', active: (url) => (url || '').startsWith('/absen-terbaik'), permission: 'attendance_tab_best' },
     { type: 'link', href: '/bonus-target-market', icon: 'target', label: 'Target Market', active: (url) => (url || '').startsWith('/bonus-target-market'), permission: ['menu_target_market', 'payroll_tab_target'] },
     
     // 2. PELANGGAN & LAYANAN
@@ -966,7 +966,7 @@ const menuItems = [
             { href: '/customers/isolir', label: 'Pelanggan Isolir', active: (url) => (url || '').split('?')[0] === '/customers/isolir', permission: 'menu_customers_all' },
             { href: '/customers/gratis', label: 'Pelanggan Gratis & CSR', active: (url) => (url || '').startsWith('/customers/gratis'), permission: 'menu_customers_gratis' },
             { href: '/customers/free-home', label: 'Pelanggan Free Home', active: (url) => (url || '').startsWith('/customers/free-home'), permission: 'menu_customers_free_home' },
-            { href: '/customers/terminated', label: 'Stop Permanen (Terminated)', active: (url) => (url || '').startsWith('/customers/terminated'), permission: ['menu_customers_terminated', 'menu_customers_all'] },
+            { href: '/customers/terminated', label: 'Stop Permanen (Terminated)', active: (url) => (url || '').startsWith('/customers/terminated'), permission: 'menu_customers_terminated' },
         ]
     },
     {
@@ -1050,7 +1050,7 @@ const menuItems = [
         label: 'Progress Harian Operasional',
         theme: 'rose',
         active: (url) => (url || '').startsWith('/operational/daily-progress') && !(url || '').includes('tab=maintenance'),
-        permission: ['menu_operational_progress', 'operational_progress_view'],
+        permission: 'menu_operational_progress',
     },
     {
         type: 'link',
@@ -1059,7 +1059,7 @@ const menuItems = [
         label: 'Pemeliharaan Jalur (ODP/ODC)',
         theme: 'rose',
         active: (url) => (url || '').startsWith('/operational/network-maintenance') || (url || '').includes('tab=maintenance'),
-        permission: ['menu_network_maintenance', 'menu_operational_progress', 'network_maintenance_update', 'network_maintenance_create'],
+        permission: 'menu_network_maintenance',
     },
     {
         type: 'link',
@@ -1236,8 +1236,8 @@ const menuItems = [
         active: (url) => ['/olts', '/odcs', '/odps', '/onts', '/find-onu', '/infrastructure/work-orders', '/network/capacity-monitoring'].some(path => (url || '').startsWith(path)),
         permission: ['menu_network_capacity', 'menu_infrastructure_work_orders', 'menu_network_olt', 'menu_network_odc', 'menu_network_odp', 'menu_network_ont', 'menu_network_find_onu'],
         children: [
-            { href: '/network/capacity-monitoring', label: '📊 Monitoring Kapasitas ODC/ODP', active: (url) => (url || '').startsWith('/network/capacity-monitoring'), permission: ['menu_network_capacity', 'menu_network_odc', 'menu_network_odp'] },
-            { href: '/infrastructure/work-orders', label: '⚡ Rollout ODC & ODP', active: (url) => (url || '').startsWith('/infrastructure/work-orders'), permission: ['menu_infrastructure_work_orders', 'menu_network_odc', 'menu_network_odp'] },
+            { href: '/network/capacity-monitoring', label: '📊 Monitoring Kapasitas ODC/ODP', active: (url) => (url || '').startsWith('/network/capacity-monitoring'), permission: 'menu_network_capacity' },
+            { href: '/infrastructure/work-orders', label: '⚡ Rollout ODC & ODP', active: (url) => (url || '').startsWith('/infrastructure/work-orders'), permission: 'menu_infrastructure_work_orders' },
             { href: '/olts', label: 'Data OLT', active: (url) => (url || '').startsWith('/olts'), permission: 'menu_network_olt' },
             { href: '/odcs', label: 'Data ODC', active: (url) => (url || '').startsWith('/odcs'), permission: 'menu_network_odc' },
             { href: '/odps', label: 'Data ODP', active: (url) => (url || '').startsWith('/odps'), permission: 'menu_network_odp' },
@@ -1319,7 +1319,7 @@ const menuItems = [
             { href: '/attendance-leaves', label: 'Izin, Sakit & Alpha', active: (url) => (url || '').startsWith('/attendance-leaves'), permission: 'menu_attendance_leaves' },
             { href: '/absen-khusus', label: 'Absen Tim Khusus', active: (url) => (url || '').startsWith('/absen-khusus'), permission: 'attendance_tab_special' },
             { href: '/absen-tugas-luar', label: 'Absen Tugas Luar', active: (url) => (url || '').startsWith('/absen-tugas-luar'), permission: 'attendance_tab_field' },
-            { href: '/attendance-reports', label: 'Laporan Absen', active: (url) => (url || '').startsWith('/attendance-reports'), permission: ['menu_attendance_reports', 'menu_hr_employees'] },
+            { href: '/attendance-reports', label: 'Laporan Absen', active: (url) => (url || '').startsWith('/attendance-reports'), permission: 'menu_attendance_reports' },
             { href: '/settings/attendance', label: 'Pengaturan Absensi', active: (url) => (url || '').startsWith('/settings/attendance'), permission: 'menu_settings_attendance' },
         ]
     },
@@ -1353,7 +1353,7 @@ const menuItems = [
             { href: '/settings/resellers', label: 'Pengaturan Reseller', active: (url) => (url || '').startsWith('/settings/resellers'), permission: 'menu_settings_roles' },
             { href: '/settings/api', label: 'API & Integrasi', active: (url) => (url || '').startsWith('/settings/api'), permission: 'menu_settings_api' },
             { href: '/settings/data-migration', label: '⚡ Data Migration Center', active: (url) => (url || '').startsWith('/settings/data-migration'), permission: 'menu_data_migration' },
-            { href: '/settings/data-masking', label: '🔒 Privasi & Target Omset', active: (url) => (url || '').startsWith('/settings/data-masking'), permission: ['menu_settings_billing', 'menu_financial_reports'] },
+            { href: '/settings/data-masking', label: '🔒 Privasi & Target Omset', active: (url) => (url || '').startsWith('/settings/data-masking'), permission: 'menu_financial_reports' },
         ]
     },
     {
@@ -1362,13 +1362,13 @@ const menuItems = [
         label: 'Master Data',
         theme: 'violet',
         active: (url) => ['/internet-packages', '/settings/areas', '/settings/payroll-categories', '/settings/master-fees', '/settings/expense-categories'].some(path => (url || '').startsWith(path)),
-        permission: ['menu_internet_packages', 'menu_settings_areas', 'menu_settings_payroll', 'menu_master_fees', 'menu_payroll_categories', 'menu_settings_roles'],
+        permission: ['menu_internet_packages', 'menu_settings_areas', 'menu_master_fees', 'menu_payroll_categories'],
         children: [
             { href: '/internet-packages', label: 'Paket Langganan & Tarif', active: (url) => (url || '').startsWith('/internet-packages'), permission: 'menu_internet_packages' },
             { href: '/settings/areas', label: 'Master Area', active: (url) => (url || '').startsWith('/settings/areas'), permission: 'menu_settings_areas' },
             { href: '/settings/expense-categories', label: 'Kategori Pengeluaran', active: (url) => (url || '').startsWith('/settings/expense-categories'), permission: 'menu_settings_areas' },
-            { href: '/settings/master-fees', label: 'Master Fee Teknisi/Sales', active: (url) => (url || '').startsWith('/settings/master-fees'), permission: ['menu_master_fees', 'menu_settings_payroll'] },
-            { href: '/settings/payroll-categories', label: 'Kategori Insentif/Potongan', active: (url) => (url || '').startsWith('/settings/payroll-categories'), permission: ['menu_payroll_categories', 'menu_settings_payroll'] },
+            { href: '/settings/master-fees', label: 'Master Fee Teknisi/Sales', active: (url) => (url || '').startsWith('/settings/master-fees'), permission: 'menu_master_fees' },
+            { href: '/settings/payroll-categories', label: 'Kategori Insentif/Potongan', active: (url) => (url || '').startsWith('/settings/payroll-categories'), permission: 'menu_payroll_categories' },
         ]
     },
     {

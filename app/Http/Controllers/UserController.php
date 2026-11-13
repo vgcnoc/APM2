@@ -107,6 +107,8 @@ class UserController extends Controller
         try {
             \Spatie\Permission\Models\Role::firstOrCreate(['name' => $validated['role'], 'guard_name' => 'web']);
             $user->syncRoles([$validated['role']]);
+            app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+            \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);
         } catch (\Throwable $e) {
             Log::warning('Spatie role sync warning on user store: ' . $e->getMessage());
         }
@@ -149,6 +151,8 @@ class UserController extends Controller
         try {
             \Spatie\Permission\Models\Role::firstOrCreate(['name' => $validated['role'], 'guard_name' => 'web']);
             $user->syncRoles([$validated['role']]);
+            app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+            \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);
         } catch (\Throwable $e) {
             Log::warning('Spatie role sync warning on user update: ' . $e->getMessage());
         }
