@@ -98,7 +98,7 @@
                         v-model="search" 
                         @input="onSearch"
                         type="text" 
-                        placeholder="Cari nama atau email..." 
+                        placeholder="Cari nama, email, atau telepon..." 
                         class="w-full pl-10 pr-9 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium text-slate-800 placeholder-slate-400"
                     >
                     <button 
@@ -123,6 +123,16 @@
                         <option v-for="role in roles" :key="role" :value="role">{{ role }}</option>
                     </select>
 
+                    <!-- Filter Area -->
+                    <select 
+                        v-model="filterArea" 
+                        @change="performSearch"
+                        class="px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                    >
+                        <option value="">Semua Area</option>
+                        <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
+                    </select>
+
                     <!-- Filter Status -->
                     <select 
                         v-model="filterStatus" 
@@ -135,8 +145,19 @@
                         <option value="on_duty">Sedang On Duty</option>
                     </select>
 
+                    <!-- Filter Tipe Akun -->
+                    <select 
+                        v-model="filterType" 
+                        @change="performSearch"
+                        class="px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                    >
+                        <option value="">Semua Tipe Akun</option>
+                        <option value="staff">Staf & Internal</option>
+                        <option value="customer">Pelanggan Portal</option>
+                    </select>
+
                     <button 
-                        v-if="search || filterRole || filterStatus" 
+                        v-if="search || filterRole || filterStatus || filterArea || filterType" 
                         @click="resetAllFilters" 
                         class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
                     >
@@ -166,11 +187,16 @@
                                 <!-- User Info -->
                                 <td class="px-6 py-4">
                                     <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 rounded-2xl bg-blue-50 text-blue-700 font-extrabold flex items-center justify-center border border-blue-100 shadow-2xs text-base">
-                                            {{ (user.name || 'U').charAt(0).toUpperCase() }}
+                                        <div class="w-10 h-10 rounded-2xl bg-blue-50 text-blue-700 font-extrabold flex items-center justify-center border border-blue-100 shadow-2xs text-base shrink-0">
+                                            {{ (user.name && user.name !== '-' ? user.name : 'U').charAt(0).toUpperCase() }}
                                         </div>
                                         <div>
-                                            <div class="text-sm font-extrabold text-slate-900">{{ user.name }}</div>
+                                            <div class="text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
+                                                <span>{{ user.name || 'Pengguna Tanpa Nama' }}</span>
+                                                <span v-if="user.id === $page.props.auth?.user?.id" class="px-1.5 py-0.5 text-[10px] font-black bg-blue-100 text-blue-700 rounded-md">
+                                                    Anda
+                                                </span>
+                                            </div>
                                             <div class="text-xs text-slate-500 mt-0.5 font-mono">{{ user.email }}</div>
                                         </div>
                                     </div>
@@ -191,30 +217,32 @@
                                     <span v-else class="text-slate-400 italic">Semua Area</span>
                                 </td>
 
-                                <!-- Status On Duty -->
+                                <!-- Status On Duty (Interactive Button) -->
                                 <td class="px-6 py-4 text-center">
-                                    <span 
-                                        v-if="user.is_on_duty" 
-                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                    <button 
+                                        type="button"
+                                        @click="toggleUserDuty(user)"
+                                        :class="user.is_on_duty ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black border transition-all cursor-pointer shadow-2xs active:scale-95"
+                                        :title="user.is_on_duty ? 'Klik untuk set OFF DUTY' : 'Klik untuk set ON DUTY'"
                                     >
-                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                        ON DUTY
-                                    </span>
-                                    <span 
-                                        v-else 
-                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-500 border border-slate-200"
-                                    >
-                                        OFF DUTY
-                                    </span>
+                                        <span :class="user.is_on_duty ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'" class="w-1.5 h-1.5 rounded-full"></span>
+                                        <span>{{ user.is_on_duty ? 'ON DUTY' : 'OFF DUTY' }}</span>
+                                    </button>
                                 </td>
 
                                 <!-- Toggle Aktif Akun -->
                                 <td class="px-6 py-4 text-center">
                                     <button 
                                         type="button"
+                                        :disabled="user.id === $page.props.auth?.user?.id || user.id === 1"
                                         @click="toggleActive(user)" 
-                                        :class="[user.is_active ? 'bg-blue-600' : 'bg-slate-200', 'relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500']"
-                                        :title="user.is_active ? 'Klik untuk nonaktifkan user' : 'Klik untuk aktifkan user'"
+                                        :class="[
+                                            user.is_active ? 'bg-blue-600' : 'bg-slate-200',
+                                            user.id === $page.props.auth?.user?.id || user.id === 1 ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer active:scale-95',
+                                            'relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-2xs'
+                                        ]"
+                                        :title="user.id === $page.props.auth?.user?.id || user.id === 1 ? 'Akun login/Superadmin tidak dapat dinonaktifkan' : (user.is_active ? 'Klik untuk nonaktifkan user' : 'Klik untuk aktifkan user')"
                                     >
                                         <span class="sr-only">Toggle Status</span>
                                         <span 
@@ -239,13 +267,18 @@
                                         >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                         </button>
+                                        
                                         <button 
+                                            v-if="user.id !== $page.props.auth?.user?.id && user.id !== 1"
                                             @click="deleteUser(user)" 
                                             class="text-rose-600 hover:text-rose-900 p-2 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
                                             title="Hapus User"
                                         >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                         </button>
+                                        <span v-else class="text-slate-300 p-2 cursor-not-allowed" title="Akun login/Superadmin tidak dapat dihapus">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                        </span>
                                     </div>
                                 </td>
                             </tr>
@@ -259,11 +292,11 @@
                                         </div>
                                         <div class="font-extrabold text-slate-800 text-sm">Tidak ada data pengguna ditemukan</div>
                                         <p class="text-xs text-slate-400">
-                                            {{ search || filterRole || filterStatus ? 'Coba sesuaikan kata kunci pencarian atau filter role.' : 'Belum ada pengguna yang ditambahkan.' }}
+                                            {{ search || filterRole || filterStatus || filterArea || filterType ? 'Coba sesuaikan kata kunci pencarian atau filter role/area.' : 'Belum ada pengguna yang ditambahkan.' }}
                                         </p>
                                         <div class="pt-1">
                                             <button 
-                                                v-if="search || filterRole || filterStatus" 
+                                                v-if="search || filterRole || filterStatus || filterArea || filterType" 
                                                 @click="resetAllFilters" 
                                                 class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
                                             >
@@ -444,13 +477,23 @@
                                 <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                                     Password <span v-if="!isEditing" class="text-rose-500">*</span>
                                 </label>
-                                <input 
-                                    v-model="form.password" 
-                                    type="password" 
-                                    :required="!isEditing" 
-                                    class="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" 
-                                    placeholder="Minimal 8 karakter"
-                                >
+                                <div class="relative">
+                                    <input 
+                                        v-model="form.password" 
+                                        :type="showPassword ? 'text' : 'password'" 
+                                        :required="!isEditing" 
+                                        class="w-full pl-3.5 pr-10 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" 
+                                        placeholder="Minimal 8 karakter"
+                                    >
+                                    <button 
+                                        type="button" 
+                                        @click="showPassword = !showPassword" 
+                                        class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                                    >
+                                        <svg v-if="showPassword" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/></svg>
+                                        <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                    </button>
+                                </div>
                                 <p v-if="isEditing" class="text-[11px] text-slate-400 mt-1">Biarkan kosong jika tidak ingin merubah password.</p>
                                 <p v-if="form.errors.password" class="mt-1 text-xs text-rose-500 font-medium">{{ form.errors.password }}</p>
                             </div>
@@ -498,7 +541,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Swal from 'sweetalert2';
@@ -522,9 +565,12 @@ const props = defineProps({
 
 const search = ref(props.filters?.search || '');
 const filterRole = ref(props.filters?.role || '');
+const filterArea = ref(props.filters?.area_id || '');
 const filterStatus = ref(props.filters?.status || '');
+const filterType = ref(props.filters?.type || '');
 const isModalOpen = ref(false);
 const isEditing = ref(false);
+const showPassword = ref(false);
 const selectedEmployeeId = ref('');
 
 const form = useForm({
@@ -545,17 +591,34 @@ const getRoleBadgeClass = (role) => {
         case 'manager':
             return 'bg-purple-50 text-purple-700 border-purple-200';
         case 'teknisi':
+        case 'teknisi-2':
+        case 'teknisi tim serbu':
+        case 'kepala teknisi':
             return 'bg-blue-50 text-blue-700 border-blue-200';
         case 'maintenance':
+        case 'maintenance-1':
             return 'bg-amber-50 text-amber-700 border-amber-200';
         case 'noc':
+        case 'infrastruktur':
             return 'bg-teal-50 text-teal-700 border-teal-200';
         case 'cs':
+        case 'customer care':
+        case 'admin cs':
             return 'bg-pink-50 text-pink-700 border-pink-200';
         case 'sales':
+        case 'kolektor & sales':
+        case 'kolektor':
             return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        case 'hrd':
+        case 'hrd & finance':
+        case 'staff administrasi':
+            return 'bg-sky-50 text-sky-700 border-sky-200';
         case 'reseller':
             return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+        case 'affiliate':
+            return 'bg-orange-50 text-orange-700 border-orange-200';
+        case 'customer':
+            return 'bg-rose-50 text-rose-700 border-rose-200';
         default:
             return 'bg-slate-100 text-slate-700 border-slate-200';
     }
@@ -565,7 +628,9 @@ const performSearch = () => {
     router.get('/users', {
         search: search.value || undefined,
         role: filterRole.value || undefined,
+        area_id: filterArea.value || undefined,
         status: filterStatus.value || undefined,
+        type: filterType.value || undefined,
     }, { preserveState: true, preserveScroll: true, replace: true });
 };
 
@@ -581,7 +646,9 @@ const resetSearch = () => {
 const resetAllFilters = () => {
     search.value = '';
     filterRole.value = '';
+    filterArea.value = '';
     filterStatus.value = '';
+    filterType.value = '';
     router.get('/users', {}, { preserveState: true, replace: true });
 };
 
@@ -601,6 +668,7 @@ const onEmployeeSelect = () => {
 
 function openCreateModal() {
     isEditing.value = false;
+    showPassword.value = false;
     selectedEmployeeId.value = '';
     form.reset();
     form.clearErrors();
@@ -612,6 +680,7 @@ function openCreateModal() {
 
 function openEditModal(user) {
     isEditing.value = true;
+    showPassword.value = false;
     selectedEmployeeId.value = '';
     form.reset();
     form.clearErrors();
@@ -632,6 +701,7 @@ function closeModal() {
         form.reset();
         form.clearErrors();
         isEditing.value = false;
+        showPassword.value = false;
     }, 200);
 }
 
@@ -684,6 +754,36 @@ function toggleActive(user) {
         },
         onError: (err) => {
             const firstErr = Object.values(err || {})[0] || 'Gagal memperbarui status user.';
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'error',
+                title: 'Gagal',
+                text: firstErr,
+                showConfirmButton: false,
+                timer: 2500,
+            });
+        }
+    });
+}
+
+function toggleUserDuty(user) {
+    router.post(`/users/${user.id}/toggle-duty`, {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Status Tugas Diperbarui',
+                text: `Status On Duty user ${user.name} berhasil diubah.`,
+                showConfirmButton: false,
+                timer: 2000,
+                timerProgressBar: true
+            });
+        },
+        onError: (err) => {
+            const firstErr = Object.values(err || {})[0] || 'Gagal mengubah status On Duty.';
             Swal.fire({
                 toast: true,
                 position: 'top-end',

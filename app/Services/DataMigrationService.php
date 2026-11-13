@@ -2489,26 +2489,36 @@ class DataMigrationService
         $salesId = $data['sales_id'] ?? null;
         if (!$salesId && !empty($options['auto_create_sales']) && !empty($data['sales_name'])) {
             $rawSales = trim((string)$data['sales_name']);
-            $salesLower = strtolower($rawSales);
-            if (isset($runtimeSalesCache[$salesLower])) {
-                $salesId = $runtimeSalesCache[$salesLower];
+            $salesClean = trim($rawSales, "- \t\n\r\0\x0B");
+            if (empty($salesClean) || in_array(strtolower($salesClean), ['null', 'none', 'direct', 'organik', 'pusat', 'tidak ada', 'tanpa sales'])) {
+                $salesId = null;
             } else {
-                $salesEmail = Str::slug($rawSales, '.') . '@isp.local';
-                $salesUser = User::where('email', $salesEmail)->first();
-                if (!$salesUser) {
-                    $salesUser = User::create([
-                        'name' => ucwords(strtolower($rawSales)),
-                        'email' => $salesEmail,
-                        'password' => bcrypt('password123'),
-                        'role' => 'sales',
-                        'job_position' => 'Sales',
-                    ]);
-                    try {
-                        $salesUser->assignRole('sales');
-                    } catch (\Throwable $e) {}
+                $salesLower = strtolower($rawSales);
+                if (isset($runtimeSalesCache[$salesLower])) {
+                    $salesId = $runtimeSalesCache[$salesLower];
+                } else {
+                    $slug = Str::slug($rawSales, '.');
+                    if (empty($slug)) {
+                        $salesId = null;
+                    } else {
+                        $salesEmail = $slug . '@isp.local';
+                        $salesUser = User::where('email', $salesEmail)->first();
+                        if (!$salesUser) {
+                            $salesUser = User::create([
+                                'name' => ucwords(strtolower($rawSales)),
+                                'email' => $salesEmail,
+                                'password' => bcrypt('password123'),
+                                'role' => 'sales',
+                                'job_position' => 'Sales',
+                            ]);
+                            try {
+                                $salesUser->assignRole('sales');
+                            } catch (\Throwable $e) {}
+                        }
+                        $salesId = $salesUser->id;
+                        $runtimeSalesCache[$salesLower] = $salesId;
+                    }
                 }
-                $salesId = $salesUser->id;
-                $runtimeSalesCache[$salesLower] = $salesId;
             }
         }
 
