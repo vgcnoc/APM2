@@ -907,7 +907,6 @@ class PermissionRegistry
                     ['name' => 'menu_payroll', 'type' => 'menu', 'label' => 'Akses Menu Payroll & Gaji Karyawan'],
                     ['name' => 'menu_incentives_deductions', 'type' => 'menu', 'label' => 'Akses Menu Histori Insentif & Potongan'],
                     ['name' => 'menu_target_market', 'type' => 'menu', 'label' => 'Akses Menu Bonus Target Market'],
-                    ['name' => 'menu_settings_payroll', 'type' => 'menu', 'label' => 'Akses Menu Konfigurasi Sistem Payroll & Gateway'],
                     ['name' => 'menu_payroll_categories', 'type' => 'menu', 'label' => 'Akses Menu Master Kategori Insentif & Potongan'],
                     ['name' => 'menu_master_fees', 'type' => 'menu', 'label' => 'Akses Menu Master Tarif Fee Teknisi & Sales'],
 
@@ -1258,7 +1257,6 @@ class PermissionRegistry
                 'menu_customers_online',
                 'menu_customers_gratis', 'menu_customers_free_home', 'menu_customers_terminated',
                 'menu_customers_all', 'customers_all_view_all',
-                'menu_tickets', 'tickets_card_summary', 'tickets_filter_priority', 'tickets_create', 'tickets_edit', 'tickets_delete', 'tickets_assign', 'tickets_close', 'tickets_btn_whatsapp', 'tickets_view_all',
                 'menu_cbp', 'menu_cbp_jadwal', 'menu_cbp_laporan', 'cbp_card_stats', 'cbp_filter', 'cbp_btn_request', 'cbp_btn_dispatch', 'cbp_btn_assign', 'cbp_btn_report', 'cbp_btn_cancel', 'cbp_btn_delete', 'cbp_btn_delete_all', 'cbp_manage', 'cbp_view_all',
                 'menu_pgk', 'menu_pgk_jadwal', 'menu_pgk_laporan', 'pgk_card_summary', 'pgk_tab_flow', 'pgk_filter', 'pgk_btn_create', 'pgk_btn_resolve_admin', 'pgk_btn_escalate', 'pgk_btn_assign', 'pgk_btn_request_material', 'pgk_btn_report', 'pgk_btn_audit', 'pgk_manage', 'pgk_view_all',
                 'menu_pgj', 'menu_pgj_jadwal', 'pgj_card_summary', 'pgj_card_stats', 'pgj_tab_flow', 'pgj_filter', 'pgj_btn_create', 'pgj_btn_resolve', 'pgj_btn_escalate', 'pgj_btn_assign', 'pgj_btn_request_material', 'pgj_btn_report', 'pgj_btn_view', 'pgj_btn_delete', 'pgj_btn_delete_all', 'pgj_manage', 'pgj_view_all',

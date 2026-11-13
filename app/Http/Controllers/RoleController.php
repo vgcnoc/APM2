@@ -132,6 +132,21 @@ class RoleController extends Controller
         if ($request->exists('permissions') && is_array($request->input('permissions'))) {
             $role->syncPermissions($request->input('permissions'));
             $this->markRoleCustomized($role);
+
+            // Samakan teknisi-2 dengan teknisi secara otomatis (Yahya Maulana)
+            if ($role->name === 'teknisi') {
+                $t2 = Role::where('name', 'teknisi-2')->first();
+                if ($t2) {
+                    $t2->syncPermissions($request->input('permissions'));
+                    $this->markRoleCustomized($t2);
+                }
+            } elseif ($role->name === 'teknisi-2') {
+                $t = Role::where('name', 'teknisi')->first();
+                if ($t) {
+                    $t->syncPermissions($request->input('permissions'));
+                    $this->markRoleCustomized($t);
+                }
+            }
         }
 
         // Clear permission cache
@@ -200,6 +215,21 @@ class RoleController extends Controller
         } else {
             $role->syncPermissions($permissions);
             $this->markRoleCustomized($role);
+
+            // Samakan teknisi-2 dengan teknisi secara otomatis (Yahya Maulana)
+            if ($role->name === 'teknisi') {
+                $t2 = Role::where('name', 'teknisi-2')->first();
+                if ($t2) {
+                    $t2->syncPermissions($permissions);
+                    $this->markRoleCustomized($t2);
+                }
+            } elseif ($role->name === 'teknisi-2') {
+                $t = Role::where('name', 'teknisi')->first();
+                if ($t) {
+                    $t->syncPermissions($permissions);
+                    $this->markRoleCustomized($t);
+                }
+            }
         }
 
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();

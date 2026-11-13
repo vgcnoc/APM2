@@ -274,13 +274,13 @@
                         </div>
                     </div>
 
-                    <!-- ── B. SEARCH & FILTER TOOLBAR ──────────────── -->
-                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3.5">
+                    <!-- ── B. SEARCH & FILTER TOOLBAR (STICKY) ──────────────── -->
+                    <div class="bg-white/95 backdrop-blur-md rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3.5 sticky top-2 z-20 transition-all">
                         <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
                             <!-- Live Search Input -->
                             <div class="relative flex-1 min-w-[240px]">
                                 <input v-model="searchQuery" type="text"
-                                    placeholder="Cari izin, modul, tombol, atau kode (misal: invoice, tambah, odp)..."
+                                    placeholder="Cari izin, modul, tombol, kode (misal: invoice, odp)..."
                                     class="w-full pl-9 pr-9 py-2 text-xs md:text-sm rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 placeholder-gray-400" />
                                 <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5 md:top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -320,27 +320,50 @@
                                         Tutup Semua
                                     </button>
                                 </div>
+
+                                <!-- Sticky Save Button if changes exist -->
+                                <button v-if="hasUnsavedChanges && selectedRole.name !== 'admin'" 
+                                    @click="savePermissions" :disabled="isSaving"
+                                    class="px-3.5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-md flex items-center gap-1.5 active:scale-95 animate-pulse shrink-0">
+                                    <svg v-if="isSaving" class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
+                                    <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <span>Simpan ({{ checkedCount }})</span>
+                                </button>
                             </div>
                         </div>
 
-                        <!-- Category Tabs (Horizontal Scrollable) -->
-                        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar border-t border-gray-100 pt-3 text-xs">
-                            <button v-for="tab in categoryTabs" :key="tab.id"
-                                @click="selectedCategory = tab.id"
-                                :class="[
-                                    'px-3 py-1.5 rounded-lg font-bold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0',
-                                    selectedCategory === tab.id
-                                        ? 'bg-blue-600 text-white shadow-sm'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                ]">
-                                <span>{{ tab.label }}</span>
-                                <span :class="[
-                                    'px-1.5 py-0.2 rounded-full text-[10px]',
-                                    selectedCategory === tab.id ? 'bg-white/25 text-white' : 'bg-gray-200 text-gray-700'
-                                ]">
-                                    {{ tab.count }}
-                                </span>
-                            </button>
+                        <!-- Category Tabs (Horizontal Scrollable with Smooth Navigation Controls) -->
+                        <div class="relative border-t border-gray-100 pt-3">
+                            <div class="flex items-center gap-1.5">
+                                <button @click="scrollTabs('left')" type="button"
+                                    class="hidden sm:flex shrink-0 w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 items-center justify-center transition-colors text-xs font-bold shadow-2xs select-none cursor-pointer"
+                                    title="Geser modul ke kiri">
+                                    ‹
+                                </button>
+                                <div ref="categoryTabsContainer" class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs scroll-smooth flex-1 scrollbar-thin">
+                                    <button v-for="tab in categoryTabs" :key="tab.id"
+                                        @click="selectedCategory = tab.id"
+                                        :class="[
+                                            'px-3 py-1.5 rounded-lg font-bold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 cursor-pointer',
+                                            selectedCategory === tab.id
+                                                ? 'bg-blue-600 text-white shadow-sm'
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        ]">
+                                        <span>{{ tab.label }}</span>
+                                        <span :class="[
+                                            'px-1.5 py-0.2 rounded-full text-[10px]',
+                                            selectedCategory === tab.id ? 'bg-white/25 text-white' : 'bg-gray-200 text-gray-700'
+                                        ]">
+                                            {{ tab.count }}
+                                        </span>
+                                    </button>
+                                </div>
+                                <button @click="scrollTabs('right')" type="button"
+                                    class="hidden sm:flex shrink-0 w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 items-center justify-center transition-colors text-xs font-bold shadow-2xs select-none cursor-pointer"
+                                    title="Geser modul ke kanan">
+                                    ›
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -439,14 +462,14 @@
                                             </span>
 
                                             <!-- Labels -->
-                                            <div class="min-w-0">
+                                            <div class="min-w-0 flex-1">
                                                 <p :class="[
-                                                    'text-xs font-bold leading-snug truncate',
+                                                    'text-xs font-bold leading-snug break-words',
                                                     isPermActive(perm.name) ? 'text-blue-900 font-extrabold' : 'text-gray-800'
                                                 ]">
                                                     {{ perm.label }}
                                                 </p>
-                                                <span class="inline-block text-[10px] text-gray-400 font-mono tracking-tight bg-gray-100/70 px-1 py-0.2 rounded mt-0.5 max-w-[200px] truncate" :title="perm.name">
+                                                <span class="inline-block text-[10px] text-gray-400 font-mono tracking-tight bg-gray-100/70 px-1 py-0.2 rounded mt-0.5 break-all" :title="perm.name">
                                                     {{ perm.name }}
                                                 </span>
                                             </div>
@@ -712,6 +735,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';
+import Swal from 'sweetalert2';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
@@ -729,6 +753,13 @@ const selectedRole = ref(null);
 const selectedPermissions = ref([]);
 const openGroups = ref([]);
 const isSaving = ref(false);
+const categoryTabsContainer = ref(null);
+
+const scrollTabs = (direction) => {
+    if (!categoryTabsContainer.value) return;
+    const offset = direction === 'left' ? -220 : 220;
+    categoryTabsContainer.value.scrollBy({ left: offset, behavior: 'smooth' });
+};
 
 // Filter & Search State
 const roleSearch = ref('');
@@ -878,7 +909,7 @@ const categoryTabs = computed(() => {
         { id: 'tiket', label: 'Tiket & Operasional', count: countPermissionsByCategory('tiket') },
         { id: 'gudang', label: 'Gudang & Stok', count: countPermissionsByCategory('gudang') },
         { id: 'hrd', label: 'HRD & Payroll', count: countPermissionsByCategory('hrd') },
-        { id: 'marketing', label: '📢 Marketing & Komunikasi', count: countPermissionsByCategory('marketing') },
+        { id: 'marketing', label: 'Marketing & Komunikasi', count: countPermissionsByCategory('marketing') },
         { id: 'voucher', label: 'Voucher & Reseller', count: countPermissionsByCategory('voucher') },
         { id: 'setting', label: 'Master & Pengaturan', count: countPermissionsByCategory('setting') },
     ];
@@ -1189,11 +1220,24 @@ const applySelectedPreset = (presetKey) => {
     if (selectedRole.value?.name === 'admin') return;
     const presets = props.rolePresets || {};
     if (!presets[presetKey]) {
-        alert(`Template "${presetKey}" tidak ditemukan.`);
+        Swal.fire({
+            icon: 'error',
+            title: 'Preset Tidak Ditemukan',
+            text: `Template "${presetKey}" tidak ditemukan.`,
+        });
         return;
     }
     selectedPermissions.value = [...presets[presetKey]];
     showPresetModal.value = false;
+    Swal.fire({
+        icon: 'info',
+        title: 'Template Diterapkan',
+        text: `Template preset '${presetKey}' (${presets[presetKey].length} izin) berhasil dimuat. Klik "Simpan Perubahan" untuk menyimpan ke database.`,
+        timer: 3000,
+        showConfirmButton: false,
+        toast: true,
+        position: 'top-end',
+    });
 };
 
 const applyPreset = (presetName) => {
@@ -1226,6 +1270,15 @@ const applyPreset = (presetName) => {
     const count = presets[matchingKey].length;
     if (confirm(`Terapkan template izin standar "${matchingKey}" (${count} hak akses) untuk role "${selectedRole.value?.name}"?\n\nSemua hak akses rekomendasi akan otomatis dicentang. Anda dapat meninjau dan klik "Simpan Perubahan".`)) {
         selectedPermissions.value = [...presets[matchingKey]];
+        Swal.fire({
+            icon: 'info',
+            title: 'Template Diterapkan',
+            text: `Template preset '${matchingKey}' (${count} izin) berhasil dimuat. Klik "Simpan Perubahan" untuk menyimpan ke database.`,
+            timer: 3000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end',
+        });
     }
 };
 
@@ -1256,6 +1309,23 @@ const savePermissions = () => {
                 role.permissions = [...selectedPermissions.value];
                 selectedRole.value = { ...role };
             }
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil Disimpan!',
+                text: `Hak akses role '${selectedRole.value.name}' (${selectedPermissions.value.length} izin) berhasil diperbarui ke database.`,
+                timer: 2500,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end',
+            });
+        },
+        onError: (err) => {
+            const msg = Object.values(err || {})[0] || 'Gagal menyimpan perubahan hak akses.';
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Menyimpan',
+                text: msg,
+            });
         },
         onFinish: () => isSaving.value = false,
     });
@@ -1344,13 +1414,23 @@ const submitCloneForm = () => {
     if (!roleToClone.value) return;
     cloneError.value = '';
     isSubmitting.value = true;
+    const target = cloneFormName.value.trim().toLowerCase();
     router.post(`/settings/roles/${roleToClone.value.id}/clone`, {
-        name: cloneFormName.value,
+        name: target,
     }, {
         preserveScroll: true,
         onSuccess: () => {
             showCloneModal.value = false;
             cloneError.value = '';
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil Diduplikasi!',
+                text: `Hak akses dari '${roleToClone.value.name}' berhasil disalin ke role '${target}'.`,
+                timer: 2500,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end',
+            });
         },
         onError: (err) => {
             cloneError.value = err.name || Object.values(err)[0] || 'Gagal menduplikasi role.';
@@ -1368,14 +1448,32 @@ const confirmDeleteRole = (role) => {
 const deleteRole = () => {
     if (!roleToDelete.value) return;
     isDeleting.value = true;
+    const deletedName = roleToDelete.value.name;
     router.post(`/settings/roles/${roleToDelete.value.id}/delete`, {}, {
         preserveScroll: true,
         onSuccess: () => {
             showDeleteModal.value = false;
+            Swal.fire({
+                icon: 'success',
+                title: 'Role Dihapus',
+                text: `Role '${deletedName}' berhasil dihapus.`,
+                timer: 2000,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end',
+            });
             if (selectedRole.value?.id === roleToDelete.value.id) {
                 selectedRole.value = null;
                 selectedPermissions.value = [];
             }
+        },
+        onError: (err) => {
+            const msg = Object.values(err || {})[0] || 'Gagal menghapus role.';
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Menghapus',
+                text: msg,
+            });
         },
         onFinish: () => {
             isDeleting.value = false;
