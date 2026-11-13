@@ -712,11 +712,15 @@ class PayrollController extends Controller
             }
             $bpjsNotesStr = !empty($bpjsNotes) ? " [" . implode(' | ', $bpjsNotes) . "]" : "";
 
-            // 1. Create Expense (Buku Kas Umum)
+            // 1. Create Expense (Buku Kas Umum) - Metode Akrual
+            // Catat pengeluaran kas pada akhir bulan periode gaji (misal 31 Okt) agar Laba Rugi periode kerja akurat
+            $periodEnd = Carbon::create($year, $month, 1)->endOfMonth()->endOfDay();
+            $expenseDate = $periodEnd->isPast() ? $periodEnd->toDateString() : now()->toDateString();
+
             $expense = Expense::create([
                 'amount' => $netSalary,
-                'description' => "Pencairan Gaji & Insentif - {$user->name} (Periode: " . str_pad($month, 2, '0', STR_PAD_LEFT) . "/{$year}){$bpjsNotesStr}",
-                'expense_date' => now(),
+                'description' => "Pencairan Gaji & Insentif - {$user->name} (Periode: " . str_pad($month, 2, '0', STR_PAD_LEFT) . "/{$year}) | Transfer: " . now()->format('d/m/Y') . "{$bpjsNotesStr}",
+                'expense_date' => $expenseDate,
                 'user_id' => auth()->id()
             ]);
 
@@ -972,10 +976,14 @@ class PayrollController extends Controller
                 if ($shouldUseFlip) $channel = 'flip';
                 elseif ($shouldUseXendit) $channel = 'xendit';
 
+                // 1. Create Expense (Buku Kas Umum) - Metode Akrual
+                $periodEnd = Carbon::create($year, $month, 1)->endOfMonth()->endOfDay();
+                $expenseDate = $periodEnd->isPast() ? $periodEnd->toDateString() : now()->toDateString();
+
                 $expense = Expense::create([
                     'amount' => $netSalary,
-                    'description' => "Pencairan Gaji Batch - {$user->name} (Periode: " . str_pad($month, 2, '0', STR_PAD_LEFT) . "/{$year}){$bpjsNotesStr}",
-                    'expense_date' => now(),
+                    'description' => "Pencairan Gaji Batch - {$user->name} (Periode: " . str_pad($month, 2, '0', STR_PAD_LEFT) . "/{$year}) | Transfer: " . now()->format('d/m/Y') . "{$bpjsNotesStr}",
+                    'expense_date' => $expenseDate,
                     'user_id' => auth()->id()
                 ]);
 
