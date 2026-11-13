@@ -308,6 +308,18 @@ class PayrollController extends Controller
                 $recapBpjs['total_contributed_company'] += $bpjs['total_company'];
                 $recapBpjs['grand_total_payable'] += $bpjs['grand_total_bpjs'];
 
+                $bankName = $user->bank_name ?: ($emp ? $emp->bank_name : null);
+                $bankAccountNumber = $user->bank_account_number ?: ($emp ? $emp->bank_account_number : null);
+                $bankAccountHolder = $user->bank_account_holder ?: ($emp && !empty($emp->bank_account_holder) ? $emp->bank_account_holder : $user->name);
+
+                if ($emp && !empty($emp->bank_name) && empty($user->bank_name)) {
+                    $user->update([
+                        'bank_name' => $emp->bank_name,
+                        'bank_account_number' => $emp->bank_account_number,
+                        'bank_account_holder' => $bankAccountHolder,
+                    ]);
+                }
+
                 return [
                     'id' => $user->id,
                     'name' => $user->name,
@@ -324,9 +336,9 @@ class PayrollController extends Controller
                     'net_salary' => $netSalary,
                     'is_paid' => $isPaid,
                     'payment_date' => $isPaid ? $payroll->payment_date : null,
-                    'bank_name' => $user->bank_name,
-                    'bank_account_number' => $user->bank_account_number,
-                    'bank_account_holder' => $user->bank_account_holder ?: $user->name,
+                    'bank_name' => $bankName,
+                    'bank_account_number' => $bankAccountNumber,
+                    'bank_account_holder' => $bankAccountHolder,
                     'bpjs_kesehatan' => (bool) $user->bpjs_kesehatan,
                     'bpjs_kesehatan_no' => $user->bpjs_kesehatan_no,
                     'bpjs_ketenagakerjaan' => (bool) $user->bpjs_ketenagakerjaan,
@@ -496,9 +508,9 @@ class PayrollController extends Controller
             if ($request->has('base_salary')) {
                 $empUpdate['base_salary'] = (float) $request->input('base_salary', 0);
             }
-            if ($request->filled('bank_name')) $empUpdate['bank_name'] = $request->input('bank_name');
-            if ($request->filled('bank_account_number')) $empUpdate['bank_account_number'] = $request->input('bank_account_number');
-            if ($request->filled('bank_account_holder')) $empUpdate['bank_account_holder'] = $request->input('bank_account_holder');
+            if ($request->has('bank_name')) $empUpdate['bank_name'] = $request->input('bank_name');
+            if ($request->has('bank_account_number')) $empUpdate['bank_account_number'] = $request->input('bank_account_number');
+            if ($request->has('bank_account_holder')) $empUpdate['bank_account_holder'] = $request->input('bank_account_holder');
             if (!empty($empUpdate)) {
                 $emp->update($empUpdate);
             }

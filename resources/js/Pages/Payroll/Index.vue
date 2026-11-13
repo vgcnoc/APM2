@@ -420,101 +420,196 @@
             </div>
 
             <!-- ── MODAL 1: RINCIAN & SLIP GAJI KARYAWAN ── -->
-            <div v-if="showSlipModal && selectedSlipUser" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click.self="showSlipModal = false">
-                <div class="bg-white rounded-3xl shadow-2xl max-w-xl w-full overflow-hidden border border-slate-100 font-sans print:shadow-none print:max-w-full">
+            <div v-if="showSlipModal && selectedSlipUser" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm print:p-0 print:bg-white" @click.self="showSlipModal = false">
+                <div id="slip-modal-card" class="bg-white rounded-3xl shadow-2xl max-w-xl w-full overflow-hidden border border-slate-100 font-sans print:shadow-none print:max-w-full print:rounded-none print:border-none">
                     <!-- Slip Header -->
-                    <div class="p-6 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between">
+                    <div class="p-6 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between print:bg-slate-900 print:text-white">
                         <div>
-                            <span class="text-[10px] font-extrabold uppercase tracking-widest text-indigo-300">Slip Gaji &amp; Komisi Resmi</span>
-                            <h3 class="text-lg font-black text-white mt-0.5">Periode: {{ months[month - 1] }} {{ year }}</h3>
-                            <p class="text-xs text-slate-300">{{ selectedSlipUser.name }} &bull; {{ selectedSlipUser.role }}</p>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] font-extrabold uppercase tracking-widest text-indigo-300 bg-indigo-500/20 px-2 py-0.5 rounded-full border border-indigo-400/30">Slip Gaji &amp; Komisi Resmi</span>
+                                <span class="text-[10px] font-bold text-slate-400 font-mono">VIZBILL PAYROLL</span>
+                            </div>
+                            <h3 class="text-lg font-black text-white mt-1">Periode: {{ months[month - 1] }} {{ year }}</h3>
+                            <p class="text-xs text-slate-300 font-medium mt-0.5">
+                                {{ selectedSlipUser.name }} &bull; <span class="capitalize">{{ selectedSlipUser.role }}</span>
+                            </p>
                         </div>
-                        <button type="button" @click="showSlipModal = false" class="text-white/60 hover:text-white p-1">✕</button>
+                        <button type="button" @click="showSlipModal = false" class="text-white/60 hover:text-white p-1.5 rounded-xl hover:bg-white/10 transition-colors no-print">✕</button>
                     </div>
 
                     <!-- Slip Body -->
                     <div class="p-6 space-y-4 text-xs">
                         <!-- Rekening Penerima -->
-                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex justify-between items-center">
-                            <div>
-                                <span class="text-[10px] font-bold text-slate-400 uppercase">Rekening Tujuan:</span>
-                                <div class="font-extrabold text-slate-800 text-sm">
-                                    {{ selectedSlipUser.bank_name || 'Bank Belum Diatur' }} - {{ selectedSlipUser.bank_account_number || '-' }}
+                        <div 
+                            class="p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 border transition-all"
+                            :class="selectedSlipUser.bank_name && selectedSlipUser.bank_account_number ? 'bg-slate-50 border-slate-200' : 'bg-amber-50/80 border-amber-200'"
+                        >
+                            <div class="flex items-start sm:items-center gap-3 min-w-0">
+                                <div 
+                                    class="w-10 h-10 rounded-2xl flex items-center justify-center font-black text-base shrink-0 border shadow-2xs"
+                                    :class="selectedSlipUser.bank_name && selectedSlipUser.bank_account_number ? 'bg-white text-indigo-700 border-slate-200' : 'bg-amber-100 text-amber-800 border-amber-300'"
+                                >
+                                    <span v-if="selectedSlipUser.bank_name && selectedSlipUser.bank_account_number">🏦</span>
+                                    <span v-else>⚠️</span>
                                 </div>
-                                <span class="text-[11px] text-slate-500">a.n {{ selectedSlipUser.bank_account_holder }}</span>
+                                <div class="min-w-0">
+                                    <span class="text-[10px] font-bold uppercase tracking-wider block" :class="selectedSlipUser.bank_name && selectedSlipUser.bank_account_number ? 'text-slate-400' : 'text-amber-700'">
+                                        Rekening Tujuan Transfer:
+                                    </span>
+                                    <div class="font-extrabold text-sm truncate" :class="selectedSlipUser.bank_name && selectedSlipUser.bank_account_number ? 'text-slate-800' : 'text-amber-900'">
+                                        <template v-if="selectedSlipUser.bank_name && selectedSlipUser.bank_account_number">
+                                            {{ selectedSlipUser.bank_name }} &bull; <span class="font-mono">{{ selectedSlipUser.bank_account_number }}</span>
+                                        </template>
+                                        <template v-else-if="selectedSlipUser.bank_name">
+                                            {{ selectedSlipUser.bank_name }} <span class="text-xs font-normal text-amber-700">(Nomor Rekening Belum Diisi)</span>
+                                        </template>
+                                        <template v-else>
+                                            Belum Mengatur Rekening Bank
+                                        </template>
+                                    </div>
+                                    <span class="text-[11px] block mt-0.5" :class="selectedSlipUser.bank_name && selectedSlipUser.bank_account_number ? 'text-slate-500' : 'text-amber-700/90'">
+                                        a.n {{ selectedSlipUser.bank_account_holder || selectedSlipUser.name }}
+                                    </span>
+                                </div>
                             </div>
-                            <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase" :class="selectedSlipUser.is_paid ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'">
-                                {{ selectedSlipUser.is_paid ? 'Sudah Ditransfer' : 'Menunggu Transfer' }}
-                            </span>
+                            <div class="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                                <button 
+                                    v-if="can('payroll_btn_settings_bpjs') || can('payroll_manage')"
+                                    type="button"
+                                    @click="openBpjsBankModal(selectedSlipUser)"
+                                    class="no-print px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                                    :class="selectedSlipUser.bank_name && selectedSlipUser.bank_account_number ? 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs' : 'bg-amber-600 hover:bg-amber-700 text-white shadow-xs'"
+                                    :title="'Ubah Data Rekening ' + selectedSlipUser.name"
+                                >
+                                    <span>✏️</span>
+                                    <span>{{ selectedSlipUser.bank_name && selectedSlipUser.bank_account_number ? 'Edit' : 'Atur Rekening' }}</span>
+                                </button>
+                                <span 
+                                    class="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase shrink-0" 
+                                    :class="selectedSlipUser.is_paid ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-800 border border-amber-200'"
+                                >
+                                    {{ selectedSlipUser.is_paid ? 'Sudah Ditransfer' : 'Menunggu Transfer' }}
+                                </span>
+                            </div>
                         </div>
 
                         <!-- 1. Penerimaan / Pendapatan -->
-                        <div class="space-y-1.5 border border-slate-100 rounded-2xl p-4 bg-white">
-                            <span class="font-extrabold text-xs text-slate-900 uppercase tracking-wider block mb-2">A. Penerimaan (Gaji &amp; Bonus)</span>
-                            <div class="flex justify-between text-slate-700">
-                                <span>Gaji Pokok:</span>
-                                <span class="font-bold font-mono">Rp {{ formatRupiah(selectedSlipUser.base_salary) }}</span>
+                        <div class="space-y-2 border border-slate-200 rounded-2xl p-4 bg-white">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-black text-xs text-slate-900 uppercase tracking-wider">A. Penerimaan (Gaji &amp; Bonus)</span>
+                                <span class="text-[10px] font-bold text-slate-400">Total Kotor</span>
                             </div>
-                            <div class="flex justify-between text-slate-700">
+                            <div class="flex justify-between text-slate-700 text-xs">
+                                <span>Gaji Pokok:</span>
+                                <span class="font-bold font-mono text-slate-900">Rp {{ formatRupiah(selectedSlipUser.base_salary) }}</span>
+                            </div>
+                            <div class="flex justify-between text-slate-700 text-xs">
                                 <span>Insentif &amp; Komisi Otomatis:</span>
                                 <span class="font-bold text-emerald-600 font-mono">+ Rp {{ formatRupiah(selectedSlipUser.total_auto_incentive) }}</span>
                             </div>
-                            <div v-if="selectedSlipUser.total_manual_incentive > 0" class="flex justify-between text-slate-700">
+                            <div v-if="selectedSlipUser.total_manual_incentive > 0" class="flex justify-between text-slate-700 text-xs">
                                 <span>Bonus Tambahan:</span>
                                 <span class="font-bold text-emerald-600 font-mono">+ Rp {{ formatRupiah(selectedSlipUser.total_manual_incentive) }}</span>
                             </div>
 
                             <!-- Rincian Item Insentif jika ada -->
-                            <div v-if="selectedSlipUser.incentives_list && selectedSlipUser.incentives_list.length > 0" class="mt-2 pt-2 border-t border-slate-100 space-y-1 bg-slate-50/70 p-2.5 rounded-xl">
-                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Rincian Insentif / Bonus:</span>
-                                <div v-for="inc in selectedSlipUser.incentives_list" :key="inc.id" class="flex justify-between text-[11px] text-slate-600">
-                                    <span class="truncate max-w-[320px]">&bull; {{ cleanDescription(inc.description) }}</span>
-                                    <span class="font-semibold text-emerald-600 font-mono shrink-0">+Rp {{ formatRupiah(inc.amount) }}</span>
+                            <div v-if="selectedSlipUser.incentives_list && selectedSlipUser.incentives_list.length > 0" class="mt-2 pt-2 border-t border-slate-100 space-y-1 bg-slate-50/80 p-3 rounded-xl">
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <span class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">
+                                        Rincian Insentif / Bonus ({{ selectedSlipUser.incentives_list.length }} Item):
+                                    </span>
+                                    <span class="text-[10px] font-mono text-emerald-700 font-bold">
+                                        Total: +Rp {{ formatRupiah(selectedSlipUser.total_incentive) }}
+                                    </span>
+                                </div>
+                                <div class="max-h-60 overflow-y-auto space-y-1.5 pr-1 divide-y divide-slate-100 print:max-h-none print:overflow-visible">
+                                    <div v-for="(inc, idx) in selectedSlipUser.incentives_list" :key="inc.id || idx" class="flex justify-between items-start gap-2 text-[11px] text-slate-700 pt-1.5 first:pt-0">
+                                        <div class="flex items-start gap-1.5 flex-1 min-w-0">
+                                            <span class="text-emerald-500 font-bold shrink-0 mt-0.5">•</span>
+                                            <span class="break-words leading-relaxed font-medium">{{ cleanDescription(inc.description) }}</span>
+                                        </div>
+                                        <span class="font-bold text-emerald-600 font-mono shrink-0 whitespace-nowrap pl-2">+Rp {{ formatRupiah(inc.amount) }}</span>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="flex justify-between font-extrabold text-slate-900 pt-2 border-t border-slate-100">
+                            <div class="flex justify-between font-black text-slate-900 pt-2.5 border-t border-slate-200 text-xs">
                                 <span>Total Penghasilan Kotor:</span>
-                                <span class="font-mono text-emerald-700">Rp {{ formatRupiah(selectedSlipUser.base_salary + selectedSlipUser.total_incentive) }}</span>
+                                <span class="font-mono text-emerald-700 text-sm">Rp {{ formatRupiah(selectedSlipUser.base_salary + selectedSlipUser.total_incentive) }}</span>
                             </div>
                         </div>
 
                         <!-- 2. Potongan (BPJS, Absensi & Kasbon) -->
-                        <div class="space-y-1.5 border border-slate-100 rounded-2xl p-4 bg-white">
-                            <span class="font-extrabold text-xs text-slate-900 uppercase tracking-wider block mb-2">B. Potongan (Iuran BPJS, Absensi &amp; Kasbon)</span>
-                            <div v-if="selectedSlipUser.bpjs?.has_kesehatan" class="flex justify-between text-slate-700">
+                        <div class="space-y-2 border border-slate-200 rounded-2xl p-4 bg-white">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-black text-xs text-slate-900 uppercase tracking-wider">B. Potongan (Iuran BPJS, Absensi &amp; Kasbon)</span>
+                                <span class="text-[10px] font-bold text-slate-400">Total Potongan</span>
+                            </div>
+
+                            <div v-if="selectedSlipUser.bpjs?.has_kesehatan" class="flex justify-between text-slate-700 text-xs">
                                 <span>BPJS Kesehatan Karyawan (1%):</span>
                                 <span class="font-bold text-rose-600 font-mono">- Rp {{ formatRupiah(selectedSlipUser.bpjs.kesehatan_employee) }}</span>
                             </div>
-                            <div v-if="selectedSlipUser.bpjs?.has_tk" class="flex justify-between text-slate-700">
+                            <div v-if="selectedSlipUser.bpjs?.has_tk" class="flex justify-between text-slate-700 text-xs">
                                 <span>BPJS Ketenagakerjaan JHT Karyawan (2%):</span>
                                 <span class="font-bold text-rose-600 font-mono">- Rp {{ formatRupiah(selectedSlipUser.bpjs.tk_jht_employee) }}</span>
                             </div>
-                            <div v-if="selectedSlipUser.bpjs?.has_tk" class="flex justify-between text-slate-700">
+                            <div v-if="selectedSlipUser.bpjs?.has_tk" class="flex justify-between text-slate-700 text-xs">
                                 <span>BPJS Ketenagakerjaan JP Karyawan (1%):</span>
                                 <span class="font-bold text-rose-600 font-mono">- Rp {{ formatRupiah(selectedSlipUser.bpjs.tk_jp_employee) }}</span>
                             </div>
-                            <div v-if="selectedSlipUser.attendance_deduction > 0" class="flex justify-between text-slate-700">
+                            <div v-if="selectedSlipUser.attendance_deduction > 0" class="flex justify-between text-slate-700 text-xs">
                                 <span>Potongan Absensi / Kehadiran:</span>
                                 <span class="font-bold text-amber-700 font-mono">- Rp {{ formatRupiah(selectedSlipUser.attendance_deduction) }}</span>
                             </div>
-                            <div v-if="selectedSlipUser.kasbon_deduction > 0" class="flex justify-between text-slate-700">
+                            <div v-if="selectedSlipUser.kasbon_deduction > 0" class="flex justify-between text-slate-700 text-xs">
                                 <span>Potongan Kasbon / Lainnya:</span>
                                 <span class="font-bold text-rose-600 font-mono">- Rp {{ formatRupiah(selectedSlipUser.kasbon_deduction) }}</span>
                             </div>
 
                             <!-- Rincian Item Potongan jika ada -->
-                            <div v-if="selectedSlipUser.deductions_list && selectedSlipUser.deductions_list.length > 0" class="mt-2 pt-2 border-t border-slate-100 space-y-1 bg-slate-50/70 p-2.5 rounded-xl">
-                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Rincian Potongan:</span>
-                                <div v-for="ded in selectedSlipUser.deductions_list" :key="ded.id" class="flex justify-between text-[11px] text-slate-600">
-                                    <span class="truncate max-w-[320px]">&bull; {{ cleanDescription(ded.description) }}</span>
-                                    <span class="font-semibold text-rose-600 font-mono shrink-0">-Rp {{ formatRupiah(ded.amount) }}</span>
+                            <div v-if="selectedSlipUser.deductions_list && selectedSlipUser.deductions_list.length > 0" class="mt-2 pt-2 border-t border-slate-100 space-y-1 bg-slate-50/80 p-3 rounded-xl">
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <span class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">
+                                        Rincian Potongan Lainnya ({{ selectedSlipUser.deductions_list.length }} Item):
+                                    </span>
+                                    <span class="text-[10px] font-mono text-rose-700 font-bold">
+                                        Total: -Rp {{ formatRupiah(selectedSlipUser.total_deduction) }}
+                                    </span>
+                                </div>
+                                <div class="max-h-60 overflow-y-auto space-y-1.5 pr-1 divide-y divide-slate-100 print:max-h-none print:overflow-visible">
+                                    <div v-for="(ded, idx) in selectedSlipUser.deductions_list" :key="ded.id || idx" class="flex justify-between items-start gap-2 text-[11px] text-slate-700 pt-1.5 first:pt-0">
+                                        <div class="flex items-start gap-1.5 flex-1 min-w-0">
+                                            <span class="text-rose-500 font-bold shrink-0 mt-0.5">•</span>
+                                            <span class="break-words leading-relaxed font-medium">{{ cleanDescription(ded.description) }}</span>
+                                        </div>
+                                        <span class="font-bold text-rose-600 font-mono shrink-0 whitespace-nowrap pl-2">-Rp {{ formatRupiah(ded.amount) }}</span>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="flex justify-between font-extrabold text-slate-900 pt-2 border-t border-slate-100">
+                            <!-- Pesan jika tidak ada potongan sama sekali -->
+                            <div 
+                                v-if="!selectedSlipUser.bpjs?.has_kesehatan && !selectedSlipUser.bpjs?.has_tk && !selectedSlipUser.attendance_deduction && !selectedSlipUser.kasbon_deduction && (!selectedSlipUser.deductions_list || selectedSlipUser.deductions_list.length === 0)" 
+                                class="py-2 text-[11px] text-slate-400 italic flex items-center gap-1.5"
+                            >
+                                <span class="text-emerald-500 font-bold">✓</span>
+                                <span>Tidak ada potongan iuran BPJS, absensi, maupun kasbon pada periode ini.</span>
+                            </div>
+
+                            <div class="flex justify-between font-black text-slate-900 pt-2.5 border-t border-slate-200 text-xs">
                                 <span>Total Potongan:</span>
-                                <span class="font-mono text-rose-700">- Rp {{ formatRupiah(selectedSlipUser.total_deduction + (selectedSlipUser.bpjs?.total_employee || 0)) }}</span>
+                                <span 
+                                    class="font-mono text-sm" 
+                                    :class="(selectedSlipUser.total_deduction + (selectedSlipUser.bpjs?.total_employee || 0)) > 0 ? 'text-rose-700 font-extrabold' : 'text-slate-500 font-bold'"
+                                >
+                                    <template v-if="(selectedSlipUser.total_deduction + (selectedSlipUser.bpjs?.total_employee || 0)) > 0">
+                                        - Rp {{ formatRupiah(selectedSlipUser.total_deduction + (selectedSlipUser.bpjs?.total_employee || 0)) }}
+                                    </template>
+                                    <template v-else>
+                                        Rp 0
+                                    </template>
+                                </span>
                             </div>
                         </div>
 
@@ -536,22 +631,25 @@
                         </div>
 
                         <!-- 4. Gaji Bersih Diterima (Take Home Pay) -->
-                        <div class="p-4 bg-indigo-50 border-2 border-indigo-200 rounded-2xl flex justify-between items-center text-sm font-black">
-                            <span class="text-indigo-950 uppercase">Gaji Bersih Diterima (Take Home Pay):</span>
-                            <span class="text-xl text-indigo-700 font-mono">Rp {{ formatRupiah(selectedSlipUser.net_salary) }}</span>
+                        <div class="p-4 bg-gradient-to-r from-indigo-50 via-blue-50 to-indigo-50 border-2 border-indigo-200 rounded-2xl flex justify-between items-center text-sm font-black shadow-xs">
+                            <div>
+                                <span class="text-indigo-950 uppercase tracking-wide text-xs sm:text-sm block">Gaji Bersih Diterima (Take Home Pay):</span>
+                                <span class="text-[10px] text-indigo-600 font-medium block">Total penerimaan kotor setelah dikurangi seluruh potongan</span>
+                            </div>
+                            <span class="text-xl sm:text-2xl text-indigo-700 font-black font-mono">Rp {{ formatRupiah(selectedSlipUser.net_salary) }}</span>
                         </div>
                     </div>
 
                     <!-- Slip Footer -->
-                    <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
-                        <button type="button" @click="showSlipModal = false" class="px-4 py-2 border border-slate-300 text-slate-700 font-semibold text-xs rounded-xl hover:bg-slate-100">
+                    <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2 no-print">
+                        <button type="button" @click="showSlipModal = false" class="px-4 py-2 border border-slate-300 text-slate-700 font-semibold text-xs rounded-xl hover:bg-slate-100 cursor-pointer">
                             Tutup
                         </button>
                         <button
                             v-if="can('payroll_btn_print_slip')"
                             type="button"
                             @click="printSlip"
-                            class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+                            class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                         >
                             <span>🖨️</span>
                             <span>Cetak Slip</span>
@@ -1047,6 +1145,24 @@ const submitBpjsBank = () => {
         preserveScroll: true,
         onSuccess: () => {
             showBpjsBankModal.value = false;
+            // Update reactive objects in place immediately
+            if (selectedBpjsUser.value) {
+                selectedBpjsUser.value.bank_name = bpjsBankForm.bank_name;
+                selectedBpjsUser.value.bank_account_number = bpjsBankForm.bank_account_number;
+                selectedBpjsUser.value.bank_account_holder = bpjsBankForm.bank_account_holder || selectedBpjsUser.value.name;
+                selectedBpjsUser.value.base_salary = bpjsBankForm.base_salary;
+                selectedBpjsUser.value.auto_incentive_rate = bpjsBankForm.incentive_rate;
+                selectedBpjsUser.value.bpjs_kesehatan = bpjsBankForm.bpjs_kesehatan;
+                selectedBpjsUser.value.bpjs_kesehatan_no = bpjsBankForm.bpjs_kesehatan_no;
+                selectedBpjsUser.value.bpjs_ketenagakerjaan = bpjsBankForm.bpjs_ketenagakerjaan;
+                selectedBpjsUser.value.bpjs_tk_no = bpjsBankForm.bpjs_tk_no;
+            }
+            if (selectedSlipUser.value && selectedSlipUser.value.id === selectedBpjsUser.value?.id) {
+                selectedSlipUser.value.bank_name = bpjsBankForm.bank_name;
+                selectedSlipUser.value.bank_account_number = bpjsBankForm.bank_account_number;
+                selectedSlipUser.value.bank_account_holder = bpjsBankForm.bank_account_holder || selectedSlipUser.value.name;
+                selectedSlipUser.value.base_salary = bpjsBankForm.base_salary;
+            }
             Swal.fire({
                 toast: true,
                 position: 'top-end',
@@ -1409,3 +1525,29 @@ const disburseAll = () => {
     });
 };
 </script>
+
+<style>
+@media print {
+    body * {
+        visibility: hidden !important;
+    }
+    #slip-modal-card, #slip-modal-card * {
+        visibility: visible !important;
+    }
+    #slip-modal-card {
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: white !important;
+    }
+    .no-print {
+        display: none !important;
+    }
+}
+</style>
