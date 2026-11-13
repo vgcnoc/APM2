@@ -419,22 +419,24 @@
                 </div>
             </div>
 
-            <!-- ── MODAL 1: RINCIAN & SLIP GAJI KARYAWAN (MODERN, RESPOCNSIF & CANGGIH) ── -->
-            <div v-if="showSlipModal && selectedSlipUser" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/75 backdrop-blur-md print:p-0 print:bg-white" @click.self="showSlipModal = false">
-                <div id="slip-modal-card" class="bg-white rounded-3xl shadow-2xl max-w-4xl w-full overflow-hidden border border-slate-200/90 font-sans print:shadow-none print:max-w-full print:rounded-none print:border-none flex flex-col max-h-[92vh]">
+            <!-- ── MODAL 1: RINCIAN & SLIP GAJI KARYAWAN (MODERN, RESPONSIF & CANGGIH) ── -->
+            <div v-if="showSlipModal && selectedSlipUser" class="fixed inset-0 z-50 overflow-y-auto flex items-start sm:items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/80 backdrop-blur-md print:static print:h-auto print:max-h-none print:overflow-visible print:block print:p-0 print:bg-white" @click.self="showSlipModal = false">
+                <div id="slip-modal-card" class="bg-white rounded-3xl shadow-2xl max-w-4xl w-full my-auto flex flex-col max-h-[90vh] overflow-hidden border border-slate-200/90 font-sans print:shadow-none print:max-w-full print:rounded-none print:border-none print:max-h-none print:h-auto print:overflow-visible print:block print:m-0">
                     
                     <!-- 1. Executive Slip Header & Corporate Branding -->
                     <div class="p-5 sm:p-7 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white relative overflow-hidden border-b border-indigo-900/40 print:bg-slate-900 print:text-white shrink-0">
                         <!-- Decorative ambient glow -->
-                        <div class="absolute -right-16 -top-16 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                        <div class="absolute -right-16 -top-16 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none no-print"></div>
 
                         <!-- Top Brand Row -->
                         <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <!-- Company Logo & Name -->
                             <div class="flex items-center gap-3.5">
-                                <img v-if="$page.props.company_logo" :src="$page.props.company_logo" alt="Logo" class="w-12 h-12 object-contain rounded-2xl bg-white/10 p-1.5 border border-white/20 shadow-md">
-                                <div v-else class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 to-indigo-700 flex items-center justify-center font-black text-xl text-white shadow-md border border-indigo-400/30 shrink-0">
-                                    {{ ($page.props.company_name || 'VB').slice(0, 2).toUpperCase() }}
+                                <div class="w-12 h-12 rounded-2xl bg-white p-1.5 border border-white/20 shadow-md flex items-center justify-center shrink-0">
+                                    <img v-if="$page.props.company_logo" :src="$page.props.company_logo" alt="Logo" class="max-w-full max-h-full object-contain">
+                                    <div v-else class="w-full h-full rounded-xl bg-gradient-to-tr from-indigo-500 to-indigo-700 flex items-center justify-center font-black text-lg text-white">
+                                        {{ ($page.props.company_name || 'VB').slice(0, 2).toUpperCase() }}
+                                    </div>
                                 </div>
                                 <div>
                                     <div class="flex items-center gap-2">
@@ -458,13 +460,13 @@
                                 <div class="flex items-center gap-2">
                                     <div class="text-right">
                                         <div class="text-[9px] uppercase font-bold text-slate-400 tracking-wider">No. Ref Dokumen</div>
-                                        <div class="text-xs font-black font-mono text-indigo-300 bg-indigo-950/90 px-2.5 py-1 rounded-lg border border-indigo-500/30">
+                                        <div class="text-xs font-black font-mono text-indigo-300 bg-indigo-950/90 px-2.5 py-1 rounded-lg border border-indigo-500/30 whitespace-nowrap shrink-0">
                                             SLIP/{{ year }}{{ String(month).padStart(2, '0') }}/{{ selectedSlipUser.employee_code || ('EMP-' + selectedSlipUser.id) }}
                                         </div>
                                     </div>
                                     <button type="button" @click="showSlipModal = false" class="text-white/60 hover:text-white p-2 rounded-xl hover:bg-white/10 transition-colors no-print cursor-pointer">✕</button>
                                 </div>
-                                <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xs border border-white/15 text-white text-xs font-bold">
+                                <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xs border border-white/15 text-white text-xs font-bold whitespace-nowrap">
                                     <span>📅</span>
                                     <span>Periode: {{ months[month - 1] }} {{ year }}</span>
                                 </div>
@@ -507,16 +509,20 @@
                                 </div>
                             </div>
 
-                            <!-- Status Pembayaran Ribbon -->
-                            <div class="shrink-0 flex items-center gap-2">
+                            <!-- Status Pembayaran & Quick Net Pill -->
+                            <div class="shrink-0 flex items-center gap-2 flex-wrap">
+                                <div class="px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-xs border border-white/15 text-white flex items-center gap-1.5">
+                                    <span class="text-[10px] text-indigo-200 font-bold uppercase tracking-wider">Bersih:</span>
+                                    <span class="text-sm font-black font-mono text-emerald-300">Rp {{ formatRupiah(selectedSlipUser.net_salary) }}</span>
+                                </div>
                                 <div 
-                                    class="px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 border shadow-sm"
+                                    class="px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 border shadow-sm shrink-0"
                                     :class="selectedSlipUser.is_paid 
                                         ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40' 
                                         : 'bg-amber-500/20 text-amber-300 border-amber-400/40'"
                                 >
                                     <span class="w-2 h-2 rounded-full" :class="selectedSlipUser.is_paid ? 'bg-emerald-400' : 'bg-amber-400 animate-ping'"></span>
-                                    <span>{{ selectedSlipUser.is_paid ? 'LUNAS (Sudah Ditransfer)' : 'MENUNGGU TRANSFER' }}</span>
+                                    <span>{{ selectedSlipUser.is_paid ? 'LUNAS' : 'MENUNGGU TRANSFER' }}</span>
                                 </div>
                             </div>
                         </div>
@@ -595,11 +601,11 @@
                     </div>
 
                     <!-- 3. Slip Body (2 Columns Responsive Layout) -->
-                    <div class="p-6 space-y-5 overflow-y-auto flex-1">
+                    <div class="p-6 space-y-5 overflow-y-auto flex-1 print:overflow-visible print:max-h-none print:h-auto print:p-0 print:space-y-4">
                         <!-- Two Columns Grid -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 items-stretch">
+                        <div class="grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-5 items-stretch">
                             <!-- KOLOM KIRI: A. PENERIMAAN RESMI -->
-                            <div class="bg-gradient-to-b from-emerald-50/70 via-white to-white border border-emerald-200/90 rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
+                            <div class="bg-gradient-to-b from-emerald-50/70 via-white to-white border border-emerald-200/90 rounded-2xl p-5 shadow-2xs flex flex-col justify-between print:overflow-visible print:max-h-none">
                                 <div class="space-y-3">
                                     <div class="flex items-center justify-between pb-3 border-b border-emerald-100">
                                         <div class="flex items-center gap-2">
@@ -634,7 +640,7 @@
                                                 +Rp {{ formatRupiah(selectedSlipUser.total_incentive) }}
                                             </span>
                                         </div>
-                                        <div class="max-h-52 overflow-y-auto space-y-2 pr-1 divide-y divide-emerald-100/60 print:max-h-none print:overflow-visible">
+                                        <div class="max-h-60 overflow-y-auto space-y-1.5 pr-1 divide-y divide-emerald-100/60 print:max-h-none print:overflow-visible">
                                             <div v-for="(inc, idx) in selectedSlipUser.incentives_list" :key="inc.id || idx" class="flex justify-between items-start gap-2 text-[11px] pt-1.5 first:pt-0">
                                                 <div class="flex items-start gap-1.5 flex-1 min-w-0">
                                                     <span class="text-emerald-500 font-bold shrink-0 mt-0.5">●</span>
@@ -656,7 +662,7 @@
                             </div>
 
                             <!-- KOLOM KANAN: B. POTONGAN RESMI -->
-                            <div class="bg-gradient-to-b from-rose-50/70 via-white to-white border border-rose-200/90 rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
+                            <div class="bg-gradient-to-b from-rose-50/70 via-white to-white border border-rose-200/90 rounded-2xl p-5 shadow-2xs flex flex-col justify-between print:overflow-visible print:max-h-none">
                                 <div class="space-y-3">
                                     <div class="flex items-center justify-between pb-3 border-b border-rose-100">
                                         <div class="flex items-center gap-2">
@@ -708,7 +714,7 @@
                                                 -Rp {{ formatRupiah(selectedSlipUser.total_deduction) }}
                                             </span>
                                         </div>
-                                        <div class="max-h-52 overflow-y-auto space-y-2 pr-1 divide-y divide-rose-100/60 print:max-h-none print:overflow-visible">
+                                        <div class="max-h-60 overflow-y-auto space-y-1.5 pr-1 divide-y divide-rose-100/60 print:max-h-none print:overflow-visible">
                                             <div v-for="(ded, idx) in selectedSlipUser.deductions_list" :key="ded.id || idx" class="flex justify-between items-start gap-2 text-[11px] pt-1.5 first:pt-0">
                                                 <div class="flex items-start gap-1.5 flex-1 min-w-0">
                                                     <span class="text-rose-500 font-bold shrink-0 mt-0.5">●</span>
@@ -739,49 +745,49 @@
                         </div>
 
                         <!-- C. TUNJANGAN BPJS PERUSAHAAN (BENEFIT RESMI) -->
-                        <div v-if="selectedSlipUser.bpjs?.total_company > 0" class="p-4 bg-purple-50/70 border border-purple-200/80 rounded-2xl space-y-2 text-xs text-purple-950">
+                        <div v-if="selectedSlipUser.bpjs?.total_company > 0" class="p-4 bg-purple-50/70 border border-purple-200/80 rounded-2xl space-y-2 text-xs text-purple-950 print:bg-slate-50 print:border-slate-300">
                             <div class="flex items-center justify-between">
-                                <span class="font-extrabold uppercase tracking-wider text-[11px] text-purple-900 flex items-center gap-1.5">
+                                <span class="font-extrabold uppercase tracking-wider text-[11px] text-purple-900 print:text-slate-800 flex items-center gap-1.5">
                                     <span>🛡️</span>
                                     <span>C. Benefit Ditanggung Kantor (Disetor Langsung ke Kas BPJS):</span>
                                 </span>
-                                <span class="text-[10px] font-bold text-purple-700">Di Luar Gaji Bersih</span>
+                                <span class="text-[10px] font-bold text-purple-700 print:text-slate-600">Di Luar Gaji Bersih</span>
                             </div>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 pt-1 text-[11px]">
                                 <div class="flex justify-between">
-                                    <span class="text-purple-800">BPJS Kesehatan Kantor (4%):</span>
-                                    <span class="font-bold font-mono text-purple-950">Rp {{ formatRupiah(selectedSlipUser.bpjs.kesehatan_company) }}</span>
+                                    <span class="text-purple-800 print:text-slate-700">BPJS Kesehatan Kantor (4%):</span>
+                                    <span class="font-bold font-mono text-purple-950 print:text-slate-900">Rp {{ formatRupiah(selectedSlipUser.bpjs.kesehatan_company) }}</span>
                                 </div>
                                 <div class="flex justify-between">
-                                    <span class="text-purple-800">BPJS TK Kantor (JHT, JP, JKK, JKM):</span>
-                                    <span class="font-bold font-mono text-purple-950">Rp {{ formatRupiah(selectedSlipUser.bpjs.tk_jht_company + selectedSlipUser.bpjs.tk_jp_company + selectedSlipUser.bpjs.tk_jkk_company + selectedSlipUser.bpjs.tk_jkm_company) }}</span>
+                                    <span class="text-purple-800 print:text-slate-700">BPJS TK Kantor (JHT, JP, JKK, JKM):</span>
+                                    <span class="font-bold font-mono text-purple-950 print:text-slate-900">Rp {{ formatRupiah(selectedSlipUser.bpjs.tk_jht_company + selectedSlipUser.bpjs.tk_jp_company + selectedSlipUser.bpjs.tk_jkk_company + selectedSlipUser.bpjs.tk_jkm_company) }}</span>
                                 </div>
                             </div>
-                            <div class="flex justify-between font-extrabold pt-2 border-t border-purple-200/70 text-xs">
-                                <span class="text-purple-900">Total Iuran BPJS Kantor &amp; Karyawan:</span>
-                                <span class="font-mono text-purple-950">Rp {{ formatRupiah(selectedSlipUser.bpjs.grand_total_bpjs) }}</span>
+                            <div class="flex justify-between font-extrabold pt-2 border-t border-purple-200/70 print:border-slate-300 text-xs">
+                                <span class="text-purple-900 print:text-slate-800">Total Iuran BPJS Kantor &amp; Karyawan:</span>
+                                <span class="font-mono text-purple-950 print:text-slate-900">Rp {{ formatRupiah(selectedSlipUser.bpjs.grand_total_bpjs) }}</span>
                             </div>
                         </div>
 
                         <!-- HERO CARD: TAKE HOME PAY (CANGGIH & MODERN) -->
-                        <div class="p-5 sm:p-6 bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 text-white rounded-3xl shadow-xl border border-indigo-400/40 relative overflow-hidden">
-                            <div class="absolute -right-8 -bottom-8 w-48 h-48 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
+                        <div class="p-5 sm:p-6 bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 text-white rounded-3xl shadow-xl border border-indigo-400/40 relative overflow-hidden print:bg-white print:text-slate-900 print:border-2 print:border-indigo-600 print:shadow-none print:p-4">
+                            <div class="absolute -right-8 -bottom-8 w-48 h-48 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none no-print"></div>
                             <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
                                 <div>
                                     <div class="flex items-center gap-2">
-                                        <span class="text-xs font-black uppercase tracking-widest text-indigo-300">Gaji Bersih Diterima (Take Home Pay)</span>
-                                        <span class="text-amber-400 text-sm">✨</span>
+                                        <span class="text-xs font-black uppercase tracking-widest text-indigo-300 print:text-indigo-900">Gaji Bersih Diterima (Take Home Pay)</span>
+                                        <span class="text-amber-400 text-sm no-print">✨</span>
                                     </div>
-                                    <div class="mt-2 text-xs sm:text-sm font-bold italic text-amber-200 font-serif">
+                                    <div class="mt-2 text-xs sm:text-sm font-bold italic text-amber-200 print:text-slate-800 font-serif">
                                         ## {{ terbilangRupiah(selectedSlipUser.net_salary) }} ##
                                     </div>
-                                    <p class="text-[10px] text-slate-400 mt-1">
+                                    <p class="text-[10px] text-slate-400 print:text-slate-600 mt-1">
                                         Total penerimaan kotor setelah dikurangi seluruh potongan dan iuran resmi periode berjalan.
                                     </p>
                                 </div>
                                 <div class="text-left md:text-right shrink-0">
-                                    <div class="text-[10px] uppercase font-bold text-indigo-300 tracking-wider">Total Bersih</div>
-                                    <div class="text-2xl sm:text-3xl font-black font-mono text-white tracking-tight drop-shadow-sm">
+                                    <div class="text-[10px] uppercase font-bold text-indigo-300 print:text-slate-500 tracking-wider">Total Bersih</div>
+                                    <div class="text-2xl sm:text-3xl font-black font-mono text-white print:text-indigo-900 tracking-tight drop-shadow-sm">
                                         Rp {{ formatRupiah(selectedSlipUser.net_salary) }}
                                     </div>
                                 </div>
@@ -789,10 +795,10 @@
                         </div>
 
                         <!-- DIGITAL VERIFICATION SEAL & OFFICIAL SIGNATURES (A4 PRINT & PREVIEW) -->
-                        <div class="pt-5 mt-2 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center text-xs">
+                        <div class="pt-5 mt-2 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center text-xs print:pt-4 print:mt-4 print:border-t-2 print:border-slate-300">
                             <!-- Segel Digital QR -->
-                            <div class="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col items-center justify-center text-center">
-                                <div class="w-14 h-14 bg-white p-1 rounded-xl border border-slate-300 shadow-2xs flex items-center justify-center mb-1.5">
+                            <div class="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col items-center justify-center text-center print:border-slate-300 print:bg-white">
+                                <div class="w-14 h-14 bg-white p-1 rounded-xl border border-slate-300 shadow-2xs flex items-center justify-center mb-1.5 print:shadow-none">
                                     <svg class="w-11 h-11 text-slate-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                                         <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor"/>
                                         <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor"/>
@@ -822,7 +828,7 @@
                             <div class="flex flex-col justify-between py-1">
                                 <span class="text-[11px] font-bold text-slate-600 uppercase">Finance &amp; HRD Division,</span>
                                 <div class="h-14 flex items-center justify-center relative">
-                                    <span class="text-[10px] font-black uppercase text-indigo-700/70 border-2 border-indigo-500/40 px-2 py-0.5 rounded-lg -rotate-6 select-none shadow-2xs">
+                                    <span class="text-[10px] font-black uppercase text-indigo-700/70 border-2 border-indigo-500/40 px-2 py-0.5 rounded-lg -rotate-6 select-none shadow-2xs print:border-slate-400 print:text-slate-700">
                                         VERIFIED &amp; APPROVED
                                     </span>
                                 </div>
@@ -831,8 +837,8 @@
                         </div>
                     </div>
 
-                    <!-- 4. Slip Footer & Action Toolbar (Canggih & Lengkap) -->
-                    <div class="p-4 bg-slate-50 border-t border-slate-200/90 flex flex-wrap items-center justify-between gap-3 no-print shrink-0">
+                    <!-- 4. Slip Footer & Action Toolbar (Canggih & Sticky di Bawah) -->
+                    <div class="sticky bottom-0 z-30 p-4 bg-slate-50/95 backdrop-blur-md border-t border-slate-200/90 flex flex-wrap items-center justify-between gap-3 no-print shrink-0 shadow-lg">
                         <div class="flex items-center gap-2 flex-wrap">
                             <!-- Kirim ke WhatsApp -->
                             <button
@@ -1328,7 +1334,16 @@ const openSlipModal = (user) => {
 };
 
 const printSlip = () => {
-    window.print();
+    // Reset scroll positions before printing so nothing is scrolled out or clipped
+    const slipCard = document.getElementById('slip-modal-card');
+    if (slipCard) {
+        slipCard.scrollTop = 0;
+        const scrollables = slipCard.querySelectorAll('.overflow-y-auto');
+        scrollables.forEach(el => el.scrollTop = 0);
+    }
+    setTimeout(() => {
+        window.print();
+    }, 60);
 };
 
 const terbilangRupiah = (val) => {
@@ -1934,7 +1949,13 @@ const disburseAll = () => {
 @media print {
     @page {
         size: A4 portrait;
-        margin: 8mm;
+        margin: 6mm 8mm;
+    }
+    html, body {
+        height: auto !important;
+        min-height: 100% !important;
+        overflow: visible !important;
+        background: white !important;
     }
     body * {
         visibility: hidden !important;
@@ -1942,21 +1963,41 @@ const disburseAll = () => {
     #slip-modal-card, #slip-modal-card * {
         visibility: visible !important;
     }
+    .fixed, [class*="fixed"] {
+        position: static !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+        display: block !important;
+        background: transparent !important;
+        padding: 0 !important;
+    }
     #slip-modal-card {
-        position: absolute !important;
-        left: 0 !important;
-        top: 0 !important;
+        position: relative !important;
+        left: auto !important;
+        top: auto !important;
         width: 100% !important;
         max-width: 100% !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+        display: block !important;
         margin: 0 !important;
         padding: 0 !important;
         border: 1px solid #cbd5e1 !important;
-        border-radius: 16px !important;
+        border-radius: 14px !important;
         box-shadow: none !important;
         background: white !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
-        page-break-inside: avoid !important;
+        page-break-inside: auto !important;
+    }
+    #slip-modal-card .overflow-y-auto,
+    #slip-modal-card [class*="overflow-y-auto"],
+    #slip-modal-card [class*="max-h-"] {
+        overflow: visible !important;
+        max-height: none !important;
+        height: auto !important;
     }
     .no-print {
         display: none !important;
