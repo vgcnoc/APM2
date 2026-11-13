@@ -1593,9 +1593,19 @@ class VoucherController extends Controller
             'buyer_phone' => 'nullable|string|max:30',
         ]);
 
+        $buyerPhone = !empty($validated['buyer_phone']) ? trim($validated['buyer_phone']) : null;
+        if ($buyerPhone) {
+            $buyerPhone = preg_replace('/[^0-9]/', '', $buyerPhone);
+            if (str_starts_with($buyerPhone, '0')) {
+                $buyerPhone = '62' . substr($buyerPhone, 1);
+            } elseif (str_starts_with($buyerPhone, '8')) {
+                $buyerPhone = '62' . $buyerPhone;
+            }
+        }
+
         $voucher->update([
             'buyer_name' => !empty($validated['buyer_name']) ? trim($validated['buyer_name']) : null,
-            'buyer_phone' => !empty($validated['buyer_phone']) ? trim($validated['buyer_phone']) : null,
+            'buyer_phone' => $buyerPhone,
         ]);
 
         return redirect()->back()->with('success', "Data pembeli voucher {$voucher->code} berhasil diperbarui.");
