@@ -176,6 +176,24 @@ class SyncPermissionsCommand extends Command
         }
         $this->line("  ✓ Role 'cs': modul instalasi jaringan dipastikan aktif.");
 
+        // 6. Role CS, Admin CS, Staff Administrasi, Finance & HRD: Pastikan memiliki izin Stop Permanen & Stop Sementara di Invoice
+        $billingStaffRoles = Role::whereIn('name', [
+            'cs', 'CS', 'admin cs', 'Admin CS', 'customer care', 'Customer Care',
+            'staff administrasi', 'Staff Administrasi',
+            'finance', 'Finance', 'hrd', 'HRD', 'hrd & finance', 'HRD & Finance', 'HRD & FINANCE', 'hrd & keuangan',
+            'manager', 'Manager'
+        ])->get();
+        $stopInvoicePerms = [
+            'invoices_stop_permanen',
+            'invoices_stop_sementara',
+            'customers_active_terminate',
+            'customers_active_suspend',
+        ];
+        foreach ($billingStaffRoles as $bRole) {
+            $bRole->givePermissionTo(array_intersect($stopInvoicePerms, $allNames));
+        }
+        $this->line("  ✓ Role CS, Staff Administrasi, Finance & HRD: hak akses Stop Permanen & Stop Sementara tagihan dipastikan aktif.");
+
         // Refresh cache (Spatie + versi RBAC Inertia agar sidebar langsung mengikuti DB)
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
         \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);

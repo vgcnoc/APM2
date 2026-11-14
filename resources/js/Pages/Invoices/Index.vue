@@ -722,7 +722,7 @@
 
                         <!-- Stop Sementara -->
                         <button 
-                            v-can="'customers_active_suspend'"
+                            v-can="['customers_active_suspend', 'invoices_stop_sementara']"
                             v-if="activeDropdownRow.customer.status !== 'terminated' && !(activeDropdownRow.customer.status === 'suspended' && activeDropdownRow.customer.suspend_end)"
                             type="button" 
                             @click="stopSementara(activeDropdownRow); closeDropdown()"
@@ -739,7 +739,7 @@
 
                         <!-- Stop Permanen & CBP (atau Buat Ulang CBP jika CBP sebelumnya dibatalkan) -->
                         <button 
-                            v-can="'customers_active_terminate'"
+                            v-can="['customers_active_terminate', 'invoices_stop_permanen']"
                             v-if="activeDropdownRow.customer.status !== 'terminated' || !activeDropdownRow.customer.has_open_cbp"
                             type="button" 
                             @click="openStopPermanenModal(activeDropdownRow); closeDropdown()"
