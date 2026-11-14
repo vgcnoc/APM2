@@ -115,12 +115,13 @@
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-gray-50/50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                <th class="p-4 w-40">Nomor CBP</th>
+                                <th class="p-4 w-36">Nomor CBP</th>
                                 <th class="p-4">Pelanggan</th>
+                                <th class="p-4 w-40">Tgl Cabut</th>
                                 <th class="p-4">Alasan Cabut</th>
                                 <th class="p-4">Status</th>
                                 <th class="p-4">Teknisi</th>
-                                <th class="p-4 w-24 text-center">Aksi</th>
+                                <th class="p-4 w-28 text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 text-sm">
@@ -130,6 +131,20 @@
                                     <div class="font-bold text-gray-900">{{ req.customer?.name || '-' }}</div>
                                     <div class="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                                         <span class="px-1.5 py-0.5 rounded bg-gray-100 border border-gray-200">{{ req.customer?.customer_code || '-' }}</span>
+                                    </div>
+                                </td>
+                                <td class="p-4">
+                                    <div class="flex flex-col gap-0.5 text-xs">
+                                        <div v-if="req.completed_at" class="font-bold text-emerald-800 flex items-center gap-1">
+                                            <span>✅ {{ formatDisplayDate(req.completed_at) }}</span>
+                                        </div>
+                                        <div v-else-if="req.scheduled_date" class="font-bold text-slate-800 flex items-center gap-1">
+                                            <span>📅 {{ formatDisplayDate(req.scheduled_date) }}</span>
+                                        </div>
+                                        <div v-else class="text-slate-400 italic text-[11px]">-</div>
+                                        <span v-if="req.scheduled_date && req.completed_at" class="text-[10px] text-slate-500">
+                                            Rencana: {{ formatDisplayDate(req.scheduled_date) }}
+                                        </span>
                                     </div>
                                 </td>
                                 <td class="p-4">
@@ -177,7 +192,7 @@
                                 </td>
                             </tr>
                             <tr v-if="!requests.data.length">
-                                <td colspan="6" class="p-12 text-center text-gray-500">
+                                <td colspan="7" class="p-12 text-center text-gray-500">
                                     <div class="flex flex-col items-center justify-center">
                                         <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
                                             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -418,6 +433,19 @@ function resetFilters() {
     filterStatus.value = '';
     filterArea.value = '';
     router.get('/cbp/laporan', {}, { preserveState: true, preserveScroll: true });
+}
+
+function formatDisplayDate(dateStr) {
+    if (!dateStr) return '-';
+    const cleanStr = String(dateStr).substring(0, 10);
+    const parts = cleanStr.split('-');
+    if (parts.length !== 3) return cleanStr;
+    const y = Number(parts[0]);
+    const m = Number(parts[1]);
+    const d = Number(parts[2]);
+    if (!y || !m || !d) return cleanStr;
+    const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    return `${d} ${shortMonths[m - 1]} ${y}`;
 }
 
 // Progress Modal

@@ -105,6 +105,17 @@
                         <option v-for="area in areas" :key="area.id" :value="area.id">📍 {{ area.name }}</option>
                     </select>
 
+                    <div class="flex items-center gap-1 bg-gray-50/60 border border-gray-200 rounded-xl px-2.5 py-1.5">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tgl:</span>
+                        <input 
+                            type="date" 
+                            v-model="filterDate" 
+                            @change="performSearch" 
+                            class="bg-transparent border-0 p-0 text-xs font-semibold text-slate-700 focus:ring-0 cursor-pointer"
+                            title="Filter Tanggal Pencabutan"
+                        />
+                    </div>
+
                     <button 
                         v-if="hasActiveFilters" 
                         @click="resetFilters" 
@@ -132,8 +143,9 @@
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-gray-50/50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                <th class="p-4 w-40">Nomor CBP</th>
+                                <th class="p-4 w-36">Nomor CBP</th>
                                 <th class="p-4">Pelanggan</th>
+                                <th class="p-4 w-44">Tgl Pencabutan</th>
                                 <th class="p-4">Alasan Cabut</th>
                                 <th class="p-4">Status</th>
                                 <th class="p-4">Teknisi</th>
@@ -147,6 +159,21 @@
                                     <div class="font-bold text-gray-900">{{ req.customer?.name || '-' }}</div>
                                     <div class="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                                         <span class="px-1.5 py-0.5 rounded bg-gray-100 border border-gray-200">{{ req.customer?.customer_code || '-' }}</span>
+                                    </div>
+                                </td>
+                                <td class="p-4">
+                                    <div v-if="req.scheduled_date" class="flex flex-col gap-1">
+                                        <div class="flex items-center gap-1.5 font-bold text-xs" :class="getScheduleDateTextColor(req.scheduled_date, req.status)">
+                                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                            <span>{{ formatDisplayDate(req.scheduled_date) }}</span>
+                                        </div>
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider w-fit border" :class="getScheduleBadgeClass(req.scheduled_date, req.status)">
+                                            <span class="w-1.5 h-1.5 rounded-full" :class="getScheduleDotClass(req.scheduled_date, req.status)"></span>
+                                            {{ getScheduleBadgeLabel(req.scheduled_date, req.status) }}
+                                        </span>
+                                    </div>
+                                    <div v-else class="text-xs text-slate-400 italic">
+                                        Belum dijadwalkan
                                     </div>
                                 </td>
                                 <td class="p-4">
@@ -209,7 +236,7 @@
                                 </td>
                             </tr>
                             <tr v-if="!requests.data.length">
-                                <td colspan="6" class="p-8 text-center text-gray-500">
+                                <td colspan="7" class="p-8 text-center text-gray-500">
                                     <div class="flex flex-col items-center justify-center">
                                         <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                         <p>Belum ada Jadwal CBP.</p>
@@ -337,6 +364,56 @@
                                     <svg class="w-4 h-4 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                                     <div>
                                         <span class="font-bold">Alasan CBP:</span> {{ selectedCbp.reason }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tanggal Pencabutan (Rencana Cabut) -->
+                            <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm space-y-3">
+                                <div class="flex items-center justify-between flex-wrap gap-2">
+                                    <label class="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                        TANGGAL PENCABUTAN <span class="text-rose-500">*</span>
+                                    </label>
+                                    <span v-if="assignForm.scheduled_date" class="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full animate-fade-in-up">
+                                        {{ formatFullIndonesianDate(assignForm.scheduled_date) }}
+                                    </span>
+                                </div>
+
+                                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                                    <div class="relative flex-1">
+                                        <input 
+                                            type="date" 
+                                            v-model="assignForm.scheduled_date" 
+                                            required
+                                            class="w-full text-xs font-bold text-slate-800 px-3.5 py-2.5 bg-slate-50/80 hover:bg-white border-2 border-slate-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 focus:outline-none transition-all cursor-pointer"
+                                        />
+                                    </div>
+                                    <div class="flex items-center gap-1.5 shrink-0">
+                                        <button 
+                                            type="button" 
+                                            @click="setScheduleDatePreset(0)" 
+                                            class="flex-1 sm:flex-initial px-3 py-2 text-xs font-bold rounded-xl border transition-all select-none"
+                                            :class="isDatePresetActive(0) ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-slate-100 hover:bg-indigo-50 text-slate-700 border-slate-200'"
+                                        >
+                                            ⚡ Hari Ini
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            @click="setScheduleDatePreset(1)" 
+                                            class="flex-1 sm:flex-initial px-3 py-2 text-xs font-bold rounded-xl border transition-all select-none"
+                                            :class="isDatePresetActive(1) ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-slate-100 hover:bg-indigo-50 text-slate-700 border-slate-200'"
+                                        >
+                                            📅 Besok
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            @click="setScheduleDatePreset(2)" 
+                                            class="flex-1 sm:flex-initial px-3 py-2 text-xs font-bold rounded-xl border transition-all select-none"
+                                            :class="isDatePresetActive(2) ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-slate-100 hover:bg-indigo-50 text-slate-700 border-slate-200'"
+                                        >
+                                            📆 Lusa
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -587,9 +664,10 @@ const props = defineProps({
 const search = ref(props.filters?.search || '');
 const filterStatus = ref(props.filters?.status || '');
 const filterArea = ref(props.filters?.area_id || '');
+const filterDate = ref(props.filters?.scheduled_date || '');
 
 const hasActiveFilters = computed(() => {
-    return !!(search.value || filterStatus.value || filterArea.value);
+    return !!(search.value || filterStatus.value || filterArea.value || filterDate.value);
 });
 
 function filterByStatus(status) {
@@ -608,6 +686,7 @@ function performSearch() {
         search: search.value || undefined,
         status: filterStatus.value || undefined,
         area_id: filterArea.value || undefined,
+        scheduled_date: filterDate.value || undefined,
     }, { preserveState: true, preserveScroll: true });
 }
 
@@ -615,6 +694,7 @@ function resetFilters() {
     search.value = '';
     filterStatus.value = '';
     filterArea.value = '';
+    filterDate.value = '';
     router.get('/cbp/jadwal', {}, { preserveState: true, preserveScroll: true });
 }
 
@@ -633,6 +713,101 @@ const vClickOutside = {
     }
 };
 
+// Smart Date Helpers
+function getIsoDate(offsetDays = 0) {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function setScheduleDatePreset(offsetDays) {
+    assignForm.scheduled_date = getIsoDate(offsetDays);
+}
+
+function isDatePresetActive(offsetDays) {
+    return assignForm.scheduled_date === getIsoDate(offsetDays);
+}
+
+const indonesianMonths = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+const indonesianDays = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+function formatFullIndonesianDate(dateStr) {
+    if (!dateStr) return '-';
+    const cleanStr = String(dateStr).substring(0, 10);
+    const parts = cleanStr.split('-');
+    if (parts.length !== 3) return cleanStr;
+    const y = Number(parts[0]);
+    const m = Number(parts[1]);
+    const d = Number(parts[2]);
+    if (!y || !m || !d) return cleanStr;
+    const dateObj = new Date(y, m - 1, d);
+    const dayName = indonesianDays[dateObj.getDay()] || '';
+    const monthName = indonesianMonths[m - 1] || '';
+    return `${dayName}, ${d} ${monthName} ${y}`;
+}
+
+function formatDisplayDate(dateStr) {
+    if (!dateStr) return '-';
+    const cleanStr = String(dateStr).substring(0, 10);
+    const parts = cleanStr.split('-');
+    if (parts.length !== 3) return cleanStr;
+    const y = Number(parts[0]);
+    const m = Number(parts[1]);
+    const d = Number(parts[2]);
+    if (!y || !m || !d) return cleanStr;
+    const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    return `${d} ${shortMonths[m - 1]} ${y}`;
+}
+
+function getScheduleBadgeLabel(dateStr, status) {
+    if (!dateStr) return 'Belum Dijadwalkan';
+    const cleanStr = String(dateStr).substring(0, 10);
+    const today = getIsoDate(0);
+    const tomorrow = getIsoDate(1);
+    
+    if (cleanStr === today) return '⚡ Hari Ini';
+    if (cleanStr === tomorrow) return '📅 Besok';
+    if (cleanStr < today && status !== 'completed') return '⚠️ Terlewat';
+    return '📆 Terjadwal';
+}
+
+function getScheduleBadgeClass(dateStr, status) {
+    if (!dateStr) return 'bg-slate-100 text-slate-600 border-slate-200';
+    const cleanStr = String(dateStr).substring(0, 10);
+    const today = getIsoDate(0);
+    const tomorrow = getIsoDate(1);
+
+    if (cleanStr === today) return 'bg-cyan-50 text-cyan-800 border-cyan-200';
+    if (cleanStr === tomorrow) return 'bg-blue-50 text-blue-800 border-blue-200';
+    if (cleanStr < today && status !== 'completed') return 'bg-rose-50 text-rose-800 border-rose-200';
+    return 'bg-emerald-50 text-emerald-800 border-emerald-200';
+}
+
+function getScheduleDotClass(dateStr, status) {
+    if (!dateStr) return 'bg-slate-400';
+    const cleanStr = String(dateStr).substring(0, 10);
+    const today = getIsoDate(0);
+    const tomorrow = getIsoDate(1);
+
+    if (cleanStr === today) return 'bg-cyan-500 animate-pulse';
+    if (cleanStr === tomorrow) return 'bg-blue-500';
+    if (cleanStr < today && status !== 'completed') return 'bg-rose-500 animate-pulse';
+    return 'bg-emerald-500';
+}
+
+function getScheduleDateTextColor(dateStr, status) {
+    if (!dateStr) return 'text-slate-500';
+    const cleanStr = String(dateStr).substring(0, 10);
+    const today = getIsoDate(0);
+
+    if (cleanStr < today && status !== 'completed') return 'text-rose-700';
+    if (cleanStr === today) return 'text-cyan-700';
+    return 'text-slate-800';
+}
+
 // Assign Modal (Smart & Interactive)
 const showAssignModal = ref(false);
 const showDropdown = ref(false);
@@ -643,6 +818,7 @@ const copiedSn = ref(false);
 const assignForm = useForm({
     technicians: [],
     notes: '',
+    scheduled_date: '',
 });
 
 const avatarGradients = [
@@ -670,6 +846,7 @@ function openAssignModal(req) {
     selectedCbp.value = req;
     assignForm.technicians = req.technicians ? req.technicians.map(t => Number(t.id)) : [];
     assignForm.notes = req.notes || '';
+    assignForm.scheduled_date = req.scheduled_date ? String(req.scheduled_date).substring(0, 10) : getIsoDate(0);
     techSearch.value = '';
     copiedSn.value = false;
     showAssignModal.value = true;
@@ -786,16 +963,18 @@ function shareWhatsApp(req) {
     const text = `*DISPOSISI CABUT PERANGKAT (CBP)*\n` +
         `--------------------------------------\n` +
         `📌 *No. Tiket:* ${req.cbp_number}\n` +
+        (req.scheduled_date ? `📅 *Tgl Rencana Cabut:* ${formatFullIndonesianDate(req.scheduled_date)}\n` : '') +
         `👤 *Pelanggan:* ${cust.name || '-'} (${cust.customer_code || '-'})\n` +
         `📞 *No. HP:* ${cust.phone || '-'}\n` +
         `📍 *Alamat:* ${cust.address || '-'}\n` +
         ontInfo +
         `⚠️ *Alasan:* ${req.reason || '-'}\n` +
+        (req.technicians?.length ? `🔧 *Teknisi Ditugaskan:* ${req.technicians.map(t => t.name).join(', ')}\n` : '') +
         (req.dispatch_notes ? `📋 *Catatan Disposisi:* ${req.dispatch_notes}\n` : '') +
         (req.notes ? `📝 *Catatan Lain:* ${req.notes}\n` : '') +
         `--------------------------------------\n` +
-        `Kepada: *Kepala Teknisi*\n` +
-        `Mohon jadwalkan tim teknisi untuk penarikan/pencabutan perangkat ONT.\n` +
+        `Kepada: *Kepala Teknisi / Tim Maintenance*\n` +
+        `Mohon laksanakan penarikan/pencabutan perangkat ONT sesuai jadwal yang telah ditentukan.\n` +
         `Jadwal sistem: ${window.location.origin}/cbp/jadwal`;
 
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;

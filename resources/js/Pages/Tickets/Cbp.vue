@@ -266,6 +266,7 @@
                                 </th>
                                 <th class="p-4 w-40">Nomor CBP</th>
                                 <th class="p-4">Pelanggan</th>
+                                <th class="p-4 w-36">Tgl Rencana</th>
                                 <th class="p-4">Alasan Cabut</th>
                                 <th class="p-4">Status</th>
                                 <th class="p-4">Teknisi</th>
@@ -292,6 +293,18 @@
                                     </div>
                                     <div v-if="req.customer?.phone" class="text-[11px] text-gray-400 mt-0.5 font-mono">
                                         📞 {{ req.customer.phone }}
+                                    </div>
+                                </td>
+                                <td class="p-4">
+                                    <div class="flex flex-col gap-1">
+                                        <span v-if="req.scheduled_date" class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                                            <svg class="w-3.5 h-3.5 text-rose-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                            {{ formatDisplayDate(req.scheduled_date) }}
+                                        </span>
+                                        <span v-else class="text-slate-400 italic text-[11px]">-</span>
+                                        <span v-if="req.scheduled_date" class="px-2 py-0.5 rounded-full text-[10px] font-bold border w-max" :class="getScheduleBadgeClass(req.scheduled_date, req.status)">
+                                            {{ getScheduleBadgeLabel(req.scheduled_date, req.status) }}
+                                        </span>
                                     </div>
                                 </td>
                                 <td class="p-4">
@@ -402,7 +415,7 @@
                                 </td>
                             </tr>
                             <tr v-if="!requests.data.length">
-                                <td colspan="8" class="p-12 text-center text-gray-500">
+                                <td colspan="9" class="p-12 text-center text-gray-500">
                                     <div class="flex flex-col items-center justify-center">
                                         <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
                                             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -574,6 +587,57 @@
                                 </div>
                             </transition>
 
+                            <!-- Tanggal Rencana Pencabutan -->
+                            <div class="p-4 bg-gradient-to-br from-slate-50 via-rose-50/20 to-slate-50/80 border border-slate-200/90 rounded-2xl space-y-2.5 shadow-2xs">
+                                <div class="flex items-center justify-between">
+                                    <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                        Tanggal Rencana Pencabutan <span class="text-rose-500">*</span>
+                                    </label>
+                                    <span v-if="form.scheduled_date" class="text-[11px] font-bold text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded-md border border-rose-200/60 shadow-2xs">
+                                        {{ formatFullIndonesianDate(form.scheduled_date) }}
+                                    </span>
+                                </div>
+
+                                <div class="relative">
+                                    <input 
+                                        type="date" 
+                                        v-model="form.scheduled_date" 
+                                        class="w-full text-xs font-semibold px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 focus:outline-none transition-all shadow-2xs text-slate-800" 
+                                        required 
+                                    />
+                                </div>
+
+                                <!-- Preset Chips -->
+                                <div class="flex items-center gap-1.5 pt-0.5">
+                                    <span class="text-[10px] uppercase font-bold text-slate-400 mr-1">Pilih Cepat:</span>
+                                    <button 
+                                        type="button" 
+                                        @click="setFormSchedulePreset(0)" 
+                                        class="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all border select-none cursor-pointer"
+                                        :class="form.scheduled_date === getIsoDate(0) ? 'bg-rose-600 text-white border-rose-600 shadow-xs ring-2 ring-rose-200' : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'"
+                                    >
+                                        ⚡ Hari Ini
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        @click="setFormSchedulePreset(1)" 
+                                        class="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all border select-none cursor-pointer"
+                                        :class="form.scheduled_date === getIsoDate(1) ? 'bg-rose-600 text-white border-rose-600 shadow-xs ring-2 ring-rose-200' : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'"
+                                    >
+                                        📅 Besok
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        @click="setFormSchedulePreset(2)" 
+                                        class="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all border select-none cursor-pointer"
+                                        :class="form.scheduled_date === getIsoDate(2) ? 'bg-rose-600 text-white border-rose-600 shadow-xs ring-2 ring-rose-200' : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'"
+                                    >
+                                        📆 Lusa
+                                    </button>
+                                </div>
+                            </div>
+
                             <!-- Alasan -->
                             <div>
                                 <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2.5">Alasan Pencabutan / Stop Permanen</label>
@@ -647,6 +711,57 @@
                                 <div class="flex items-start justify-between text-xs">
                                     <span class="text-slate-500 font-medium shrink-0">Alasan Cabut:</span>
                                     <span class="font-semibold text-rose-700 text-right">{{ selectedDispatchCbp?.reason || '-' }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Tanggal Rencana Pencabutan -->
+                            <div class="p-4 bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50/80 border border-slate-200/90 rounded-2xl space-y-2.5 shadow-2xs">
+                                <div class="flex items-center justify-between">
+                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                        Tanggal Rencana Pencabutan <span class="text-blue-600">*</span>
+                                    </label>
+                                    <span v-if="dispatchForm.scheduled_date" class="text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-200/60 shadow-2xs">
+                                        {{ formatFullIndonesianDate(dispatchForm.scheduled_date) }}
+                                    </span>
+                                </div>
+
+                                <div class="relative">
+                                    <input 
+                                        type="date" 
+                                        v-model="dispatchForm.scheduled_date" 
+                                        class="w-full text-xs font-semibold px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition-all shadow-2xs text-slate-800" 
+                                        required 
+                                    />
+                                </div>
+
+                                <!-- Preset Chips -->
+                                <div class="flex items-center gap-1.5 pt-0.5">
+                                    <span class="text-[10px] uppercase font-bold text-slate-400 mr-1">Pilih Cepat:</span>
+                                    <button 
+                                        type="button" 
+                                        @click="setDispatchSchedulePreset(0)" 
+                                        class="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all border select-none cursor-pointer"
+                                        :class="dispatchForm.scheduled_date === getIsoDate(0) ? 'bg-blue-600 text-white border-blue-600 shadow-xs ring-2 ring-blue-200' : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'"
+                                    >
+                                        ⚡ Hari Ini
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        @click="setDispatchSchedulePreset(1)" 
+                                        class="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all border select-none cursor-pointer"
+                                        :class="dispatchForm.scheduled_date === getIsoDate(1) ? 'bg-blue-600 text-white border-blue-600 shadow-xs ring-2 ring-blue-200' : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'"
+                                    >
+                                        📅 Besok
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        @click="setDispatchSchedulePreset(2)" 
+                                        class="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all border select-none cursor-pointer"
+                                        :class="dispatchForm.scheduled_date === getIsoDate(2) ? 'bg-blue-600 text-white border-blue-600 shadow-xs ring-2 ring-blue-200' : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'"
+                                    >
+                                        📆 Lusa
+                                    </button>
                                 </div>
                             </div>
 
@@ -942,9 +1057,79 @@ function confirmDelete() {
 const showModal = ref(false);
 const selectedArea = ref('');
 
+function getIsoDate(daysOffset = 0) {
+    const d = new Date();
+    d.setDate(d.getDate() + daysOffset);
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function setFormSchedulePreset(daysOffset) {
+    form.scheduled_date = getIsoDate(daysOffset);
+}
+
+function setDispatchSchedulePreset(daysOffset) {
+    dispatchForm.scheduled_date = getIsoDate(daysOffset);
+}
+
+function formatFullIndonesianDate(dateStr) {
+    if (!dateStr) return '';
+    try {
+        const parts = String(dateStr).substring(0, 10).split('-');
+        if (parts.length !== 3) return dateStr;
+        const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        return d.toLocaleDateString('id-ID', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
+    } catch (e) {
+        return dateStr;
+    }
+}
+
+function formatDisplayDate(dateStr) {
+    if (!dateStr) return '-';
+    const cleanStr = String(dateStr).substring(0, 10);
+    const parts = cleanStr.split('-');
+    if (parts.length !== 3) return cleanStr;
+    const y = Number(parts[0]);
+    const m = Number(parts[1]);
+    const d = Number(parts[2]);
+    if (!y || !m || !d) return cleanStr;
+    const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    return `${d} ${shortMonths[m - 1]} ${y}`;
+}
+
+function getScheduleBadgeLabel(dateStr, status) {
+    if (!dateStr) return 'Belum Ada';
+    const cleanStr = String(dateStr).substring(0, 10);
+    const today = getIsoDate(0);
+    const tomorrow = getIsoDate(1);
+    
+    if (cleanStr === today) return '⚡ Hari Ini';
+    if (cleanStr === tomorrow) return '📅 Besok';
+    if (cleanStr < today && status !== 'completed') return '⚠️ Terlewat';
+    return '📆 Terjadwal';
+}
+
+function getScheduleBadgeClass(dateStr, status) {
+    if (!dateStr) return 'bg-slate-100 text-slate-600 border-slate-200';
+    const cleanStr = String(dateStr).substring(0, 10);
+    const today = getIsoDate(0);
+    const tomorrow = getIsoDate(1);
+
+    if (cleanStr === today) return 'bg-cyan-50 text-cyan-800 border-cyan-200';
+    if (cleanStr === tomorrow) return 'bg-blue-50 text-blue-800 border-blue-200';
+    if (cleanStr < today && status !== 'completed') return 'bg-rose-50 text-rose-800 border-rose-200';
+    return 'bg-emerald-50 text-emerald-800 border-emerald-200';
+}
+
 const form = useForm({
     customer_id: '',
     reason: '',
+    scheduled_date: getIsoDate(0),
 });
 
 const filteredCustomers = computed(() => {
@@ -959,6 +1144,7 @@ const selectedCustomerData = computed(() => {
 
 function openModal() {
     form.reset();
+    form.scheduled_date = getIsoDate(0);
     selectedArea.value = '';
     showModal.value = true;
 }
@@ -966,6 +1152,7 @@ function openModal() {
 function closeModal() {
     showModal.value = false;
     form.reset();
+    form.scheduled_date = getIsoDate(0);
     selectedArea.value = '';
 }
 
@@ -981,11 +1168,13 @@ const showDispatchModal = ref(false);
 const selectedDispatchCbp = ref(null);
 const dispatchForm = useForm({
     dispatch_notes: '',
+    scheduled_date: '',
 });
 
 function openDispatchModal(cbp) {
     selectedDispatchCbp.value = cbp;
     dispatchForm.dispatch_notes = cbp.dispatch_notes || '';
+    dispatchForm.scheduled_date = cbp.scheduled_date ? String(cbp.scheduled_date).substring(0, 10) : getIsoDate(0);
     showDispatchModal.value = true;
 }
 
@@ -1064,6 +1253,7 @@ function shareWhatsApp(req) {
         `📍 *Alamat:* ${cust.address || '-'}\n` +
         ontInfo +
         `⚠️ *Alasan:* ${req.reason || '-'}\n` +
+        (req.scheduled_date ? `📅 *Tgl Rencana Cabut:* ${formatFullIndonesianDate(req.scheduled_date)}\n` : '') +
         (req.dispatch_notes ? `📋 *Catatan Disposisi:* ${req.dispatch_notes}\n` : '') +
         (req.notes ? `📝 *Catatan Lain:* ${req.notes}\n` : '') +
         `--------------------------------------\n` +

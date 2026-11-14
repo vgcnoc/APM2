@@ -164,6 +164,10 @@ class CbpRequestController extends Controller
             });
         }
 
+        if ($request->filled('scheduled_date')) {
+            $query->whereDate('scheduled_date', $request->scheduled_date);
+        }
+
         if ($request->filled('search')) {
             $search = strtolower($request->search);
             $query->where(function($q) use ($search) {
@@ -179,7 +183,8 @@ class CbpRequestController extends Controller
             });
         }
 
-        $cbpRequests = $query->latest('sent_to_schedule_at')
+        $cbpRequests = $query
+            ->orderByRaw('CASE WHEN scheduled_date IS NULL THEN 1 ELSE 0 END ASC, scheduled_date ASC, sent_to_schedule_at DESC')
             ->paginate($request->per_page ?? 15)
             ->withQueryString();
 
@@ -200,7 +205,7 @@ class CbpRequestController extends Controller
             'counts' => $jadwalCounts,
             'technicians' => $technicians,
             'areas' => $areas,
-            'filters' => $request->only(['search', 'status', 'area_id', 'per_page']),
+            'filters' => $request->only(['search', 'status', 'area_id', 'scheduled_date', 'per_page']),
         ]);
     }
 
@@ -289,6 +294,7 @@ class CbpRequestController extends Controller
             'customer_id' => 'required|exists:customers,id',
             'reason' => 'required|string',
             'notes' => 'nullable|string',
+            'scheduled_date' => 'nullable|date',
         ]);
 
         $customer = \App\Models\Customer::findOrFail($validated['customer_id']);
@@ -306,10 +312,13 @@ class CbpRequestController extends Controller
 
         $validated['created_by'] = auth()->id();
         $validated['status'] = 'pending';
+        if (empty($validated['scheduled_date'])) {
+            $validated['scheduled_date'] = now()->toDateString();
+        }
 
         $cbp = CbpRequest::create($validated);
         
-        \App\Models\AuditLog::createLog('Buat Request CBP', $cbp, null, 'pending', 'Membuat request pencabutan perangkat untuk pelanggan ID: ' . $validated['customer_id']);
+        \App\Models\AuditLog::createLog('Buat Request CBP', $cbp, null, 'pending', 'Membuat request pencabutan perangkat untuk pelanggan ID: ' . $validated['customer_id'] . ' (Tgl Rencana: ' . $validated['scheduled_date'] . ')');
 
         return redirect()->back()->with('success', 'Data Pencabutan berhasil diekskalasi dan Pelanggan sudah di-Stop Permanen.');
     }
@@ -320,8 +329,8 @@ class CbpRequestController extends Controller
         $canAssign = $user && (
             $user->can('cbp_btn_assign') ||
             $user->can('cbp_manage') ||
-            $user->hasRole(['admin', 'kepala teknisi', 'dispatcher', 'maintenance']) ||
-            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'dispatcher', 'maintenance'])
+            $user->hasRole(['admin', 'kepala teknisi', 'dispatcher', 'maintenance', 'maintenance-1']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'dispatcher', 'maintenance', 'maintenance-1'])
         );
         if (!$canAssign) {
             abort(403, 'Anda tidak memiliki hak akses untuk menugaskan teknisi CBP.');
@@ -331,6 +340,7 @@ class CbpRequestController extends Controller
             'technicians' => 'required|array',
             'technicians.*' => 'exists:users,id',
             'notes' => 'nullable|string',
+            'scheduled_date' => 'nullable|date',
         ]);
 
         $oldStatus = $cbp->status;
@@ -338,11 +348,18 @@ class CbpRequestController extends Controller
         if ($request->has('notes')) {
             $cbpData['notes'] = $validated['notes'];
         }
+        if ($request->filled('scheduled_date')) {
+            $cbpData['scheduled_date'] = $validated['scheduled_date'];
+        } elseif (!$cbp->scheduled_date) {
+            $cbpData['scheduled_date'] = now()->toDateString();
+        }
+
         $cbp->update($cbpData);
         $cbp->technicians()->sync($validated['technicians']);
 
+        $dateLog = !empty($cbpData['scheduled_date']) ? ' Tanggal Rencana Cabut: ' . $cbpData['scheduled_date'] : '';
         $noteLog = !empty($validated['notes']) ? ' Catatan: ' . $validated['notes'] : '';
-        \App\Models\AuditLog::createLog('Penugasan Teknisi CBP', $cbp, $oldStatus, 'assigned', 'Menugaskan teknisi untuk tugas CBP.' . $noteLog);
+        \App\Models\AuditLog::createLog('Penugasan Teknisi CBP', $cbp, $oldStatus, 'assigned', 'Menugaskan teknisi untuk tugas CBP.' . $dateLog . $noteLog);
 
         return redirect()->back()->with('success', 'Tugas Pencabutan berhasil ditugaskan ke Teknisi.');
     }
@@ -460,20 +477,28 @@ class CbpRequestController extends Controller
 
         $validated = $request->validate([
             'dispatch_notes' => 'nullable|string|max:500',
+            'scheduled_date' => 'nullable|date',
         ]);
 
-        $cbp->update([
+        $updateData = [
             'sent_to_schedule_at' => now(),
             'sent_to_schedule_by' => auth()->id(),
             'dispatch_notes' => $validated['dispatch_notes'] ?: $cbp->dispatch_notes,
-        ]);
+        ];
+        if (!empty($validated['scheduled_date'])) {
+            $updateData['scheduled_date'] = $validated['scheduled_date'];
+        } elseif (!$cbp->scheduled_date) {
+            $updateData['scheduled_date'] = now()->toDateString();
+        }
+
+        $cbp->update($updateData);
 
         \App\Models\AuditLog::createLog(
             'Kirim ke Jadwal CBP',
             $cbp,
             'draft_request',
             'scheduled_ready',
-            'Tiket CBP diteruskan ke Jadwal CBP untuk penugasan teknisi.' . (!empty($validated['dispatch_notes']) ? ' Catatan Disposisi: ' . $validated['dispatch_notes'] : '')
+            'Tiket CBP diteruskan ke Jadwal CBP untuk penugasan teknisi.' . (!empty($validated['dispatch_notes']) ? ' Catatan Disposisi: ' . $validated['dispatch_notes'] : '') . (!empty($updateData['scheduled_date']) ? ' Tgl Rencana: ' . $updateData['scheduled_date'] : '')
         );
 
         return redirect()->back()->with('success', 'Tiket ' . $cbp->cbp_number . ' berhasil dikirim ke Jadwal CBP!');

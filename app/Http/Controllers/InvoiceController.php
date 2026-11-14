@@ -923,6 +923,7 @@ class InvoiceController extends Controller
         }
 
         $assignedToId = $targetUser ? $targetUser->id : null;
+        $scheduledDate = $request->input('scheduled_date') ?: now()->toDateString();
 
         if (!$existingCbp) {
             $cbp = \App\Models\CbpRequest::create([
@@ -930,6 +931,7 @@ class InvoiceController extends Controller
                 'reason' => $reason,
                 'notes' => $cbpNotes,
                 'status' => 'pending',
+                'scheduled_date' => $scheduledDate,
                 'assigned_to' => $assignedToId,
                 'created_by' => auth()->id(),
                 'sent_to_schedule_at' => now(),
@@ -946,7 +948,7 @@ class InvoiceController extends Controller
                 $cbp,
                 null,
                 'pending',
-                "Otomatis membuat tiket Cabut Perangkat untuk {$customer->name} ({$customer->customer_code}) & langsung diteruskan ke Jadwal CBP (" . ($targetUser ? "PIC: {$recipientName}" : "Antrean Jadwal") . ") saat Stop Permanen dari tagihan #{$invoice->invoice_number}."
+                "Otomatis membuat tiket Cabut Perangkat untuk {$customer->name} ({$customer->customer_code}) & langsung diteruskan ke Jadwal CBP (" . ($targetUser ? "PIC: {$recipientName}" : "Antrean Jadwal") . " • Tgl: {$scheduledDate}) saat Stop Permanen dari tagihan #{$invoice->invoice_number}."
             );
         } else {
             $cbp = $existingCbp;
@@ -955,6 +957,9 @@ class InvoiceController extends Controller
                 $updateData['sent_to_schedule_at'] = now();
                 $updateData['sent_to_schedule_by'] = auth()->id();
                 $updateData['dispatch_notes'] = 'Disposisi ulang Stop Permanen Tagihan #' . $invoice->invoice_number . ($targetUser ? ' ke ' . $recipientName : '') . ($notes ? ' | Catatan: ' . $notes : '');
+            }
+            if (!$cbp->scheduled_date && $scheduledDate) {
+                $updateData['scheduled_date'] = $scheduledDate;
             }
             if (!$cbp->assigned_to && $assignedToId) {
                 $updateData['assigned_to'] = $assignedToId;
@@ -977,9 +982,12 @@ class InvoiceController extends Controller
             }
         }
 
+        $waDateFormatted = \Carbon\Carbon::parse($scheduledDate)->locale('id')->isoFormat('dddd, D MMMM Y');
+
         $waText = "*DISPOSISI CABUT PERANGKAT (CBP)*\n";
         $waText .= "--------------------------------------\n";
         $waText .= "📌 *No. Tiket CBP:* " . $cbp->cbp_number . "\n";
+        $waText .= "📅 *Tgl Rencana Cabut:* " . $waDateFormatted . "\n";
         $waText .= "👤 *Pelanggan:* " . $customer->name . " (" . ($customer->customer_code ?: '-') . ")\n";
         $waText .= "📞 *No. HP:* " . ($customer->phone ?: '-') . "\n";
         $waText .= "📍 *Alamat:* " . ($customer->address ?: '-') . "\n";

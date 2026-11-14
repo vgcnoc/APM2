@@ -1816,6 +1816,57 @@
                                 <input v-if="stopPermanenForm.reason_preset === 'Lainnya'" type="text" v-model="stopPermanenForm.custom_reason" placeholder="Tulis alasan spesifik..." class="w-full mt-2 px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-rose-500 bg-white" required />
                             </div>
 
+                            <!-- Tanggal Rencana Pencabutan (Smart & Interactive) -->
+                            <div class="p-3.5 bg-gradient-to-br from-slate-50 via-rose-50/20 to-slate-50/80 border border-slate-200/90 rounded-2xl space-y-2.5 shadow-2xs">
+                                <div class="flex items-center justify-between">
+                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                        Tanggal Rencana Pencabutan <span class="text-rose-500">*</span>
+                                    </label>
+                                    <span v-if="stopPermanenForm.scheduled_date" class="text-[11px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200/60 shadow-2xs">
+                                        {{ formatStopDisplayDate(stopPermanenForm.scheduled_date) }}
+                                    </span>
+                                </div>
+
+                                <div class="relative">
+                                    <input 
+                                        type="date" 
+                                        v-model="stopPermanenForm.scheduled_date" 
+                                        class="w-full text-xs font-semibold px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 focus:outline-none transition-all shadow-2xs text-slate-800" 
+                                        required 
+                                    />
+                                </div>
+
+                                <!-- Preset Chips -->
+                                <div class="flex items-center gap-1.5 pt-0.5">
+                                    <span class="text-[10px] uppercase font-bold text-slate-400 mr-1">Pilih Cepat:</span>
+                                    <button 
+                                        type="button" 
+                                        @click="setStopSchedulePreset(0)" 
+                                        class="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all border select-none cursor-pointer"
+                                        :class="stopPermanenForm.scheduled_date === getStopIsoDate(0) ? 'bg-rose-600 text-white border-rose-600 shadow-xs ring-2 ring-rose-200' : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'"
+                                    >
+                                        ⚡ Hari Ini
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        @click="setStopSchedulePreset(1)" 
+                                        class="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all border select-none cursor-pointer"
+                                        :class="stopPermanenForm.scheduled_date === getStopIsoDate(1) ? 'bg-rose-600 text-white border-rose-600 shadow-xs ring-2 ring-rose-200' : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'"
+                                    >
+                                        📅 Besok
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        @click="setStopSchedulePreset(2)" 
+                                        class="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all border select-none cursor-pointer"
+                                        :class="stopPermanenForm.scheduled_date === getStopIsoDate(2) ? 'bg-rose-600 text-white border-rose-600 shadow-xs ring-2 ring-rose-200' : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'"
+                                    >
+                                        📆 Lusa
+                                    </button>
+                                </div>
+                            </div>
+
                             <!-- Tujukan ke Kepala Teknisi / Tim Maintenance -->
                             <div>
                                 <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
@@ -2438,7 +2489,35 @@ const stopPermanenForm = useForm({
     custom_reason: '',
     notes: '',
     lead_technician_id: '',
+    scheduled_date: toLocalDateString(new Date()),
 });
+
+function getStopIsoDate(daysOffset = 0) {
+    const d = new Date();
+    d.setDate(d.getDate() + daysOffset);
+    return toLocalDateString(d);
+}
+
+function setStopSchedulePreset(daysOffset) {
+    stopPermanenForm.scheduled_date = getStopIsoDate(daysOffset);
+}
+
+function formatStopDisplayDate(dateStr) {
+    if (!dateStr) return '';
+    try {
+        const parts = String(dateStr).substring(0, 10).split('-');
+        if (parts.length !== 3) return dateStr;
+        const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        return d.toLocaleDateString('id-ID', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
+    } catch (e) {
+        return dateStr;
+    }
+}
 
 const showDispatchSuccessModal = ref(false);
 const activeDispatchData = ref(null);
@@ -2462,6 +2541,7 @@ function openStopPermanenModal(row) {
     stopPermanenForm.custom_reason = '';
     stopPermanenForm.notes = '';
     stopPermanenForm.lead_technician_id = '';
+    stopPermanenForm.scheduled_date = getStopIsoDate(0);
     showStopPermanenModal.value = true;
 }
 

@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class CbpRequest extends Model
 {
     protected $fillable = [
-        'cbp_number', 'customer_id', 'reason', 'status',
+        'cbp_number', 'customer_id', 'reason', 'status', 'scheduled_date',
         'assigned_to', 'created_by', 'completed_at', 'notes',
         'start_time', 'end_time', 'photo',
         'sent_to_schedule_at', 'sent_to_schedule_by', 'dispatch_notes'
@@ -16,6 +16,7 @@ class CbpRequest extends Model
     protected function casts(): array
     {
         return [
+            'scheduled_date' => 'date:Y-m-d',
             'completed_at' => 'datetime',
             'sent_to_schedule_at' => 'datetime',
         ];
