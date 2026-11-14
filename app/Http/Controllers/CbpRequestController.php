@@ -159,8 +159,16 @@ class CbpRequestController extends Controller
             'completed_today' => $completedTodayQuery->count(),
         ];
 
-        // Tiket yang masuk ke jadwal HANYA yang sudah dikirim ke jadwal (sent_to_schedule_at tidak null)
-        $query = CbpRequest::with(['customer.areaModel', 'customer.ont.odp', 'technicians', 'creator', 'dispatcher', 'rescheduler', 'auditLogs.user'])
+        $query = CbpRequest::with([
+            'customer.areaModel',
+            'customer.ont.odp',
+            'technicians',
+            'creator',
+            'dispatcher',
+            'rescheduler',
+            'auditLogs.user',
+            'materialReturns.items.material'
+        ])
             ->whereNotNull('sent_to_schedule_at');
 
         // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
@@ -256,7 +264,15 @@ class CbpRequestController extends Controller
             'completed' => (clone $baseQuery)->where('status', 'completed')->count(),
         ];
 
-        $query = CbpRequest::with(['customer.areaModel', 'customer.ont.odp', 'customer.technicianSchedules', 'technicians', 'creator', 'auditLogs'])->whereIn('status', ['assigned', 'completed']);
+        $query = CbpRequest::with([
+            'customer.areaModel',
+            'customer.ont.odp',
+            'customer.technicianSchedules',
+            'technicians',
+            'creator',
+            'auditLogs.user',
+            'materialReturns.items.material'
+        ])->whereIn('status', ['assigned', 'completed']);
 
         // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
         DataScopeService::applyCbpScope($query);
@@ -510,17 +526,31 @@ class CbpRequestController extends Controller
             'notes' => 'nullable|string',
             'start_time' => 'required',
             'end_time' => 'required',
-            'photo' => 'nullable|image|max:2048',
+            'photo' => 'nullable',
+            'photos' => 'nullable|array',
+            'photos.*' => 'nullable|file|image|max:10240',
             'materials' => 'nullable|array',
             'materials.*.material_id' => 'required|exists:materials,id',
             'materials.*.quantity' => 'required|numeric|min:0.01',
             'materials.*.unit' => 'nullable|string',
         ]);
 
-        $photoPath = $cbp->photo;
-        if ($request->hasFile('photo')) {
-            $photoPath = $request->file('photo')->store('cbp_photos', 'public');
+        $uploadedPhotoPaths = [];
+        if ($request->hasFile('photos')) {
+            foreach ($request->file('photos') as $file) {
+                if ($file && $file->isValid()) {
+                    $uploadedPhotoPaths[] = $file->store('cbp_photos', 'public');
+                }
+            }
         }
+        if ($request->hasFile('photo')) {
+            $uploadedPhotoPaths[] = $request->file('photo')->store('cbp_photos', 'public');
+        }
+
+        // Ambil existing photos jika ada
+        $existingPhotos = is_array($cbp->photos) ? $cbp->photos : (!empty($cbp->photo) ? [$cbp->photo] : []);
+        $allPhotos = array_values(array_unique(array_filter(array_merge($existingPhotos, $uploadedPhotoPaths))));
+        $primaryPhoto = $allPhotos[0] ?? $cbp->photo;
 
         if ($cbp->status !== 'completed') {
             $validated['completed_at'] = now();
@@ -561,11 +591,19 @@ class CbpRequestController extends Controller
             'notes' => $validated['notes'] ?? $cbp->notes,
             'start_time' => $validated['start_time'],
             'end_time' => $validated['end_time'],
-            'photo' => $photoPath,
+            'photo' => $primaryPhoto,
+            'photos' => !empty($allPhotos) ? $allPhotos : null,
             'completed_at' => $validated['completed_at'] ?? $cbp->completed_at,
         ]);
 
-        \App\Models\AuditLog::createLog('Laporan CBP Selesai', $cbp, $oldStatus, 'completed', 'Menyelesaikan laporan cabut perangkat ' . $cbp->cbp_number);
+        $itemSummary = !empty($returnItems) ? ' Material dicabut: ' . count($returnItems) . ' item.' : '';
+        \App\Models\AuditLog::createLog(
+            'Laporan CBP Selesai',
+            $cbp,
+            $oldStatus,
+            'completed',
+            "Menyelesaikan laporan cabut perangkat {$cbp->cbp_number}. Jam: {$validated['start_time']} - {$validated['end_time']}." . $itemSummary . (!empty($validated['notes']) ? " Catatan: {$validated['notes']}" : '')
+        );
 
         return redirect()->back()->with('success', 'Laporan Pencabutan berhasil disimpan.');
     }

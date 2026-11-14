@@ -9,10 +9,12 @@ class CbpRequest extends Model
     protected $fillable = [
         'cbp_number', 'customer_id', 'reason', 'status', 'scheduled_date',
         'assigned_to', 'created_by', 'completed_at', 'notes',
-        'start_time', 'end_time', 'photo',
+        'start_time', 'end_time', 'photo', 'photos',
         'sent_to_schedule_at', 'sent_to_schedule_by', 'dispatch_notes',
         'rescheduled_at', 'rescheduled_by', 'reschedule_reason', 'reschedule_count'
     ];
+
+    protected $appends = ['all_photos'];
 
     protected function casts(): array
     {
@@ -22,7 +24,16 @@ class CbpRequest extends Model
             'sent_to_schedule_at' => 'datetime',
             'rescheduled_at' => 'datetime',
             'reschedule_count' => 'integer',
+            'photos' => 'array',
         ];
+    }
+
+    public function getAllPhotosAttribute(): array
+    {
+        if (!empty($this->photos) && is_array($this->photos)) {
+            return array_values(array_filter($this->photos));
+        }
+        return !empty($this->photo) ? [$this->photo] : [];
     }
 
     public function customer()
@@ -48,6 +59,12 @@ class CbpRequest extends Model
     public function rescheduler()
     {
         return $this->belongsTo(User::class, 'rescheduled_by');
+    }
+
+    public function materialReturns()
+    {
+        return $this->hasMany(MaterialTransaction::class, 'source_id')
+            ->where('source_type', 'cbp');
     }
 
     public function auditLogs()
