@@ -260,7 +260,7 @@
                                 </span>
                             </div>
 
-                            <!-- Lower line: Date & VLAN info -->
+                            <!-- Lower line: Date & VLAN & Device info -->
                             <div class="flex items-center gap-2 mt-1.5 pl-8 flex-wrap text-[10px] text-slate-500">
                                 <span v-if="getPortData(portNum).customer?.activation_date">
                                     Aktif: <strong>{{ getPortData(portNum).customer.activation_date }}</strong>
@@ -274,6 +274,13 @@
                                 </span>
                                 <span v-if="getPortData(portNum).hotspot_vlan_id" class="bg-amber-50 text-amber-800 px-1.5 py-0.2 rounded font-mono font-bold border border-amber-200">
                                     HS {{ getPortData(portNum).hotspot_vlan_id }}
+                                </span>
+
+                                <span v-if="getPortData(portNum).serial_number" class="bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-mono font-semibold text-[9px] border border-slate-200" :title="'SN ONT: ' + getPortData(portNum).serial_number">
+                                    SN: {{ getPortData(portNum).serial_number }}
+                                </span>
+                                <span v-if="getPortData(portNum).model" class="text-slate-500 font-semibold text-[9px]">
+                                    ({{ getPortData(portNum).model }})
                                 </span>
                             </div>
 
@@ -533,8 +540,10 @@ const getSocketLedClass = (portNum) => {
 const getSocketTooltip = (portNum) => {
     const data = getPortData(portNum);
     if (!data) return `Port ${portNum}: Tersedia / Siap Pakai`;
-    if (getCbpForCustomer(data.customer)) return `Port ${portNum}: ⏳ Proses CBP (${data.customer?.name})`;
-    return `Port ${portNum}: ${data.customer?.status || 'Terpakai'} - ${data.customer?.name || 'Customer'}`;
+    const snInfo = data.serial_number ? ` | SN: ${data.serial_number}` : '';
+    const phoneInfo = data.customer?.phone ? ` | HP: ${data.customer.phone}` : '';
+    if (getCbpForCustomer(data.customer)) return `Port ${portNum}: ⏳ Proses CBP (${data.customer?.name}${snInfo})`;
+    return `Port ${portNum}: ${data.customer?.status || 'Terpakai'} - ${data.customer?.name || 'Customer'}${snInfo}${phoneInfo}`;
 };
 
 const pendingInstallations = computed(() => {

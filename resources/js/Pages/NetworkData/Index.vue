@@ -111,14 +111,16 @@
                         <input
                             v-model="form.search"
                             @input="debouncedSearch"
+                            @keydown.enter.prevent="applyFiltersImmediately"
                             type="text"
                             class="w-full pl-10 pr-9 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-400 transition-all"
-                            placeholder="Cari ODC, ODP, Pelanggan..."
+                            placeholder="Cari ODC, ODP, Pelanggan, No HP, SN ONT..."
                         />
                         <button
                             v-if="form.search"
-                            @click="form.search = ''; debouncedSearch();"
+                            @click="clearSearch"
                             class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                            title="Hapus pencarian"
                         >
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
@@ -896,12 +898,23 @@ const applyFilters = () => {
     form.get(route('network-data.index'), { preserveState: true, preserveScroll: true });
 };
 
+const applyFiltersImmediately = () => {
+    if (debounceTimeout) clearTimeout(debounceTimeout);
+    applyFilters();
+};
+
 let debounceTimeout = null;
 const debouncedSearch = () => {
     if (debounceTimeout) clearTimeout(debounceTimeout);
     debounceTimeout = setTimeout(() => {
         applyFilters();
     }, 500);
+};
+
+const clearSearch = () => {
+    if (debounceTimeout) clearTimeout(debounceTimeout);
+    form.search = '';
+    applyFilters();
 };
 
 const resetFilters = () => {
@@ -911,6 +924,7 @@ const resetFilters = () => {
     form.area_id = '';
     form.status = '';
     form.search = '';
+    if (debounceTimeout) clearTimeout(debounceTimeout);
     router.get(route('network-data.index'), {}, { preserveState: true, preserveScroll: true });
 };
 

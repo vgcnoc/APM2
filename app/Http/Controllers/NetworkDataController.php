@@ -52,6 +52,7 @@ class NetworkDataController extends Controller
     public function index(Request $request): Response
     {
         @ini_set('memory_limit', '512M');
+        error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
 
         $user = auth()->user();
         if ($user && !$user->isAdmin() && !$user->can('menu_network_data')) {
@@ -65,6 +66,31 @@ class NetworkDataController extends Controller
         $areaId = $request->input('area_id');
         $status = $request->input('status');
         $search = $request->input('search');
+        if (is_string($search)) {
+            $search = trim($search);
+        }
+
+        // Prepare phone and SN/MAC search variants
+        $phoneVariants = [];
+        $cleanAlnum = '';
+        $statusMatches = [];
+        $lowerSearch = '';
+        if ($search) {
+            $cleanAlnum = preg_replace('/[^a-zA-Z0-9]/', '', $search);
+            $digitsOnly = preg_replace('/\D/', '', $search);
+            if (strlen($digitsOnly) >= 5) {
+                $phoneVariants[] = $digitsOnly;
+                if (str_starts_with($digitsOnly, '0')) {
+                    $phoneVariants[] = '62' . substr($digitsOnly, 1);
+                } elseif (str_starts_with($digitsOnly, '62')) {
+                    $phoneVariants[] = '0' . substr($digitsOnly, 2);
+                }
+            }
+            $lowerSearch = strtolower($search);
+            if (in_array($lowerSearch, ['aktif', 'active'])) $statusMatches[] = 'active';
+            if (in_array($lowerSearch, ['berhenti', 'stop', 'terminated', 'cabut'])) $statusMatches[] = 'terminated';
+            if (in_array($lowerSearch, ['isolir', 'suspend', 'suspended'])) $statusMatches[] = 'suspended';
+        }
 
         $odcRelations = [
             'olt:id,name,pon_vlans',
@@ -83,8 +109,8 @@ class NetworkDataController extends Controller
             'parent:id,name,odc_id,total_ports,used_ports,type,is_split,parent_odp_id',
             'children:id,name,odc_id,total_ports,used_ports,type,is_split,parent_odp_id',
             'onts' => function ($oq) {
-                $oq->select(['id', 'odp_id', 'port_number', 'customer_id', 'vlan_id', 'hotspot_vlan_id', 'status'])
-                   ->with('customer:id,customer_code,name,status,service_status,activation_date,created_at');
+                $oq->select(['id', 'odp_id', 'port_number', 'customer_id', 'serial_number', 'mac_address', 'brand', 'model', 'pppoe_user', 'vlan_id', 'hotspot_vlan_id', 'status'])
+                   ->with('customer:id,customer_code,name,phone,address,status,service_status,activation_date,created_at');
             },
             'surveys' => function ($sq) {
                 $sq->select(['id', 'odp_id', 'port_number', 'customer_id', 'created_at'])
@@ -98,11 +124,11 @@ class NetworkDataController extends Controller
         if (\App\Services\DataPrivacyMaskingService::isEnabledForUser($user, 'network_data')) {
             $maskedCustomerIds = \App\Services\DataPrivacyMaskingService::getMaskedCustomerIds();
             $odpRelations['onts'] = function($oq) use ($maskedCustomerIds) {
-                $oq->select(['id', 'odp_id', 'port_number', 'customer_id', 'vlan_id', 'hotspot_vlan_id', 'status'])
+                $oq->select(['id', 'odp_id', 'port_number', 'customer_id', 'serial_number', 'mac_address', 'brand', 'model', 'pppoe_user', 'vlan_id', 'hotspot_vlan_id', 'status'])
                    ->where(function($q) use ($maskedCustomerIds) {
                        $q->whereNull('customer_id')
                          ->orWhereIn('customer_id', !empty($maskedCustomerIds) ? $maskedCustomerIds : [0]);
-                   })->with('customer:id,customer_code,name,status,service_status,activation_date,created_at');
+                   })->with('customer:id,customer_code,name,phone,address,status,service_status,activation_date,created_at');
             };
         }
 
@@ -143,33 +169,87 @@ class NetworkDataController extends Controller
             $odpQuery->where('status', $status);
         }
         if ($search) {
-            $odpQuery->where(function ($q) use ($search) {
+            $odpQuery->where(function ($q) use ($search, $cleanAlnum, $phoneVariants, $lowerSearch, $statusMatches) {
+                // ODP basic info
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('address', 'like', "%{$search}%")
                   ->orWhere('description', 'like', "%{$search}%")
                   ->orWhere('start_point', 'like', "%{$search}%")
-                  ->orWhere('end_point', 'like', "%{$search}%")
-                  ->orWhereHas('parent', fn ($pq) => $pq->where('name', 'like', "%{$search}%")->orWhere('address', 'like', "%{$search}%"))
-                  ->orWhereHas('children', fn ($cq) => $cq->where('name', 'like', "%{$search}%")->orWhere('address', 'like', "%{$search}%"))
-                  ->orWhereHas('odc', function ($odcq) use ($search) {
-                      $odcq->where('name', 'like', "%{$search}%")
-                           ->orWhere('location', 'like', "%{$search}%")
-                           ->orWhereHas('parent', fn ($pq) => $pq->where('name', 'like', "%{$search}%"))
-                           ->orWhereHas('children', fn ($cq) => $cq->where('name', 'like', "%{$search}%"));
-                  })
-                  ->orWhereHas('onts', function ($oq) use ($search) {
-                      $oq->where('vlan_id', 'like', "%{$search}%")
-                         ->orWhere('hotspot_vlan_id', 'like', "%{$search}%")
-                         ->orWhereHas('customer', function ($cq) use ($search) {
-                             $cq->where('name', 'like', "%{$search}%")
-                                ->orWhere('customer_code', 'like', "%{$search}%")
-                                ->when(stripos($search, 'gratis') !== false, fn($sq) => $sq->orWhere('service_status', 'gratis'));
-                         });
-                  })
-                  ->orWhereHas('odc.olt', function ($olq) use ($search) {
-                      $olq->where('name', 'like', "%{$search}%")
-                          ->orWhere('pon_vlans', 'like', "%{$search}%");
-                  });
+                  ->orWhere('end_point', 'like', "%{$search}%");
+
+                // ODP Area
+                $q->orWhereHas('area', fn ($aq) => $aq->where('name', 'like', "%{$search}%"));
+
+                // ODP Split parent/children
+                $q->orWhereHas('parent', fn ($pq) => $pq->where('name', 'like', "%{$search}%")->orWhere('address', 'like', "%{$search}%"))
+                  ->orWhereHas('children', fn ($cq) => $cq->where('name', 'like', "%{$search}%")->orWhere('address', 'like', "%{$search}%"));
+
+                // ODC relations
+                $q->orWhereHas('odc', function ($odcq) use ($search) {
+                    $odcq->where('name', 'like', "%{$search}%")
+                         ->orWhere('location', 'like', "%{$search}%")
+                         ->orWhere('description', 'like', "%{$search}%")
+                         ->orWhereHas('area', fn ($aq) => $aq->where('name', 'like', "%{$search}%"))
+                         ->orWhereHas('parent', fn ($pq) => $pq->where('name', 'like', "%{$search}%"))
+                         ->orWhereHas('children', fn ($cq) => $cq->where('name', 'like', "%{$search}%"));
+                });
+
+                // OLT relations
+                $q->orWhereHas('odc.olt', function ($olq) use ($search) {
+                    $olq->where('name', 'like', "%{$search}%")
+                        ->orWhere('ip_address', 'like', "%{$search}%")
+                        ->orWhere('pon_vlans', 'like', "%{$search}%");
+                });
+
+                // ONTs search (SN, MAC, Brand, Model, PPPoE, IP, VLAN, WiFi)
+                $q->orWhereHas('onts', function ($oq) use ($search, $cleanAlnum, $phoneVariants, $statusMatches, $lowerSearch) {
+                    $oq->where('serial_number', 'like', "%{$search}%")
+                       ->orWhere('mac_address', 'like', "%{$search}%")
+                       ->orWhere('brand', 'like', "%{$search}%")
+                       ->orWhere('model', 'like', "%{$search}%")
+                       ->orWhere('pppoe_user', 'like', "%{$search}%")
+                       ->orWhere('ip_login', 'like', "%{$search}%")
+                       ->orWhere('wifi_ssid', 'like', "%{$search}%")
+                       ->orWhere('vlan_id', 'like', "%{$search}%")
+                       ->orWhere('hotspot_vlan_id', 'like', "%{$search}%");
+
+                    if (strlen($cleanAlnum) >= 4) {
+                        $oq->orWhereRaw("REPLACE(REPLACE(serial_number, ':', ''), '-', '') LIKE ?", ["%{$cleanAlnum}%"])
+                           ->orWhereRaw("REPLACE(REPLACE(mac_address, ':', ''), '-', '') LIKE ?", ["%{$cleanAlnum}%"]);
+                    }
+
+                    // Customer relations
+                    $oq->orWhereHas('customer', function ($cq) use ($search, $phoneVariants, $statusMatches, $lowerSearch) {
+                        $cq->where('name', 'like', "%{$search}%")
+                           ->orWhere('customer_code', 'like', "%{$search}%")
+                           ->orWhere('address', 'like', "%{$search}%")
+                           ->orWhere('email', 'like', "%{$search}%")
+                           ->orWhere('area', 'like', "%{$search}%")
+                           ->orWhereHas('areaModel', fn ($aq) => $aq->where('name', 'like', "%{$search}%"));
+
+                        foreach ($phoneVariants as $pv) {
+                            $cq->orWhere('phone', 'like', "%{$pv}%");
+                        }
+
+                        if (!empty($statusMatches)) {
+                            $cq->orWhereIn('status', $statusMatches);
+                        }
+
+                        if (stripos($lowerSearch, 'gratis') !== false) {
+                            $cq->orWhere('service_status', 'gratis');
+                        }
+                    });
+                });
+
+                // Surveys / Reserved Ports
+                $q->orWhereHas('surveys.customer', function ($scq) use ($search, $phoneVariants) {
+                    $scq->where('name', 'like', "%{$search}%")
+                        ->orWhere('customer_code', 'like', "%{$search}%")
+                        ->orWhere('address', 'like', "%{$search}%");
+                    foreach ($phoneVariants as $pv) {
+                        $scq->orWhere('phone', 'like', "%{$pv}%");
+                    }
+                });
             });
         }
 
@@ -221,9 +301,10 @@ class NetworkDataController extends Controller
                     $q->where('name', 'like', "%{$search}%")
                       ->orWhere('location', 'like', "%{$search}%")
                       ->orWhere('description', 'like', "%{$search}%")
+                      ->orWhereHas('area', fn ($aq) => $aq->where('name', 'like', "%{$search}%"))
                       ->orWhereHas('parent', fn ($pq) => $pq->where('name', 'like', "%{$search}%"))
                       ->orWhereHas('children', fn ($cq) => $cq->where('name', 'like', "%{$search}%"))
-                      ->orWhereHas('olt', fn ($oq) => $oq->where('name', 'like', "%{$search}%"));
+                      ->orWhereHas('olt', fn ($oq) => $oq->where('name', 'like', "%{$search}%")->orWhere('ip_address', 'like', "%{$search}%"));
                 });
             } else {
                 // Tanpa filter ODP/Status/Search: sertakan seluruh ODC bertipe Split agar pasangan Induk & Lanjutan tidak pernah hilang meskipun 0 ODP
