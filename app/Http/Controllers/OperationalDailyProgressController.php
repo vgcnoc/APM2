@@ -973,7 +973,7 @@ class OperationalDailyProgressController extends Controller
 
             $isDone = ($cbp->status === 'completed') || !empty($cbp->completed_at);
             $isInProgress = ($cbp->status === 'in_progress');
-            $isRescheduled = ($cbp->status === 'rescheduled');
+            $isRescheduled = ($cbp->status === 'rescheduled') || (!empty($cbp->reschedule_count) && $cbp->reschedule_count > 0 && !empty($cbp->rescheduled_at) && Carbon::parse($cbp->rescheduled_at)->isSameDay($date));
             $isAssigned = ($cbp->status === 'assigned');
 
             if ($isDone) {
@@ -983,7 +983,7 @@ class OperationalDailyProgressController extends Controller
                 $statusLabel = '🛠️ Sedang Dikerjakan';
                 $statusClass = 'in_progress';
             } elseif ($isRescheduled) {
-                $statusLabel = '🗓️ Reschedule';
+                $statusLabel = '🗓️ Reschedule' . ($cbp->scheduled_date ? ' (' . Carbon::parse($cbp->scheduled_date)->format('d/m') . ')' : '');
                 $statusClass = 'rescheduled';
             } elseif ($isAssigned) {
                 $statusLabel = '🔧 Terjadwal / Ditugaskan';
@@ -1025,6 +1025,9 @@ class OperationalDailyProgressController extends Controller
                 'is_in_progress' => $isInProgress,
                 'is_rescheduled' => $isRescheduled,
                 'is_assigned' => $isAssigned,
+                'reschedule_reason' => $cbp->reschedule_reason,
+                'reschedule_count' => (int)($cbp->reschedule_count ?? 0),
+                'rescheduled_at' => $cbp->rescheduled_at ? Carbon::parse($cbp->rescheduled_at)->toDateTimeString() : null,
                 'scheduled_date' => $cbp->scheduled_date ? Carbon::parse($cbp->scheduled_date)->toDateString() : null,
             ];
         }

@@ -2,7 +2,7 @@
     <AppLayout title="Jadwal CBP" subtitle="Manajemen Jadwal Pencabutan Perangkat">
         <div class="space-y-5">
             <!-- Stats Overview Cards (Jadwal CBP) -->
-            <div v-if="can('cbp_card_stats')" class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            <div v-if="can('cbp_card_stats')" class="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
                 <!-- Card 1: Total Jadwal -->
                 <div 
                     @click="filterByStatus('all')" 
@@ -57,7 +57,26 @@
                     <div class="text-[10px] text-blue-600/70 mt-0.5 truncate">Proses penarikan</div>
                 </div>
 
-                <!-- Card 4: Selesai Hari Ini -->
+                <!-- Card 4: Terlewat (Perlu Reschedule) -->
+                <div 
+                    @click="filterByStatus('overdue')" 
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer hover:shadow-md relative overflow-hidden group select-none" 
+                    :class="filterStatus === 'overdue' ? 'border-rose-500 ring-2 ring-rose-100 shadow-sm bg-gradient-to-br from-white to-rose-50/30' : 'border-gray-100 hover:border-rose-300'"
+                >
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-black text-rose-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                            Terlewat
+                        </span>
+                        <div class="w-7 h-7 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600 group-hover:scale-110 transition-transform">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-black text-rose-600 mt-2 tracking-tight">{{ counts?.overdue || 0 }}</div>
+                    <div class="text-[10px] text-rose-600/70 mt-0.5 truncate">Perlu reschedule</div>
+                </div>
+
+                <!-- Card 5: Selesai Hari Ini -->
                 <div 
                     class="bg-white p-4 rounded-2xl border border-gray-100 relative overflow-hidden group select-none"
                 >
@@ -98,6 +117,8 @@
                         <option value="">Semua Status Jadwal</option>
                         <option value="pending">⏳ Belum Ditugaskan</option>
                         <option value="assigned">🔵 Sedang Dikerjakan (Assigned)</option>
+                        <option value="overdue">⚠️ Terlewat (Perlu Reschedule)</option>
+                        <option value="rescheduled">🗓️ Pernah Di-Reschedule</option>
                     </select>
 
                     <select v-model="filterArea" @change="performSearch" class="px-3 py-2 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-100 text-xs bg-gray-50/60 font-semibold text-slate-700 cursor-pointer">
@@ -171,6 +192,9 @@
                                             <span class="w-1.5 h-1.5 rounded-full" :class="getScheduleDotClass(req.scheduled_date, req.status)"></span>
                                             {{ getScheduleBadgeLabel(req.scheduled_date, req.status) }}
                                         </span>
+                                        <span v-if="req.reschedule_count > 0" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider w-fit bg-amber-50 text-amber-800 border border-amber-200 mt-0.5" :title="'Telah di-reschedule ' + req.reschedule_count + 'x. Alasan: ' + (req.reschedule_reason || '-')">
+                                            <span>🗓️ Reschedule (x{{ req.reschedule_count }})</span>
+                                        </span>
                                     </div>
                                     <div v-else class="text-xs text-slate-400 italic">
                                         Belum dijadwalkan
@@ -181,6 +205,10 @@
                                     <div v-if="req.dispatch_notes" class="text-[11px] font-medium text-blue-700 bg-blue-50 border border-blue-200/60 rounded-md px-2 py-0.5 mt-1 flex items-start gap-1 max-w-xs truncate" :title="'Disposisi: ' + req.dispatch_notes">
                                         <span class="font-bold shrink-0">Disposisi:</span>
                                         <span class="truncate">{{ req.dispatch_notes }}</span>
+                                    </div>
+                                    <div v-if="req.reschedule_reason" class="text-[11px] font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2 py-0.5 mt-1 flex items-start gap-1 max-w-xs" :title="'Alasan Reschedule: ' + req.reschedule_reason">
+                                        <span class="font-bold shrink-0">Reschedule:</span>
+                                        <span class="italic truncate">{{ req.reschedule_reason }}</span>
                                     </div>
                                     <div v-if="req.notes" class="text-[10px] text-gray-400 mt-1 border-t border-gray-100 pt-1" :title="req.notes">
                                         Note: <span class="truncate">{{ req.notes }}</span>
@@ -216,7 +244,7 @@
                                     <span v-else class="text-xs text-gray-400 italic">Belum ditugaskan</span>
                                 </td>
                                 <td class="p-4 text-center">
-                                    <div class="flex items-center justify-center gap-2">
+                                    <div class="flex items-center justify-center gap-1.5 flex-wrap">
                                         <button type="button" @click="shareWhatsApp(req)" class="p-1.5 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors" title="Kirim Disposisi ke Kepala Teknisi (WhatsApp)">
                                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
                                         </button>
@@ -226,8 +254,21 @@
                                         <button v-if="req.status === 'assigned' && can('cbp_btn_assign')" @click="openAssignModal(req)" class="p-1.5 text-orange-600 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg transition-colors" title="Ubah Teknisi">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                         </button>
+                                        <!-- Tombol Aksi Reschedule (Jadwal Ulang) -->
+                                        <button 
+                                            v-if="can(['cbp_btn_reschedule', 'cbp_btn_assign', 'cbp_manage'])" 
+                                            type="button" 
+                                            @click="openRescheduleModal(req)" 
+                                            class="p-1.5 text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors group relative" 
+                                            title="Jadwalkan Ulang (Reschedule) CBP"
+                                        >
+                                            <svg class="w-4 h-4 transition-transform group-hover:rotate-45" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 12v3l2 2"/>
+                                            </svg>
+                                        </button>
                                         <button type="button" @click="openHistoryModal(req)" class="p-1.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors" title="Riwayat CBP">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
                                         </button>
                                         <button v-if="req.status === 'pending'" @click="cancelCbp(req)" class="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors" title="Batalkan CBP">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -597,6 +638,334 @@
                                     <svg v-if="assignForm.processing" class="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                     <span>{{ assignForm.processing ? 'Menyimpan...' : (assignForm.technicians.length > 0 ? `Tugaskan Sekarang (${assignForm.technicians.length})` : 'Tugaskan Teknisi') }}</span>
                                     <svg v-if="!assignForm.processing" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- Reschedule Modal (Ultra Modern, Intelligent & Complete UX) -->
+        <Teleport to="body">
+            <div v-if="showRescheduleModal" class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
+                <div class="fixed inset-0 bg-slate-950/60 backdrop-blur-md transition-opacity" @click="closeRescheduleModal"></div>
+                <div class="bg-white rounded-[28px] shadow-[0_25px_70px_-15px_rgba(15,23,42,0.3)] w-full max-w-xl relative z-10 animate-fade-in-up border border-slate-100 overflow-hidden flex flex-col max-h-[92vh]">
+                    
+                    <!-- Ambient gradient accents -->
+                    <div class="absolute -top-24 -right-24 w-56 h-56 bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-full blur-3xl pointer-events-none"></div>
+                    <div class="absolute top-1/2 -left-28 w-56 h-56 bg-gradient-to-tr from-purple-500/15 to-indigo-500/15 rounded-full blur-3xl pointer-events-none"></div>
+
+                    <!-- Header -->
+                    <div class="px-6 py-5 bg-gradient-to-r from-slate-900 via-amber-950 to-slate-900 text-white flex items-center justify-between relative overflow-hidden shrink-0">
+                        <div class="absolute -right-10 -bottom-10 w-36 h-36 bg-amber-500/20 rounded-full blur-2xl pointer-events-none"></div>
+                        
+                        <div class="flex items-center gap-3.5 relative z-10">
+                            <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/40 text-white ring-2 ring-white/10 shrink-0">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 12v3l2 2"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-black text-white tracking-tight flex items-center gap-2">
+                                    Jadwalkan Ulang (Reschedule) CBP
+                                </h3>
+                                <div class="flex items-center gap-2 mt-0.5 text-xs text-slate-300">
+                                    <span class="font-mono font-bold bg-white/15 px-2 py-0.5 rounded-md text-amber-300">{{ selectedRescheduleCbp?.cbp_number || '-' }}</span>
+                                    <span class="text-slate-400">•</span>
+                                    <span class="text-slate-300 font-medium">Penyesuaian Jadwal & Personel</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button @click="closeRescheduleModal" class="relative z-10 text-slate-300 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-xl transition-all duration-200 hover:rotate-90">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Form Content -->
+                    <form @submit.prevent="submitReschedule" class="flex flex-col relative z-10 flex-1 overflow-hidden">
+                        <div class="p-6 space-y-4 overflow-y-auto custom-scrollbar bg-slate-50/60 flex-1">
+                            
+                            <!-- Customer & Hardware Snapshot -->
+                            <div v-if="selectedRescheduleCbp?.customer" class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm space-y-3">
+                                <div class="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+                                    <div>
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <span class="text-base font-black text-slate-900">{{ selectedRescheduleCbp.customer.name }}</span>
+                                            <span class="font-mono text-xs font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
+                                                {{ selectedRescheduleCbp.customer.customer_code || '-' }}
+                                            </span>
+                                        </div>
+                                        <div class="text-xs text-slate-500 flex items-center gap-1.5 mt-1 font-medium">
+                                            <span class="inline-flex items-center gap-1 text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                                {{ selectedRescheduleCbp.customer.area_model?.name || selectedRescheduleCbp.customer.area || '-' }}
+                                            </span>
+                                            <span class="text-slate-400">•</span>
+                                            <span class="truncate max-w-[260px]" :title="selectedRescheduleCbp.customer.address">{{ selectedRescheduleCbp.customer.address || '-' }}</span>
+                                        </div>
+                                    </div>
+
+                                    <a v-if="selectedRescheduleCbp.customer.phone" 
+                                       :href="'https://wa.me/' + formatWaNumber(selectedRescheduleCbp.customer.phone)" 
+                                       target="_blank" 
+                                       class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 text-xs font-bold transition-all shadow-sm shrink-0"
+                                       title="Hubungi Pelanggan via WhatsApp">
+                                        <svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                                        <span>WA Pelanggan</span>
+                                    </a>
+                                </div>
+
+                                <!-- Schedule Comparison Banner -->
+                                <div class="bg-gradient-to-r from-amber-50/80 via-orange-50/60 to-amber-50/80 border border-amber-200/90 rounded-xl p-3 text-xs">
+                                    <div class="text-[10px] font-black uppercase tracking-wider text-amber-900 mb-1.5 flex items-center justify-between">
+                                        <span>Pergeseran Jadwal Pencabutan:</span>
+                                        <span v-if="selectedRescheduleCbp.reschedule_count > 0" class="text-amber-700 font-bold">
+                                            Reschedule ke-{{ selectedRescheduleCbp.reschedule_count + 1 }}
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center gap-2.5 flex-wrap">
+                                        <div class="bg-white/90 px-2.5 py-1 rounded-lg border border-amber-200 font-bold text-slate-700">
+                                            <span class="text-[10px] text-slate-400 block font-normal">Jadwal Lama:</span>
+                                            <span>{{ formatDisplayDate(selectedRescheduleCbp.scheduled_date) }}</span>
+                                            <span class="text-[10px] ml-1" :class="getScheduleDateTextColor(selectedRescheduleCbp.scheduled_date, selectedRescheduleCbp.status)">
+                                                ({{ getScheduleBadgeLabel(selectedRescheduleCbp.scheduled_date, selectedRescheduleCbp.status) }})
+                                            </span>
+                                        </div>
+                                        <div class="text-amber-600 font-black text-base">➔</div>
+                                        <div class="bg-amber-600 text-white px-2.5 py-1 rounded-lg shadow-sm font-bold">
+                                            <span class="text-[10px] text-amber-200 block font-normal">Jadwal Baru:</span>
+                                            <span>{{ formatDisplayDate(rescheduleForm.scheduled_date) }}</span>
+                                            <span class="text-[10px] ml-1 text-amber-100 font-normal">
+                                                ({{ getDaysDifferenceText(selectedRescheduleCbp.scheduled_date, rescheduleForm.scheduled_date) }})
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tanggal Pencabutan Baru -->
+                            <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm space-y-3">
+                                <div class="flex items-center justify-between flex-wrap gap-2">
+                                    <label class="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                        TANGGAL PENCABUTAN BARU <span class="text-rose-500">*</span>
+                                    </label>
+                                    <span v-if="rescheduleForm.scheduled_date" class="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full animate-fade-in-up">
+                                        {{ formatFullIndonesianDate(rescheduleForm.scheduled_date) }}
+                                    </span>
+                                </div>
+
+                                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                                    <div class="relative flex-1">
+                                        <input 
+                                            type="date" 
+                                            v-model="rescheduleForm.scheduled_date" 
+                                            required
+                                            class="w-full text-xs font-bold text-slate-800 px-3.5 py-2.5 bg-slate-50/80 hover:bg-white border-2 border-slate-200 rounded-xl focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 focus:outline-none transition-all cursor-pointer"
+                                        />
+                                    </div>
+                                    <div class="flex items-center gap-1.5 shrink-0 flex-wrap">
+                                        <button 
+                                            type="button" 
+                                            @click="setRescheduleDatePreset(0)" 
+                                            class="px-2.5 py-2 text-xs font-bold rounded-xl border transition-all select-none"
+                                            :class="isRescheduleDatePresetActive(0) ? 'bg-amber-600 text-white border-amber-600 shadow-sm' : 'bg-slate-100 hover:bg-amber-50 text-slate-700 border-slate-200'"
+                                        >
+                                            ⚡ Hari Ini
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            @click="setRescheduleDatePreset(1)" 
+                                            class="px-2.5 py-2 text-xs font-bold rounded-xl border transition-all select-none"
+                                            :class="isRescheduleDatePresetActive(1) ? 'bg-amber-600 text-white border-amber-600 shadow-sm' : 'bg-slate-100 hover:bg-amber-50 text-slate-700 border-slate-200'"
+                                        >
+                                            📅 Besok
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            @click="setRescheduleDatePreset(2)" 
+                                            class="px-2.5 py-2 text-xs font-bold rounded-xl border transition-all select-none"
+                                            :class="isRescheduleDatePresetActive(2) ? 'bg-amber-600 text-white border-amber-600 shadow-sm' : 'bg-slate-100 hover:bg-amber-50 text-slate-700 border-slate-200'"
+                                        >
+                                            📆 Lusa
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            @click="setRescheduleDatePreset(3)" 
+                                            class="px-2.5 py-2 text-xs font-bold rounded-xl border transition-all select-none hidden sm:block"
+                                            :class="isRescheduleDatePresetActive(3) ? 'bg-amber-600 text-white border-amber-600 shadow-sm' : 'bg-slate-100 hover:bg-amber-50 text-slate-700 border-slate-200'"
+                                        >
+                                            +3 Hari
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            @click="setRescheduleDatePreset(7)" 
+                                            class="px-2.5 py-2 text-xs font-bold rounded-xl border transition-all select-none hidden sm:block"
+                                            :class="isRescheduleDatePresetActive(7) ? 'bg-amber-600 text-white border-amber-600 shadow-sm' : 'bg-slate-100 hover:bg-amber-50 text-slate-700 border-slate-200'"
+                                        >
+                                            +1 Minggu
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Alasan Jadwal Ulang (Reschedule Reason) -->
+                            <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm space-y-2.5">
+                                <label class="text-xs font-black text-slate-800 uppercase tracking-wider block">
+                                    ALASAN JADWAL ULANG / RESCHEDULE <span class="text-rose-500">*</span>
+                                </label>
+                                <textarea 
+                                    v-model="rescheduleForm.reschedule_reason" 
+                                    rows="2" 
+                                    required
+                                    placeholder="Contoh: Pelanggan meminta tunda karena sedang di luar kota / Rumah kosong..."
+                                    class="w-full text-xs rounded-xl border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 placeholder:text-slate-400 transition-all p-3"
+                                ></textarea>
+                                
+                                <!-- Quick Preset Chips -->
+                                <div class="flex items-center gap-1.5 flex-wrap pt-0.5">
+                                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mr-1">Preset Cepat:</span>
+                                    <button type="button" 
+                                            @click="addRescheduleReason('Pelanggan Tidak Ada di Rumah')" 
+                                            class="text-[10px] font-semibold bg-slate-100 hover:bg-amber-50 hover:text-amber-800 text-slate-600 border border-slate-200 rounded-lg px-2 py-0.5 transition-all">
+                                        🏠 Rumah Kosong
+                                    </button>
+                                    <button type="button" 
+                                            @click="addRescheduleReason('Pelanggan Meminta Tunda')" 
+                                            class="text-[10px] font-semibold bg-slate-100 hover:bg-amber-50 hover:text-amber-800 text-slate-600 border border-slate-200 rounded-lg px-2 py-0.5 transition-all">
+                                        📞 Pelanggan Minta Tunda
+                                    </button>
+                                    <button type="button" 
+                                            @click="addRescheduleReason('Cuaca Buruk / Hujan Lebat')" 
+                                            class="text-[10px] font-semibold bg-slate-100 hover:bg-amber-50 hover:text-amber-800 text-slate-600 border border-slate-200 rounded-lg px-2 py-0.5 transition-all">
+                                        🌧️ Kendala Cuaca
+                                    </button>
+                                    <button type="button" 
+                                            @click="addRescheduleReason('Jadwal Terlewat / Re-alokasi Lapangan')" 
+                                            class="text-[10px] font-semibold bg-slate-100 hover:bg-amber-50 hover:text-amber-800 text-slate-600 border border-slate-200 rounded-lg px-2 py-0.5 transition-all">
+                                        ⏳ Jadwal Terlewat
+                                    </button>
+                                    <button type="button" 
+                                            @click="addRescheduleReason('Teknisi Terkendala / Overload')" 
+                                            class="text-[10px] font-semibold bg-slate-100 hover:bg-amber-50 hover:text-amber-800 text-slate-600 border border-slate-200 rounded-lg px-2 py-0.5 transition-all">
+                                        🔧 Teknisi Overload
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Opsi Penugasan Personel Lapangan (Teknisi) -->
+                            <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm space-y-3">
+                                <label class="text-xs font-black text-slate-800 uppercase tracking-wider block">
+                                    PENGATURAN TEKNISI LAPANGAN
+                                </label>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                    <label class="flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-all"
+                                           :class="rescheduleForm.technician_mode === 'keep' ? 'bg-amber-50/70 border-amber-300 text-amber-900 font-bold shadow-2xs' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'">
+                                        <input type="radio" v-model="rescheduleForm.technician_mode" value="keep" class="text-amber-600 focus:ring-amber-500">
+                                        <span class="text-xs">Tetap (Pertahankan)</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-all"
+                                           :class="rescheduleForm.technician_mode === 'change' ? 'bg-amber-50/70 border-amber-300 text-amber-900 font-bold shadow-2xs' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'">
+                                        <input type="radio" v-model="rescheduleForm.technician_mode" value="change" class="text-amber-600 focus:ring-amber-500">
+                                        <span class="text-xs">Ganti / Pilih Teknisi</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-all"
+                                           :class="rescheduleForm.technician_mode === 'reset' ? 'bg-amber-50/70 border-amber-300 text-amber-900 font-bold shadow-2xs' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'">
+                                        <input type="radio" v-model="rescheduleForm.technician_mode" value="reset" class="text-amber-600 focus:ring-amber-500">
+                                        <span class="text-xs">Reset (Jadikan Pending)</span>
+                                    </label>
+                                </div>
+
+                                <!-- Info Teknisi Saat Ini (Mode Keep) -->
+                                <div v-if="rescheduleForm.technician_mode === 'keep'" class="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+                                    <span class="font-bold text-slate-700">Teknisi Saat Ini:</span> 
+                                    {{ selectedRescheduleCbp?.technicians?.map(t => t.name).join(', ') || 'Belum ada teknisi ditugaskan (Status tetap Pending)' }}
+                                </div>
+
+                                <!-- Selector Teknisi Baru (Mode Change) -->
+                                <div v-if="rescheduleForm.technician_mode === 'change'" class="space-y-2 pt-1">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[11px] font-bold text-slate-500">Pilih personel baru:</span>
+                                        <div class="flex items-center gap-1.5 text-xs font-bold">
+                                            <button type="button" @click="rescheduleForm.technicians = technicians ? technicians.map(t => Number(t.id)) : []" class="text-blue-600 hover:text-blue-800 text-[11px]">Pilih Semua</button>
+                                            <span class="text-slate-300">|</span>
+                                            <button type="button" @click="rescheduleForm.technicians = []" class="text-slate-500 hover:text-rose-600 text-[11px]">Reset</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="relative" v-click-outside="() => showRescheduleTechDropdown = false">
+                                        <div @click="showRescheduleTechDropdown = !showRescheduleTechDropdown" 
+                                             class="w-full min-h-[48px] px-3.5 py-2 bg-slate-50/80 hover:bg-white border-2 border-slate-200 rounded-xl text-sm cursor-pointer flex items-center justify-between hover:border-amber-400 transition-all">
+                                            <div class="flex flex-wrap gap-1.5 flex-1 items-center">
+                                                <template v-if="rescheduleForm.technicians.length">
+                                                    <div v-for="(tId, idx) in rescheduleForm.technicians" :key="tId" 
+                                                         class="inline-flex items-center gap-1.5 bg-amber-50 text-amber-900 px-2 py-0.5 rounded-lg text-xs font-bold border border-amber-200">
+                                                        <span>{{ getTechnicianName(tId) }}</span>
+                                                        <span @click.stop="toggleRescheduleTech(tId)" class="hover:text-rose-600 cursor-pointer">✕</span>
+                                                    </div>
+                                                </template>
+                                                <span v-else class="text-slate-400 text-xs">Klik untuk memilih teknisi...</span>
+                                            </div>
+                                            <svg class="w-4 h-4 text-slate-400 transition-transform" :class="{'rotate-180': showRescheduleTechDropdown}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                        </div>
+
+                                        <div v-if="showRescheduleTechDropdown" class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-56 overflow-hidden flex flex-col">
+                                            <div class="p-2 border-b border-slate-100 bg-slate-50">
+                                                <input v-model="rescheduleTechSearch" type="text" placeholder="Cari nama teknisi..." class="w-full px-2.5 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-amber-500">
+                                            </div>
+                                            <div class="p-1 space-y-1 overflow-y-auto max-h-44 custom-scrollbar">
+                                                <div v-for="tech in filteredRescheduleTechnicians" :key="tech.id" 
+                                                     @click="toggleRescheduleTech(tech.id)" 
+                                                     class="flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs transition-colors"
+                                                     :class="isRescheduleTechSelected(tech.id) ? 'bg-amber-50 font-bold text-amber-900' : 'hover:bg-slate-50 text-slate-700'">
+                                                    <span>{{ tech.name }}</span>
+                                                    <span v-if="isRescheduleTechSelected(tech.id)" class="text-amber-600">✓</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Catatan Tambahan (Opsional) -->
+                            <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm space-y-2">
+                                <label class="text-xs font-black text-slate-800 uppercase tracking-wider block">
+                                    CATATAN TAMBAHAN (OPSIONAL)
+                                </label>
+                                <textarea 
+                                    v-model="rescheduleForm.notes" 
+                                    rows="2" 
+                                    placeholder="Catatan tambahan untuk tim lapangan..."
+                                    class="w-full text-xs rounded-xl border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 placeholder:text-slate-400 transition-all p-3"
+                                ></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="px-6 py-4 bg-white border-t border-slate-100 flex items-center justify-between z-10 shrink-0">
+                            <button 
+                                type="button" 
+                                @click="shareRescheduleWhatsApp(selectedRescheduleCbp, rescheduleForm.scheduled_date, rescheduleForm.reschedule_reason)" 
+                                class="px-3.5 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-colors inline-flex items-center gap-1.5"
+                                title="Buka Template Pesan WhatsApp Reschedule"
+                            >
+                                <svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                                <span>WA Reschedule</span>
+                            </button>
+
+                            <div class="flex items-center gap-2.5">
+                                <button type="button" @click="closeRescheduleModal" class="px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">
+                                    Batal
+                                </button>
+                                <button type="submit" 
+                                        :disabled="rescheduleForm.processing || !rescheduleForm.scheduled_date || !rescheduleForm.reschedule_reason" 
+                                        class="bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 hover:from-amber-700 hover:to-orange-700 text-white font-bold text-xs px-6 py-2.5 rounded-xl shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:shadow-none disabled:cursor-not-allowed flex items-center gap-2">
+                                    <svg v-if="rescheduleForm.processing" class="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span>{{ rescheduleForm.processing ? 'Menyimpan...' : 'Simpan & Jadwal Ulang' }}</span>
                                 </button>
                             </div>
                         </div>
@@ -982,6 +1351,131 @@ function shareWhatsApp(req) {
         `Kepada: *Kepala Teknisi / Tim Maintenance*\n` +
         `Mohon laksanakan penarikan/pencabutan perangkat ONT sesuai jadwal yang telah ditentukan.\n` +
         `Jadwal sistem: ${window.location.origin}/cbp/jadwal`;
+
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+}
+
+// Reschedule Modal (Smart & Interactive)
+const showRescheduleModal = ref(false);
+const selectedRescheduleCbp = ref(null);
+const rescheduleTechSearch = ref('');
+const showRescheduleTechDropdown = ref(false);
+
+const rescheduleForm = useForm({
+    scheduled_date: '',
+    reschedule_reason: '',
+    technician_mode: 'keep', // 'keep' | 'change' | 'reset'
+    technicians: [],
+    notes: '',
+});
+
+function openRescheduleModal(req) {
+    selectedRescheduleCbp.value = req;
+    rescheduleForm.scheduled_date = req.scheduled_date ? String(req.scheduled_date).substring(0, 10) : getIsoDate(1);
+    rescheduleForm.reschedule_reason = req.reschedule_reason || '';
+    rescheduleForm.notes = req.notes || '';
+    rescheduleTechSearch.value = '';
+    showRescheduleTechDropdown.value = false;
+
+    if (req.technicians && req.technicians.length) {
+        rescheduleForm.technician_mode = 'keep';
+        rescheduleForm.technicians = req.technicians.map(t => Number(t.id));
+    } else {
+        rescheduleForm.technician_mode = 'reset';
+        rescheduleForm.technicians = [];
+    }
+
+    showRescheduleModal.value = true;
+}
+
+function closeRescheduleModal() {
+    showRescheduleModal.value = false;
+    selectedRescheduleCbp.value = null;
+    rescheduleTechSearch.value = '';
+    showRescheduleTechDropdown.value = false;
+    rescheduleForm.reset();
+}
+
+function setRescheduleDatePreset(offsetDays) {
+    rescheduleForm.scheduled_date = getIsoDate(offsetDays);
+}
+
+function isRescheduleDatePresetActive(offsetDays) {
+    return rescheduleForm.scheduled_date === getIsoDate(offsetDays);
+}
+
+function addRescheduleReason(text) {
+    if (!rescheduleForm.reschedule_reason) {
+        rescheduleForm.reschedule_reason = text;
+    } else if (!rescheduleForm.reschedule_reason.includes(text)) {
+        rescheduleForm.reschedule_reason = rescheduleForm.reschedule_reason.trim() + ', ' + text;
+    }
+}
+
+function submitReschedule() {
+    if (!selectedRescheduleCbp.value) return;
+    rescheduleForm.post(`/cbp/${selectedRescheduleCbp.value.id}/reschedule`, {
+        preserveScroll: true,
+        onSuccess: () => closeRescheduleModal(),
+    });
+}
+
+function getDaysDifferenceText(oldDateStr, newDateStr) {
+    if (!oldDateStr || !newDateStr) return '';
+    const oldD = new Date(String(oldDateStr).substring(0, 10));
+    const newD = new Date(String(newDateStr).substring(0, 10));
+    const diffTime = newD.getTime() - oldD.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return 'Hari yang sama (Ganti Jam/Petugas)';
+    if (diffDays > 0) return `Maju +${diffDays} hari`;
+    return `Mundur ${Math.abs(diffDays)} hari`;
+}
+
+const filteredRescheduleTechnicians = computed(() => {
+    if (!props.technicians) return [];
+    if (!rescheduleTechSearch.value.trim()) return props.technicians;
+    const q = rescheduleTechSearch.value.toLowerCase();
+    return props.technicians.filter(t => t.name.toLowerCase().includes(q));
+});
+
+function isRescheduleTechSelected(id) {
+    const numId = Number(id);
+    return rescheduleForm.technicians.some(t => Number(t) === numId);
+}
+
+function toggleRescheduleTech(id) {
+    const numId = Number(id);
+    const index = rescheduleForm.technicians.findIndex(t => Number(t) === numId);
+    if (index === -1) {
+        rescheduleForm.technicians.push(numId);
+    } else {
+        rescheduleForm.technicians.splice(index, 1);
+    }
+}
+
+function shareRescheduleWhatsApp(cbp, newDate, reason) {
+    if (!cbp) return;
+    const cust = cbp.customer || {};
+    const ont = cust.ont || {};
+    let ontInfo = '';
+    if (ont.brand || ont.serial_number) {
+        ontInfo = `📟 *Perangkat:* ${ont.brand || ''} ${ont.model || ''} (SN: ${ont.serial_number || '-'})` + (ont.odp ? ` | ODP: ${ont.odp.name || ont.odp}` : '') + `\n`;
+    }
+
+    const text = `🗓️ *UPDATE JADWAL RESCHEDULE CABUT PERANGKAT (CBP)*\n` +
+        `--------------------------------------\n` +
+        `📌 *No. Tiket:* ${cbp.cbp_number}\n` +
+        `👤 *Pelanggan:* ${cust.name || '-'} (${cust.customer_code || '-'})\n` +
+        `📞 *No. HP:* ${cust.phone || '-'}\n` +
+        `📍 *Alamat:* ${cust.address || '-'}\n` +
+        ontInfo +
+        `📅 *Jadwal Lama:* ${cbp.scheduled_date ? formatDisplayDate(cbp.scheduled_date) : '-'}\n` +
+        `🚀 *Jadwal Baru:* ${formatFullIndonesianDate(newDate)}\n` +
+        `⚠️ *Alasan Reschedule:* ${reason || '-'}\n` +
+        (cbp.technicians?.length ? `🔧 *Teknisi:* ${cbp.technicians.map(t => t.name).join(', ')}\n` : '') +
+        `--------------------------------------\n` +
+        `Sistem VIZBILL - Jadwal CBP: ${window.location.origin}/cbp/jadwal`;
 
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');

@@ -7,6 +7,7 @@ conn.on('ready', () => {
         'cd /var/www/APM2',
         'git fetch origin main',
         'git reset --hard origin/main',
+        'php artisan migrate --force',
         'php artisan optimize:clear',
         'php artisan config:cache',
         'php artisan route:cache',

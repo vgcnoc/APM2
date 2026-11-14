@@ -10,7 +10,8 @@ class CbpRequest extends Model
         'cbp_number', 'customer_id', 'reason', 'status', 'scheduled_date',
         'assigned_to', 'created_by', 'completed_at', 'notes',
         'start_time', 'end_time', 'photo',
-        'sent_to_schedule_at', 'sent_to_schedule_by', 'dispatch_notes'
+        'sent_to_schedule_at', 'sent_to_schedule_by', 'dispatch_notes',
+        'rescheduled_at', 'rescheduled_by', 'reschedule_reason', 'reschedule_count'
     ];
 
     protected function casts(): array
@@ -19,6 +20,8 @@ class CbpRequest extends Model
             'scheduled_date' => 'date:Y-m-d',
             'completed_at' => 'datetime',
             'sent_to_schedule_at' => 'datetime',
+            'rescheduled_at' => 'datetime',
+            'reschedule_count' => 'integer',
         ];
     }
 
@@ -40,6 +43,11 @@ class CbpRequest extends Model
     public function dispatcher()
     {
         return $this->belongsTo(User::class, 'sent_to_schedule_by');
+    }
+
+    public function rescheduler()
+    {
+        return $this->belongsTo(User::class, 'rescheduled_by');
     }
 
     public function auditLogs()

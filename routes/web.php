@@ -714,6 +714,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('cbp/laporan', [\App\Http\Controllers\CbpRequestController::class, 'laporan'])->name('cbp.laporan');
     Route::post('cbp', [\App\Http\Controllers\CbpRequestController::class, 'store'])->name('cbp.store');
     Route::post('cbp/{cbp}/assign', [\App\Http\Controllers\CbpRequestController::class, 'assign'])->name('cbp.assign');
+    Route::post('cbp/{cbp}/reschedule', [\App\Http\Controllers\CbpRequestController::class, 'reschedule'])->name('cbp.reschedule');
     Route::post('cbp/{cbp}/status', [\App\Http\Controllers\CbpRequestController::class, 'updateStatus'])->name('cbp.status');
     Route::post('cbp/{cbp}/dispatch-schedule', [\App\Http\Controllers\CbpRequestController::class, 'dispatchToSchedule'])->name('cbp.dispatch-schedule');
     Route::post('cbp/{cbp}/retract-schedule', [\App\Http\Controllers\CbpRequestController::class, 'retractFromSchedule'])->name('cbp.retract-schedule');

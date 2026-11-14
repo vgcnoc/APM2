@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\CbpRequest;
+use App\Models\User;
 use App\Services\DataScopeService;
+use Carbon\Carbon;
 use Inertia\Inertia;
 
 class CbpRequestController extends Controller
@@ -136,15 +138,29 @@ class CbpRequestController extends Controller
             ->whereDate('completed_at', today());
         DataScopeService::applyCbpScope($completedTodayQuery, $user);
 
+        $todayStr = today()->toDateString();
+        $overdueCount = (clone $baseJadwalCountQuery)
+            ->whereIn('status', ['pending', 'assigned'])
+            ->whereNotNull('scheduled_date')
+            ->whereDate('scheduled_date', '<', $todayStr)
+            ->count();
+
+        $rescheduledCount = (clone $baseJadwalCountQuery)
+            ->whereIn('status', ['pending', 'assigned'])
+            ->where('reschedule_count', '>', 0)
+            ->count();
+
         $jadwalCounts = [
             'all' => (clone $baseJadwalCountQuery)->whereIn('status', ['pending', 'assigned'])->count(),
             'pending' => (clone $baseJadwalCountQuery)->where('status', 'pending')->count(),
             'assigned' => (clone $baseJadwalCountQuery)->where('status', 'assigned')->count(),
+            'overdue' => $overdueCount,
+            'rescheduled' => $rescheduledCount,
             'completed_today' => $completedTodayQuery->count(),
         ];
 
         // Tiket yang masuk ke jadwal HANYA yang sudah dikirim ke jadwal (sent_to_schedule_at tidak null)
-        $query = CbpRequest::with(['customer.areaModel', 'customer.ont.odp', 'technicians', 'creator', 'dispatcher', 'auditLogs'])
+        $query = CbpRequest::with(['customer.areaModel', 'customer.ont.odp', 'technicians', 'creator', 'dispatcher', 'rescheduler', 'auditLogs.user'])
             ->whereNotNull('sent_to_schedule_at');
 
         // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
@@ -152,7 +168,16 @@ class CbpRequestController extends Controller
 
         // Filter status jadwal
         if ($request->filled('status') && $request->status !== 'all') {
-            $query->where('status', $request->status);
+            if ($request->status === 'overdue') {
+                $query->whereIn('status', ['pending', 'assigned'])
+                    ->whereNotNull('scheduled_date')
+                    ->whereDate('scheduled_date', '<', $todayStr);
+            } elseif ($request->status === 'rescheduled') {
+                $query->whereIn('status', ['pending', 'assigned'])
+                    ->where('reschedule_count', '>', 0);
+            } else {
+                $query->where('status', $request->status);
+            }
         } else {
             $query->whereIn('status', ['pending', 'assigned']);
         }
@@ -362,6 +387,98 @@ class CbpRequestController extends Controller
         \App\Models\AuditLog::createLog('Penugasan Teknisi CBP', $cbp, $oldStatus, 'assigned', 'Menugaskan teknisi untuk tugas CBP.' . $dateLog . $noteLog);
 
         return redirect()->back()->with('success', 'Tugas Pencabutan berhasil ditugaskan ke Teknisi.');
+    }
+
+    public function reschedule(Request $request, CbpRequest $cbp)
+    {
+        $user = $request->user();
+        $canReschedule = $user && (
+            $user->can('cbp_btn_reschedule') ||
+            $user->can('cbp_btn_assign') ||
+            $user->can('cbp_btn_dispatch') ||
+            $user->can('cbp_manage') ||
+            $user->hasRole(['admin', 'kepala teknisi', 'dispatcher', 'maintenance', 'maintenance-1', 'cs', 'admin cs']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'dispatcher', 'maintenance', 'maintenance-1', 'cs', 'admin cs'])
+        );
+        if (!$canReschedule) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menjadwalkan ulang (reschedule) CBP.');
+        }
+
+        if ($cbp->status === 'completed') {
+            return redirect()->back()->with('error', 'Tiket CBP yang sudah selesai tidak dapat dijadwalkan ulang.');
+        }
+
+        if ($cbp->status === 'canceled') {
+            return redirect()->back()->with('error', 'Tiket CBP yang dibatalkan tidak dapat dijadwalkan ulang.');
+        }
+
+        $validated = $request->validate([
+            'scheduled_date' => 'required|date',
+            'reschedule_reason' => 'required|string|max:1000',
+            'technician_mode' => 'nullable|string|in:keep,change,reset',
+            'technicians' => 'nullable|array',
+            'technicians.*' => 'exists:users,id',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $oldDate = $cbp->scheduled_date ? Carbon::parse($cbp->scheduled_date)->format('d/m/Y') : 'Belum Ditentukan';
+        $newDateObj = Carbon::parse($validated['scheduled_date']);
+        $newDate = $newDateObj->format('d/m/Y');
+        $oldStatus = $cbp->status;
+
+        $updateData = [
+            'scheduled_date' => $newDateObj->toDateString(),
+            'rescheduled_at' => now(),
+            'rescheduled_by' => $user->id,
+            'reschedule_reason' => $validated['reschedule_reason'],
+            'reschedule_count' => ($cbp->reschedule_count ?? 0) + 1,
+        ];
+
+        if (!empty($validated['notes'])) {
+            $updateData['notes'] = $validated['notes'];
+        }
+
+        $techMode = $validated['technician_mode'] ?? 'keep';
+        $techLog = '';
+        if ($techMode === 'reset') {
+            $cbp->technicians()->detach();
+            $updateData['status'] = 'pending';
+            $updateData['assigned_to'] = null;
+            $techLog = ' (Teknisi di-reset menjadi Belum Ditugaskan)';
+        } elseif ($techMode === 'change') {
+            $techIds = $validated['technicians'] ?? [];
+            $cbp->technicians()->sync($techIds);
+            if (!empty($techIds)) {
+                $updateData['status'] = 'assigned';
+                $updateData['assigned_to'] = $techIds[0];
+                $techNames = User::whereIn('id', $techIds)->pluck('name')->implode(', ');
+                $techLog = " (Teknisi baru: {$techNames})";
+            } else {
+                $updateData['status'] = 'pending';
+                $updateData['assigned_to'] = null;
+                $techLog = ' (Teknisi dikosongkan / Belum Ditugaskan)';
+            }
+        } else {
+            $techNames = $cbp->technicians()->pluck('name')->implode(', ');
+            $techLog = $techNames ? " (Teknisi dipertahankan: {$techNames})" : " (Status teknisi: Belum Ditugaskan)";
+        }
+
+        if (!$cbp->sent_to_schedule_at) {
+            $updateData['sent_to_schedule_at'] = now();
+            $updateData['sent_to_schedule_by'] = $user->id;
+        }
+
+        $cbp->update($updateData);
+
+        \App\Models\AuditLog::createLog(
+            'Jadwal Ulang CBP (Reschedule)',
+            $cbp,
+            $oldStatus,
+            $cbp->status,
+            "Reschedule pencabutan dari {$oldDate} menjadi {$newDate}. Alasan: {$validated['reschedule_reason']}." . $techLog . (!empty($validated['notes']) ? " Catatan: {$validated['notes']}" : '')
+        );
+
+        return redirect()->back()->with('success', "Tiket {$cbp->cbp_number} ({$cbp->customer?->name}) berhasil di-reschedule ke tanggal {$newDate}.");
     }
 
     public function updateStatus(Request $request, CbpRequest $cbp)

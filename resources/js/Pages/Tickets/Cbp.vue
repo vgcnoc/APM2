@@ -316,6 +316,9 @@
                                     <div v-if="req.notes" class="text-[10px] text-gray-400 mt-0.5 truncate" :title="req.notes">
                                         Catatan: {{ req.notes }}
                                     </div>
+                                    <div v-if="req.reschedule_reason" class="text-[10px] text-amber-800 bg-amber-50 border border-amber-200/80 rounded px-1.5 py-0.5 mt-1 truncate" :title="'Alasan Reschedule: ' + req.reschedule_reason">
+                                        <span class="font-bold">Reschedule:</span> {{ req.reschedule_reason }}
+                                    </div>
                                 </td>
                                 <td class="p-4">
                                     <!-- Belum Dikirim ke Jadwal (Draft/Review) -->
@@ -342,6 +345,9 @@
                                     <span v-else class="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1.5 w-max bg-rose-50 text-rose-700 border-rose-200">
                                         <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
                                         Dibatalkan
+                                    </span>
+                                    <span v-if="req.reschedule_count > 0" class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200 mt-1" :title="'Telah di-reschedule ' + req.reschedule_count + 'x'">
+                                        🗓️ Reschedule (x{{ req.reschedule_count }})
                                     </span>
                                 </td>
                                 <td class="p-4">
