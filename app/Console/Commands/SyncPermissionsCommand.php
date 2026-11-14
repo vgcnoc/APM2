@@ -194,6 +194,23 @@ class SyncPermissionsCommand extends Command
         }
         $this->line("  ✓ Role CS, Staff Administrasi, Finance & HRD: hak akses Stop Permanen & Stop Sementara tagihan dipastikan aktif.");
 
+        // 7. Role Maintenance & Maintenance-1: Pastikan memiliki modul Jadwal & Laporan CBP sesuai area
+        $maintCbpRoles = Role::whereIn('name', ['maintenance', 'maintenance-1', 'Maintenance', 'Maintenance-1', 'kepala teknisi', 'Kepala Teknisi'])->get();
+        $cbpMaintPerms = [
+            'menu_cbp_jadwal',
+            'menu_cbp_laporan',
+            'cbp_card_stats',
+            'cbp_filter',
+            'cbp_btn_report',
+            'cbp_btn_assign',
+            'cbp_view_area',
+            'cbp_view_assigned',
+        ];
+        foreach ($maintCbpRoles as $mRole) {
+            $mRole->givePermissionTo(array_intersect($cbpMaintPerms, $allNames));
+        }
+        $this->line("  ✓ Role Maintenance & Maintenance-1: modul Jadwal & Laporan CBP dipastikan aktif.");
+
         // Refresh cache (Spatie + versi RBAC Inertia agar sidebar langsung mengikuti DB)
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
         \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);

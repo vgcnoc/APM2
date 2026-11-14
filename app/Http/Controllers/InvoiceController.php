@@ -390,7 +390,15 @@ class InvoiceController extends Controller
             })->orWhere('role', 'like', '%teknisi%')
               ->orWhere('role', 'like', '%maintenance%')
               ->orWhere('role', 'like', '%admin%');
-        })->orderBy('name')->get(['id', 'name', 'phone', 'role']);
+        })->with('employee')->orderBy('name')->get(['id', 'name', 'phone', 'role', 'area_id', 'accessible_areas'])->map(function($u) {
+            return [
+                'id' => $u->id,
+                'name' => $u->name,
+                'phone' => $u->phone,
+                'role' => $u->role,
+                'accessible_areas' => $u->getAccessibleAreaIds(),
+            ];
+        });
 
         return Inertia::render('Invoices/Index', [
             'invoices' => $invoices,
@@ -860,34 +868,102 @@ class InvoiceController extends Controller
         $tunggakanStr = number_format($tunggakanNominal, 0, ',', '.');
         $cbpNotes = "Eskalasi Stop Permanen dari Tagihan #{$invoice->invoice_number} (Tunggakan: Rp {$tunggakanStr})." . ($notes ? " Catatan: {$notes}" : "");
 
+        // Resolusi penanggung jawab CBP (assigned_to) dan kontak WhatsApp sesuai Area Pelanggan
+        $customerAreaId = $customer->area_id;
+        $targetUser = null;
+        $recipientName = 'Kepala Teknisi / Tim Maintenance';
+        $targetPhone = '';
+
+        if ($request->filled('lead_technician_id')) {
+            // Jika user memilih personil spesifik di dropdown
+            $targetUser = \App\Models\User::find($request->lead_technician_id);
+            if ($targetUser) {
+                $recipientName = $targetUser->name . ($targetUser->role ? ' (' . ucfirst($targetUser->role) . ')' : '');
+                $targetPhone = $targetUser->phone ?: '';
+            }
+        } else {
+            // Jika memilih "-- Semua / Default Kepala Teknisi & Maintenance --":
+            // 1. Prioritaskan PIC Maintenance / Maintenance-1 / Kepala Teknisi yang bertugas di area pelanggan tersebut
+            if ($customerAreaId) {
+                $targetUser = \App\Models\User::forAssignment()
+                    ->where(function($q) {
+                        $q->whereHas('roles', fn($rq) => $rq->whereIn('name', ['kepala teknisi', 'maintenance', 'maintenance-1', 'teknisi']))
+                          ->orWhere('role', 'like', '%maintenance%')
+                          ->orWhere('role', 'like', '%teknisi%');
+                    })
+                    ->where(function($q) use ($customerAreaId) {
+                        $q->where('area_id', $customerAreaId)
+                          ->orWhereJsonContains('accessible_areas', $customerAreaId)
+                          ->orWhereJsonContains('accessible_areas', (string) $customerAreaId)
+                          ->orWhereHas('employee', fn($eq) => $eq->where('area_id', $customerAreaId));
+                    })
+                    ->orderByRaw("CASE 
+                        WHEN role = 'maintenance-1' THEN 1 
+                        WHEN role = 'maintenance' THEN 2 
+                        WHEN role = 'kepala teknisi' THEN 3 
+                        ELSE 4 
+                    END")
+                    ->first();
+            }
+
+            // 2. Fallback jika tidak ditemukan PIC spesifik per area: ambil Kepala Teknisi / Maintenance umum
+            if (!$targetUser) {
+                $targetUser = \App\Models\User::whereHas('roles', fn($q) => $q->whereIn('name', ['kepala teknisi', 'maintenance', 'maintenance-1']))
+                    ->whereNotNull('phone')
+                    ->where('phone', '!=', '')
+                    ->first();
+            }
+
+            if ($targetUser) {
+                $areaLabel = $customer->areaModel ? $customer->areaModel->name : ($customer->area ?: '');
+                $roleLabel = $targetUser->role ? ucfirst($targetUser->role) : 'Maintenance';
+                $recipientName = $targetUser->name . ' (PIC ' . $roleLabel . ($areaLabel ? ' ' . $areaLabel : '') . ')';
+                $targetPhone = $targetUser->phone ?: '';
+            }
+        }
+
+        $assignedToId = $targetUser ? $targetUser->id : null;
+
         if (!$existingCbp) {
             $cbp = \App\Models\CbpRequest::create([
                 'customer_id' => $customer->id,
                 'reason' => $reason,
                 'notes' => $cbpNotes,
                 'status' => 'pending',
-                'assigned_to' => $request->lead_technician_id ?: null,
+                'assigned_to' => $assignedToId,
                 'created_by' => auth()->id(),
                 'sent_to_schedule_at' => now(),
                 'sent_to_schedule_by' => auth()->id(),
-                'dispatch_notes' => 'Disposisi otomatis dari Stop Permanen Tagihan #' . $invoice->invoice_number . ($notes ? ' | Catatan: ' . $notes : ''),
+                'dispatch_notes' => 'Disposisi otomatis dari Stop Permanen Tagihan #' . $invoice->invoice_number . ($targetUser ? ' ke ' . $recipientName : '') . ($notes ? ' | Catatan: ' . $notes : ''),
             ]);
+
+            if ($assignedToId) {
+                $cbp->technicians()->syncWithoutDetaching([$assignedToId]);
+            }
 
             \App\Models\AuditLog::createLog(
                 'Auto CBP dari Invoice Stop Permanen',
                 $cbp,
                 null,
                 'pending',
-                "Otomatis membuat tiket Cabut Perangkat untuk {$customer->name} ({$customer->customer_code}) & langsung diteruskan ke Jadwal CBP saat Stop Permanen dari tagihan #{$invoice->invoice_number}."
+                "Otomatis membuat tiket Cabut Perangkat untuk {$customer->name} ({$customer->customer_code}) & langsung diteruskan ke Jadwal CBP (" . ($targetUser ? "PIC: {$recipientName}" : "Antrean Jadwal") . ") saat Stop Permanen dari tagihan #{$invoice->invoice_number}."
             );
         } else {
             $cbp = $existingCbp;
+            $updateData = [];
             if (!$cbp->sent_to_schedule_at) {
-                $cbp->update([
-                    'sent_to_schedule_at' => now(),
-                    'sent_to_schedule_by' => auth()->id(),
-                    'dispatch_notes' => 'Disposisi ulang Stop Permanen dari Tagihan #' . $invoice->invoice_number . ($notes ? ' | Catatan: ' . $notes : ''),
-                ]);
+                $updateData['sent_to_schedule_at'] = now();
+                $updateData['sent_to_schedule_by'] = auth()->id();
+                $updateData['dispatch_notes'] = 'Disposisi ulang Stop Permanen Tagihan #' . $invoice->invoice_number . ($targetUser ? ' ke ' . $recipientName : '') . ($notes ? ' | Catatan: ' . $notes : '');
+            }
+            if (!$cbp->assigned_to && $assignedToId) {
+                $updateData['assigned_to'] = $assignedToId;
+            }
+            if (!empty($updateData)) {
+                $cbp->update($updateData);
+            }
+            if ($assignedToId) {
+                $cbp->technicians()->syncWithoutDetaching([$assignedToId]);
             }
         }
 
@@ -898,26 +974,6 @@ class InvoiceController extends Controller
             $ontText = ($customer->ont->brand ?: '') . ' ' . ($customer->ont->model ?: '') . ' (SN: ' . ($customer->ont->serial_number ?: '-') . ')';
             if ($customer->ont->odp) {
                 $ontText .= ' | ODP: ' . $customer->ont->odp->name;
-            }
-        }
-
-        // Target telepon & Nama Penerima Disposisi
-        $targetPhone = '';
-        $recipientName = 'Kepala Teknisi / Tim Maintenance';
-        if ($request->filled('lead_technician_id')) {
-            $targetUser = \App\Models\User::find($request->lead_technician_id);
-            if ($targetUser) {
-                $recipientName = $targetUser->name . ($targetUser->role ? ' (' . ucfirst($targetUser->role) . ')' : '');
-                if ($targetUser->phone) {
-                    $targetPhone = $targetUser->phone;
-                }
-            }
-        }
-        if (!$targetPhone) {
-            $leadUser = \App\Models\User::whereHas('roles', fn($q) => $q->whereIn('name', ['kepala teknisi', 'maintenance', 'maintenance-1']))->whereNotNull('phone')->where('phone', '!=', '')->first();
-            if ($leadUser && $leadUser->phone) {
-                $targetPhone = $leadUser->phone;
-                $recipientName = $leadUser->name . ($leadUser->role ? ' (' . ucfirst($leadUser->role) . ')' : '');
             }
         }
 

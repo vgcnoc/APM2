@@ -1822,11 +1822,15 @@
                                     Disposisikan ke Kepala Teknisi / Tim Maintenance <span class="text-slate-400 font-normal lowercase">(untuk jadwal cabut)</span>
                                 </label>
                                 <select v-model="stopPermanenForm.lead_technician_id" class="w-full text-xs font-semibold px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-none">
-                                    <option value="">-- Semua / Default Kepala Teknisi & Maintenance --</option>
+                                    <option value="">-- Otomatis Sesuai Wilayah Pelanggan (Default) --</option>
                                     <option v-for="tech in (lead_technicians || [])" :key="tech.id" :value="tech.id">
                                         {{ tech.name }} ({{ tech.role ? (tech.role.charAt(0).toUpperCase() + tech.role.slice(1)) : 'Teknisi' }}) {{ tech.phone ? '• ' + tech.phone : '' }}
                                     </option>
                                 </select>
+                                <div v-if="!stopPermanenForm.lead_technician_id && detectedAreaPic" class="mt-1.5 p-2 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-emerald-800 text-[11px]">
+                                    <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <span>Otomatis didisposisikan ke PIC Area: <strong>{{ detectedAreaPic.name }}</strong> ({{ detectedAreaPic.role }}) {{ detectedAreaPic.phone ? '• ' + detectedAreaPic.phone : '' }}</span>
+                                </div>
                             </div>
 
                             <!-- Catatan untuk Teknisi -->
@@ -2438,6 +2442,18 @@ const stopPermanenForm = useForm({
 
 const showDispatchSuccessModal = ref(false);
 const activeDispatchData = ref(null);
+
+const detectedAreaPic = computed(() => {
+    const customer = selectedStopPermanenInvoice.value?.customer;
+    if (!customer || !props.lead_technicians?.length) return null;
+    const targetAreaId = customer.area_id ? Number(customer.area_id) : null;
+    if (!targetAreaId) return null;
+
+    // Prioritaskan maintenance / maintenance-1 / teknisi yang memegang area pelanggan
+    return props.lead_technicians.find(t => 
+        Array.isArray(t.accessible_areas) && t.accessible_areas.map(Number).includes(targetAreaId)
+    ) || null;
+});
 
 function openStopPermanenModal(row) {
     selectedStopPermanenInvoice.value = row;
