@@ -53,6 +53,10 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 Daftar Tagihan <span class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats?.semua ?? 0 }}</span>
             </button>
+            <button v-can="'invoices_tab_unpaid'" @click="filterTab('belum_lunas')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'belum_lunas' ? 'text-rose-600 border-b-2 border-rose-600' : 'text-gray-500 hover:text-gray-700']">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Belum Lunas (Menunggak) <span class="bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats?.belum_lunas ?? 0 }}</span>
+            </button>
             <button v-can="'invoices_tab_unpaid'" @click="filterTab('jatuh_tempo')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'jatuh_tempo' ? 'text-red-600 border-b-2 border-red-600' : 'text-gray-500 hover:text-gray-700']">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 Tagihan Jatuh Tempo <span class="bg-red-50 text-red-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats?.jatuh_tempo ?? 0 }}</span>
@@ -79,7 +83,7 @@
             </button>
             <button v-can="'invoices_tab_isolated'" @click="filterTab('stop_sementara')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'stop_sementara' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-gray-500 hover:text-gray-700']">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                Stop Sementara <span class="bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats?.stop_sementara ?? 0 }}</span>
+                Terisolir / Stop Sementara <span class="bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats?.stop_sementara ?? 0 }}</span>
             </button>
             <button v-can="'invoices_tab_isolated'" @click="filterTab('stop_permanen')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'stop_permanen' ? 'text-red-800 border-b-2 border-red-800' : 'text-gray-500 hover:text-gray-700']">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
@@ -2086,7 +2090,7 @@ watch(() => props.filters, (newFilters) => {
 
 function filterTab(tab) {
     filterTabVal.value = tab;
-    if (['lunas', 'piutang', 'jatuh_tempo', 'prorata', 'janji_bayar'].includes(tab)) {
+    if (['lunas', 'piutang', 'jatuh_tempo', 'belum_lunas', 'prorata', 'janji_bayar'].includes(tab)) {
         filterStatusVal.value = '';
     }
     applyFilters();

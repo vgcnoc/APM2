@@ -25,82 +25,42 @@ class InvoiceController extends Controller
               ->withCount(['invoices as unpaid_invoices_count' => function ($query) use ($cycleEnd) {
                   $query->whereIn('status', ['unpaid', 'partial', 'overdue'])
                         ->where('invoice_number', 'not like', 'INV-MIG-%')
-           ->where('status', '!=', 'cancelled')
-           ->where(function($q) {
-               $q->where('period_year', '>', 2026)
-                 ->orWhere(function($sub) {
-                     $sub->where('period_year', 2026)->where('period_month', '>', 10);
-                 })
-                 ->orWhere(function($sub) {
-                     $sub->where('is_prorata', true)
-                         ->orWhere('billing_type', 'prorata');
-                 });
-           })
-           ->where(function($q) use ($cycleEnd) {
-               $q->whereNull('issued_date')
-                 ->orWhereDate('issued_date', '<=', $cycleEnd);
-           })
+                        ->where('status', '!=', 'cancelled')
+                        ->where(function($q) use ($cycleEnd) {
+                            $q->whereNull('issued_date')
+                              ->orWhereDate('issued_date', '<=', $cycleEnd);
+                        })
                         ->where('is_reseller_balance', false);
               }])
               ->withCount(['invoices as overdue_invoices_count' => function ($query) use ($today, $cycleEnd) {
                   $query->whereIn('status', ['unpaid', 'partial', 'overdue'])
                         ->where('invoice_number', 'not like', 'INV-MIG-%')
-           ->where('status', '!=', 'cancelled')
-           ->where(function($q) {
-               $q->where('period_year', '>', 2026)
-                 ->orWhere(function($sub) {
-                     $sub->where('period_year', 2026)->where('period_month', '>', 10);
-                 })
-                 ->orWhere(function($sub) {
-                     $sub->where('is_prorata', true)
-                         ->orWhere('billing_type', 'prorata');
-                 });
-           })
-           ->where(function($q) use ($cycleEnd) {
-               $q->whereNull('issued_date')
-                 ->orWhereDate('issued_date', '<=', $cycleEnd);
-           })
+                        ->where('status', '!=', 'cancelled')
+                        ->where(function($q) use ($cycleEnd) {
+                            $q->whereNull('issued_date')
+                              ->orWhereDate('issued_date', '<=', $cycleEnd);
+                        })
                         ->where('is_reseller_balance', false);
                   $this->applyOverdueCondition($query, $today);
               }])
               ->withSum(['invoices as total_unpaid_amount' => function ($query) use ($cycleEnd) {
                   $query->whereIn('status', ['unpaid', 'partial', 'overdue'])
                         ->where('invoice_number', 'not like', 'INV-MIG-%')
-           ->where('status', '!=', 'cancelled')
-           ->where(function($q) {
-               $q->where('period_year', '>', 2026)
-                 ->orWhere(function($sub) {
-                     $sub->where('period_year', 2026)->where('period_month', '>', 10);
-                 })
-                 ->orWhere(function($sub) {
-                     $sub->where('is_prorata', true)
-                         ->orWhere('billing_type', 'prorata');
-                 });
-           })
-           ->where(function($q) use ($cycleEnd) {
-               $q->whereNull('issued_date')
-                 ->orWhereDate('issued_date', '<=', $cycleEnd);
-           })
+                        ->where('status', '!=', 'cancelled')
+                        ->where(function($q) use ($cycleEnd) {
+                            $q->whereNull('issued_date')
+                              ->orWhereDate('issued_date', '<=', $cycleEnd);
+                        })
                         ->where('is_reseller_balance', false);
               }], 'amount')
               ->withSum(['invoices as total_overdue_amount' => function ($query) use ($today, $cycleEnd) {
                   $query->whereIn('status', ['unpaid', 'partial', 'overdue'])
                         ->where('invoice_number', 'not like', 'INV-MIG-%')
-           ->where('status', '!=', 'cancelled')
-           ->where(function($q) {
-               $q->where('period_year', '>', 2026)
-                 ->orWhere(function($sub) {
-                     $sub->where('period_year', 2026)->where('period_month', '>', 10);
-                 })
-                 ->orWhere(function($sub) {
-                     $sub->where('is_prorata', true)
-                         ->orWhere('billing_type', 'prorata');
-                 });
-           })
-           ->where(function($q) use ($cycleEnd) {
-               $q->whereNull('issued_date')
-                 ->orWhereDate('issued_date', '<=', $cycleEnd);
-           })
+                        ->where('status', '!=', 'cancelled')
+                        ->where(function($q) use ($cycleEnd) {
+                            $q->whereNull('issued_date')
+                              ->orWhereDate('issued_date', '<=', $cycleEnd);
+                        })
                         ->where('is_reseller_balance', false);
                   $this->applyOverdueCondition($query, $today);
               }], 'amount')
@@ -110,20 +70,10 @@ class InvoiceController extends Controller
                             $iq->whereIn('status', ['unpaid', 'partial', 'overdue'])
                                ->where('invoice_number', 'not like', 'INV-MIG-%')
                                ->where('status', '!=', 'cancelled')
-                               ->where(function($q) {
-                                   $q->where('period_year', '>', 2026)
-                                     ->orWhere(function($sub) {
-                                         $sub->where('period_year', 2026)->where('period_month', '>', 10);
-                                     })
-                                     ->orWhere(function($sub) {
-                                         $sub->where('is_prorata', true)
-                                             ->orWhere('billing_type', 'prorata');
-                                     });
+                               ->where(function($q) use ($cycleEnd) {
+                                   $q->whereNull('issued_date')
+                                     ->orWhereDate('issued_date', '<=', $cycleEnd);
                                })
-           ->where(function($q) use ($cycleEnd) {
-               $q->whereNull('issued_date')
-                 ->orWhereDate('issued_date', '<=', $cycleEnd);
-           })
                                ->where('is_reseller_balance', false);
                         });
               }], 'amount')
@@ -133,20 +83,10 @@ class InvoiceController extends Controller
                             $iq->whereIn('status', ['unpaid', 'partial', 'overdue'])
                                ->where('invoice_number', 'not like', 'INV-MIG-%')
                                ->where('status', '!=', 'cancelled')
-                               ->where(function($q) {
-                                   $q->where('period_year', '>', 2026)
-                                     ->orWhere(function($sub) {
-                                         $sub->where('period_year', 2026)->where('period_month', '>', 10);
-                                     })
-                                     ->orWhere(function($sub) {
-                                         $sub->where('is_prorata', true)
-                                             ->orWhere('billing_type', 'prorata');
-                                     });
+                               ->where(function($q) use ($cycleEnd) {
+                                   $q->whereNull('issued_date')
+                                     ->orWhereDate('issued_date', '<=', $cycleEnd);
                                })
-           ->where(function($q) use ($cycleEnd) {
-               $q->whereNull('issued_date')
-                 ->orWhereDate('issued_date', '<=', $cycleEnd);
-           })
                                ->where('is_reseller_balance', false);
                             $this->applyOverdueCondition($iq, $today);
                         });
@@ -227,21 +167,11 @@ class InvoiceController extends Controller
         // Get counts for tabs
         $baseQuery = Invoice::where('is_reseller_balance', false)
             ->where('invoice_number', 'not like', 'INV-MIG-%')
-           ->where('status', '!=', 'cancelled')
-           ->where(function($q) {
-               $q->where('period_year', '>', 2026)
-                 ->orWhere(function($sub) {
-                     $sub->where('period_year', 2026)->where('period_month', '>', 10);
-                 })
-                 ->orWhere(function($sub) {
-                     $sub->where('is_prorata', true)
-                         ->orWhere('billing_type', 'prorata');
-                 });
-           })
-           ->where(function($q) use ($cycleEnd) {
-               $q->whereNull('issued_date')
-                 ->orWhereDate('issued_date', '<=', $cycleEnd);
-           })
+            ->where('status', '!=', 'cancelled')
+            ->where(function($q) use ($cycleEnd) {
+                $q->whereNull('issued_date')
+                  ->orWhereDate('issued_date', '<=', $cycleEnd);
+            })
             ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
         $scopedAreaFilter($baseQuery);
 
@@ -323,6 +253,7 @@ class InvoiceController extends Controller
         
         $stats = [
             'semua' => (clone $baseQuery)->count(),
+            'belum_lunas' => (clone $activeBaseQuery)->whereIn('status', ['unpaid', 'overdue'])->count(),
             'jatuh_tempo' => (clone $overdueActiveQuery)->whereIn('status', ['unpaid', 'partial', 'overdue'])->count(),
             'piutang' => (clone $activeBaseQuery)->where('status', 'partial')->count(),
             'lunas' => (clone $baseQuery)->where('status', 'paid')->count(),
@@ -333,7 +264,7 @@ class InvoiceController extends Controller
                   ->orWhere('notes', 'like', '%Downgrade%');
             })->count(),
             'janji_bayar' => (clone $activeBaseQuery)->whereNotNull('promise_date')->whereIn('status', ['unpaid', 'partial', 'overdue'])->count(),
-            'stop_sementara' => (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', 'suspended')->whereNotNull('suspend_end'))->count(),
+            'stop_sementara' => (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', 'suspended'))->count(),
             'stop_permanen' => (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', 'terminated'))->count(),
 
             // Amounts for cards (Konsisten dengan data aktif & filter)
@@ -1541,18 +1472,12 @@ class InvoiceController extends Controller
             $targetQuery->where(function($q) use ($cycleEnd) {
                 $q->whereNull('issued_date')
                   ->orWhereDate('issued_date', '<=', $cycleEnd);
-            })->where(function($q) {
-                $q->where('period_year', '>', 2026)
-                  ->orWhere(function($sub) {
-                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
-                  })
-                  ->orWhere(function($sub) {
-                      $sub->where('is_prorata', true)
-                          ->orWhere('billing_type', 'prorata');
-                  });
             });
 
-            if ($tab === 'jatuh_tempo') {
+            if ($tab === 'belum_lunas') {
+                $targetQuery->whereIn('status', ['unpaid', 'overdue'])
+                    ->whereHas('customer', fn($q) => $q->where('status', '!=', 'terminated'));
+            } elseif ($tab === 'jatuh_tempo') {
                 $this->applyOverdueCondition($targetQuery, $today);
                 $targetQuery->whereIn('status', ['unpaid', 'partial', 'overdue'])
                     ->whereHas('customer', fn($q) => $q->where('status', '!=', 'terminated'));
@@ -1572,7 +1497,7 @@ class InvoiceController extends Controller
                     ->whereIn('status', ['unpaid', 'partial', 'overdue'])
                     ->whereHas('customer', fn($q) => $q->where('status', '!=', 'terminated'));
             } elseif ($tab === 'stop_sementara') {
-                $targetQuery->whereHas('customer', fn($q) => $q->where('status', 'suspended')->whereNotNull('suspend_end'));
+                $targetQuery->whereHas('customer', fn($q) => $q->where('status', 'suspended'));
             } elseif ($tab === 'stop_permanen') {
                 $targetQuery->whereHas('customer', fn($q) => $q->where('status', 'terminated'));
             }
