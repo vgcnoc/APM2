@@ -844,7 +844,13 @@ const filteredTechnicians = computed(() => {
 
 function openAssignModal(req) {
     selectedCbp.value = req;
-    assignForm.technicians = req.technicians ? req.technicians.map(t => Number(t.id)) : [];
+    // Tiket yang baru masuk / pending (belum pernah di-assign secara resmi) HARUS selalu mulai dalam keadaan kosong (0 Terpilih),
+    // sehingga Kepala Teknisi / Admin bebas memilih teknisi lapangan tanpa ada yang terpilih otomatis secara prematur.
+    if (req.status === 'assigned' && req.technicians && req.technicians.length) {
+        assignForm.technicians = req.technicians.map(t => Number(t.id));
+    } else {
+        assignForm.technicians = [];
+    }
     assignForm.notes = req.notes || '';
     assignForm.scheduled_date = req.scheduled_date ? String(req.scheduled_date).substring(0, 10) : getIsoDate(0);
     techSearch.value = '';

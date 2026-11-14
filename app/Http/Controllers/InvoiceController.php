@@ -939,10 +939,6 @@ class InvoiceController extends Controller
                 'dispatch_notes' => 'Disposisi otomatis dari Stop Permanen Tagihan #' . $invoice->invoice_number . ($targetUser ? ' ke ' . $recipientName : '') . ($notes ? ' | Catatan: ' . $notes : ''),
             ]);
 
-            if ($assignedToId) {
-                $cbp->technicians()->syncWithoutDetaching([$assignedToId]);
-            }
-
             \App\Models\AuditLog::createLog(
                 'Auto CBP dari Invoice Stop Permanen',
                 $cbp,
@@ -966,9 +962,6 @@ class InvoiceController extends Controller
             }
             if (!empty($updateData)) {
                 $cbp->update($updateData);
-            }
-            if ($assignedToId) {
-                $cbp->technicians()->syncWithoutDetaching([$assignedToId]);
             }
         }
 
