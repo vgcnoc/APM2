@@ -562,11 +562,9 @@ const form = ref({
     scope: props.settings.scope || 'all_except_super_admin',
     target_roles: props.settings.target_roles || [],
     target_users: props.settings.target_users || [],
-    hide_sidebar_menu: props.settings.hide_sidebar_menu !== false,
+    hide_sidebar_menu: !!props.settings.hide_sidebar_menu,
     modules: props.settings.modules || [
-        'tax_report', 'customers', 'invoices', 'billing', 'financial_reports',
-        'monitoring_pelanggan',
-        'network_data', 'onts', 'network_map', 'pgk_tickets', 'technician_monitoring'
+        'tax_report', 'customers', 'invoices', 'billing', 'financial_reports'
     ],
 });
 
