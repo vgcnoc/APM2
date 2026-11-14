@@ -1816,15 +1816,15 @@
                                 <input v-if="stopPermanenForm.reason_preset === 'Lainnya'" type="text" v-model="stopPermanenForm.custom_reason" placeholder="Tulis alasan spesifik..." class="w-full mt-2 px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-rose-500 bg-white" required />
                             </div>
 
-                            <!-- Tujukan ke Kepala Teknisi -->
+                            <!-- Tujukan ke Kepala Teknisi / Tim Maintenance -->
                             <div>
                                 <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                                    Disposisikan ke Kepala Teknisi <span class="text-slate-400 font-normal lowercase">(untuk jadwal cabut)</span>
+                                    Disposisikan ke Kepala Teknisi / Tim Maintenance <span class="text-slate-400 font-normal lowercase">(untuk jadwal cabut)</span>
                                 </label>
                                 <select v-model="stopPermanenForm.lead_technician_id" class="w-full text-xs font-semibold px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-none">
-                                    <option value="">-- Semua / Default Kepala Teknisi --</option>
+                                    <option value="">-- Semua / Default Kepala Teknisi & Maintenance --</option>
                                     <option v-for="tech in (lead_technicians || [])" :key="tech.id" :value="tech.id">
-                                        {{ tech.name }} {{ tech.phone ? '(' + tech.phone + ')' : '' }}
+                                        {{ tech.name }} ({{ tech.role ? (tech.role.charAt(0).toUpperCase() + tech.role.slice(1)) : 'Teknisi' }}) {{ tech.phone ? '• ' + tech.phone : '' }}
                                     </option>
                                 </select>
                             </div>
@@ -1880,12 +1880,12 @@
                     </div>
 
                     <p class="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 text-left">
-                        Pelanggan <strong>{{ activeDispatchData?.customer_name }}</strong> telah di-Stop Permanen dan otomatis masuk antrean Cabut Perangkat. Silakan teruskan disposisi ke Kepala Teknisi untuk mengatur jadwal pencabutan.
+                        Pelanggan <strong>{{ activeDispatchData?.customer_name }}</strong> telah di-Stop Permanen dan otomatis masuk Jadwal Cabut Perangkat. Silakan teruskan disposisi via WhatsApp ke Kepala Teknisi / Tim Maintenance untuk mengatur teknisi pencabutan.
                     </p>
 
                     <div class="space-y-2 pt-2">
                         <button type="button" @click="sendWhatsAppToLead" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl text-sm shadow-md shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all">
-                            <span>📲</span> Kirim ke Kepala Teknisi via WhatsApp
+                            <span>📲</span> Kirim Disposisi via WhatsApp
                         </button>
 
                         <div class="flex gap-2">

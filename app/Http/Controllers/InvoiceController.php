@@ -386,10 +386,11 @@ class InvoiceController extends Controller
 
         $leadTechnicians = fn () => \App\Models\User::forAssignment()->where(function($q) {
             $q->whereHas('roles', function($rq) {
-                $rq->whereIn('name', ['kepala teknisi', 'teknisi', 'admin']);
+                $rq->whereIn('name', ['kepala teknisi', 'maintenance', 'maintenance-1', 'teknisi', 'teknisi tim serbu', 'tim serbu', 'admin']);
             })->orWhere('role', 'like', '%teknisi%')
+              ->orWhere('role', 'like', '%maintenance%')
               ->orWhere('role', 'like', '%admin%');
-        })->orderBy('name')->get(['id', 'name', 'phone']);
+        })->orderBy('name')->get(['id', 'name', 'phone', 'role']);
 
         return Inertia::render('Invoices/Index', [
             'invoices' => $invoices,
@@ -867,6 +868,9 @@ class InvoiceController extends Controller
                 'status' => 'pending',
                 'assigned_to' => $request->lead_technician_id ?: null,
                 'created_by' => auth()->id(),
+                'sent_to_schedule_at' => now(),
+                'sent_to_schedule_by' => auth()->id(),
+                'dispatch_notes' => 'Disposisi otomatis dari Stop Permanen Tagihan #' . $invoice->invoice_number . ($notes ? ' | Catatan: ' . $notes : ''),
             ]);
 
             \App\Models\AuditLog::createLog(
@@ -874,19 +878,46 @@ class InvoiceController extends Controller
                 $cbp,
                 null,
                 'pending',
-                "Otomatis membuat tiket Cabut Perangkat untuk {$customer->name} ({$customer->customer_code}) saat Stop Permanen dari tagihan #{$invoice->invoice_number}."
+                "Otomatis membuat tiket Cabut Perangkat untuk {$customer->name} ({$customer->customer_code}) & langsung diteruskan ke Jadwal CBP saat Stop Permanen dari tagihan #{$invoice->invoice_number}."
             );
         } else {
             $cbp = $existingCbp;
+            if (!$cbp->sent_to_schedule_at) {
+                $cbp->update([
+                    'sent_to_schedule_at' => now(),
+                    'sent_to_schedule_by' => auth()->id(),
+                    'dispatch_notes' => 'Disposisi ulang Stop Permanen dari Tagihan #' . $invoice->invoice_number . ($notes ? ' | Catatan: ' . $notes : ''),
+                ]);
+            }
         }
 
-        // 3. Susun teks disposisi WhatsApp untuk Kepala Teknisi
+        // 3. Susun teks disposisi WhatsApp untuk Kepala Teknisi / Tim Maintenance
         $customer->loadMissing(['ont.odp', 'areaModel']);
         $ontText = '-';
         if ($customer->ont) {
             $ontText = ($customer->ont->brand ?: '') . ' ' . ($customer->ont->model ?: '') . ' (SN: ' . ($customer->ont->serial_number ?: '-') . ')';
             if ($customer->ont->odp) {
                 $ontText .= ' | ODP: ' . $customer->ont->odp->name;
+            }
+        }
+
+        // Target telepon & Nama Penerima Disposisi
+        $targetPhone = '';
+        $recipientName = 'Kepala Teknisi / Tim Maintenance';
+        if ($request->filled('lead_technician_id')) {
+            $targetUser = \App\Models\User::find($request->lead_technician_id);
+            if ($targetUser) {
+                $recipientName = $targetUser->name . ($targetUser->role ? ' (' . ucfirst($targetUser->role) . ')' : '');
+                if ($targetUser->phone) {
+                    $targetPhone = $targetUser->phone;
+                }
+            }
+        }
+        if (!$targetPhone) {
+            $leadUser = \App\Models\User::whereHas('roles', fn($q) => $q->whereIn('name', ['kepala teknisi', 'maintenance', 'maintenance-1']))->whereNotNull('phone')->where('phone', '!=', '')->first();
+            if ($leadUser && $leadUser->phone) {
+                $targetPhone = $leadUser->phone;
+                $recipientName = $leadUser->name . ($leadUser->role ? ' (' . ucfirst($leadUser->role) . ')' : '');
             }
         }
 
@@ -908,24 +939,9 @@ class InvoiceController extends Controller
             $waText .= "📝 *Catatan Admin:* " . $notes . "\n";
         }
         $waText .= "--------------------------------------\n";
-        $waText .= "Kepada: *Kepala Teknisi*\n";
-        $waText .= "Mohon untuk segera menjadwalkan tim teknisi untuk penarikan/pencabutan perangkat di lokasi pelanggan.\n";
+        $waText .= "Kepada: *" . $recipientName . "*\n";
+        $waText .= "Mohon untuk segera mengatur jadwal tim teknisi untuk penarikan/pencabutan perangkat di lokasi pelanggan.\n";
         $waText .= "Kelola jadwal di sistem: " . route('cbp.jadwal');
-
-        // Target telepon
-        $targetPhone = '';
-        if ($request->filled('lead_technician_id')) {
-            $targetUser = \App\Models\User::find($request->lead_technician_id);
-            if ($targetUser && $targetUser->phone) {
-                $targetPhone = $targetUser->phone;
-            }
-        }
-        if (!$targetPhone) {
-            $leadUser = \App\Models\User::whereHas('roles', fn($q) => $q->where('name', 'kepala teknisi'))->first();
-            if ($leadUser && $leadUser->phone) {
-                $targetPhone = $leadUser->phone;
-            }
-        }
 
         return redirect()->back()->with([
             'success' => $wasAlreadyTerminated
