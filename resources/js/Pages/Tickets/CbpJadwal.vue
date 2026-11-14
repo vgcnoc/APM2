@@ -440,37 +440,37 @@
                                     </span>
                                 </div>
 
-                                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                                    <div class="relative flex-1">
+                                <div class="space-y-2.5">
+                                    <div class="relative">
                                         <input 
                                             type="date" 
                                             v-model="assignForm.scheduled_date" 
                                             required
-                                            class="w-full text-xs font-bold text-slate-800 px-3.5 py-2.5 bg-slate-50/80 hover:bg-white border-2 border-slate-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 focus:outline-none transition-all cursor-pointer"
+                                            class="w-full text-xs font-bold text-slate-800 px-3.5 py-2.5 bg-slate-50/80 hover:bg-white border-2 border-slate-200 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 focus:outline-none transition-all cursor-pointer shadow-2xs"
                                         />
                                     </div>
-                                    <div class="flex items-center gap-1.5 shrink-0">
+                                    <div class="grid grid-cols-3 gap-1.5 sm:gap-2">
                                         <button 
                                             type="button" 
                                             @click="setScheduleDatePreset(0)" 
-                                            class="flex-1 sm:flex-initial px-3 py-2 text-xs font-bold rounded-xl border transition-all select-none"
-                                            :class="isDatePresetActive(0) ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-slate-100 hover:bg-indigo-50 text-slate-700 border-slate-200'"
+                                            class="px-2.5 py-2 text-xs font-bold rounded-xl border transition-all select-none text-center truncate"
+                                            :class="isDatePresetActive(0) ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-slate-50 hover:bg-indigo-50 text-slate-700 border-slate-200 hover:border-indigo-300'"
                                         >
                                             ⚡ Hari Ini
                                         </button>
                                         <button 
                                             type="button" 
                                             @click="setScheduleDatePreset(1)" 
-                                            class="flex-1 sm:flex-initial px-3 py-2 text-xs font-bold rounded-xl border transition-all select-none"
-                                            :class="isDatePresetActive(1) ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-slate-100 hover:bg-indigo-50 text-slate-700 border-slate-200'"
+                                            class="px-2.5 py-2 text-xs font-bold rounded-xl border transition-all select-none text-center truncate"
+                                            :class="isDatePresetActive(1) ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-slate-50 hover:bg-indigo-50 text-slate-700 border-slate-200 hover:border-indigo-300'"
                                         >
                                             📅 Besok
                                         </button>
                                         <button 
                                             type="button" 
                                             @click="setScheduleDatePreset(2)" 
-                                            class="flex-1 sm:flex-initial px-3 py-2 text-xs font-bold rounded-xl border transition-all select-none"
-                                            :class="isDatePresetActive(2) ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-slate-100 hover:bg-indigo-50 text-slate-700 border-slate-200'"
+                                            class="px-2.5 py-2 text-xs font-bold rounded-xl border transition-all select-none text-center truncate"
+                                            :class="isDatePresetActive(2) ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-slate-50 hover:bg-indigo-50 text-slate-700 border-slate-200 hover:border-indigo-300'"
                                         >
                                             📆 Lusa
                                         </button>
@@ -669,68 +669,68 @@
         <Teleport to="body">
             <div v-if="showRescheduleModal" class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
                 <div class="fixed inset-0 bg-slate-950/60 backdrop-blur-md transition-opacity" @click="closeRescheduleModal"></div>
-                <div class="bg-white rounded-[28px] shadow-[0_25px_70px_-15px_rgba(15,23,42,0.3)] w-full max-w-xl relative z-10 animate-fade-in-up border border-slate-100 overflow-hidden flex flex-col max-h-[92vh]">
+                <div class="bg-white rounded-[28px] shadow-[0_25px_70px_-15px_rgba(15,23,42,0.3)] w-full max-w-xl sm:max-w-2xl relative z-10 animate-fade-in-up border border-slate-100 overflow-hidden flex flex-col max-h-[92vh]">
                     
                     <!-- Ambient gradient accents -->
                     <div class="absolute -top-24 -right-24 w-56 h-56 bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-full blur-3xl pointer-events-none"></div>
                     <div class="absolute top-1/2 -left-28 w-56 h-56 bg-gradient-to-tr from-purple-500/15 to-indigo-500/15 rounded-full blur-3xl pointer-events-none"></div>
 
                     <!-- Header -->
-                    <div class="px-6 py-5 bg-gradient-to-r from-slate-900 via-amber-950 to-slate-900 text-white flex items-center justify-between relative overflow-hidden shrink-0">
+                    <div class="px-5 sm:px-6 py-4 sm:py-5 bg-gradient-to-r from-slate-900 via-amber-950 to-slate-900 text-white flex items-center justify-between relative overflow-hidden shrink-0">
                         <div class="absolute -right-10 -bottom-10 w-36 h-36 bg-amber-500/20 rounded-full blur-2xl pointer-events-none"></div>
                         
-                        <div class="flex items-center gap-3.5 relative z-10">
-                            <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/40 text-white ring-2 ring-white/10 shrink-0">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="flex items-center gap-3 sm:gap-3.5 relative z-10 min-w-0">
+                            <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/40 text-white ring-2 ring-white/10 shrink-0">
+                                <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 12v3l2 2"/>
                                 </svg>
                             </div>
-                            <div>
-                                <h3 class="text-lg font-black text-white tracking-tight flex items-center gap-2">
+                            <div class="min-w-0">
+                                <h3 class="text-base sm:text-lg font-black text-white tracking-tight truncate">
                                     Jadwalkan Ulang (Reschedule) CBP
                                 </h3>
-                                <div class="flex items-center gap-2 mt-0.5 text-xs text-slate-300">
-                                    <span class="font-mono font-bold bg-white/15 px-2 py-0.5 rounded-md text-amber-300">{{ selectedRescheduleCbp?.cbp_number || '-' }}</span>
+                                <div class="flex items-center gap-1.5 sm:gap-2 mt-0.5 text-xs text-slate-300 flex-wrap">
+                                    <span class="font-mono font-bold bg-white/15 px-2 py-0.5 rounded-md text-amber-300 text-[11px] sm:text-xs">{{ selectedRescheduleCbp?.cbp_number || '-' }}</span>
                                     <span class="text-slate-400">•</span>
-                                    <span class="text-slate-300 font-medium">Penyesuaian Jadwal & Personel</span>
+                                    <span class="text-slate-300 font-medium text-[11px] sm:text-xs">Penyesuaian Jadwal & Personel</span>
                                 </div>
                             </div>
                         </div>
 
-                        <button @click="closeRescheduleModal" class="relative z-10 text-slate-300 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-xl transition-all duration-200 hover:rotate-90">
+                        <button @click="closeRescheduleModal" class="relative z-10 text-slate-300 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-xl transition-all duration-200 hover:rotate-90 shrink-0 ml-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
 
                     <!-- Form Content -->
                     <form @submit.prevent="submitReschedule" class="flex flex-col relative z-10 flex-1 overflow-hidden">
-                        <div class="p-6 space-y-4 overflow-y-auto custom-scrollbar bg-slate-50/60 flex-1">
+                        <div class="p-4 sm:p-6 space-y-4 overflow-y-auto custom-scrollbar bg-slate-50/60 flex-1">
                             
                             <!-- Customer & Hardware Snapshot -->
                             <div v-if="selectedRescheduleCbp?.customer" class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm space-y-3">
-                                <div class="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
-                                    <div>
+                                <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-slate-100 pb-3">
+                                    <div class="min-w-0">
                                         <div class="flex items-center gap-2 flex-wrap">
                                             <span class="text-base font-black text-slate-900">{{ selectedRescheduleCbp.customer.name }}</span>
                                             <span class="font-mono text-xs font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
                                                 {{ selectedRescheduleCbp.customer.customer_code || '-' }}
                                             </span>
                                         </div>
-                                        <div class="text-xs text-slate-500 flex items-center gap-1.5 mt-1 font-medium">
-                                            <span class="inline-flex items-center gap-1 text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+                                        <div class="text-xs text-slate-500 flex flex-wrap items-center gap-1.5 mt-1 font-medium">
+                                            <span class="inline-flex items-center gap-1 text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 shrink-0">
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                                                 {{ selectedRescheduleCbp.customer.area_model?.name || selectedRescheduleCbp.customer.area || '-' }}
                                             </span>
                                             <span class="text-slate-400">•</span>
-                                            <span class="truncate max-w-[260px]" :title="selectedRescheduleCbp.customer.address">{{ selectedRescheduleCbp.customer.address || '-' }}</span>
+                                            <span class="text-slate-600 break-words">{{ selectedRescheduleCbp.customer.address || '-' }}</span>
                                         </div>
                                     </div>
 
                                     <a v-if="selectedRescheduleCbp.customer.phone" 
                                        :href="'https://wa.me/' + formatWaNumber(selectedRescheduleCbp.customer.phone)" 
                                        target="_blank" 
-                                       class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 text-xs font-bold transition-all shadow-sm shrink-0"
+                                       class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 text-xs font-bold transition-all shadow-sm shrink-0 self-start"
                                        title="Hubungi Pelanggan via WhatsApp">
                                         <svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
                                         <span>WA Pelanggan</span>
@@ -738,28 +738,38 @@
                                 </div>
 
                                 <!-- Schedule Comparison Banner -->
-                                <div class="bg-gradient-to-r from-amber-50/80 via-orange-50/60 to-amber-50/80 border border-amber-200/90 rounded-xl p-3 text-xs">
-                                    <div class="text-[10px] font-black uppercase tracking-wider text-amber-900 mb-1.5 flex items-center justify-between">
-                                        <span>Pergeseran Jadwal Pencabutan:</span>
-                                        <span v-if="selectedRescheduleCbp.reschedule_count > 0" class="text-amber-700 font-bold">
+                                <div class="bg-gradient-to-r from-amber-50/90 via-orange-50/70 to-amber-50/90 border border-amber-200/90 rounded-xl p-3 text-xs">
+                                    <div class="text-[10px] font-black uppercase tracking-wider text-amber-900 mb-2 flex items-center justify-between">
+                                        <span class="flex items-center gap-1.5">
+                                            <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                            Pergeseran Jadwal Pencabutan:
+                                        </span>
+                                        <span v-if="selectedRescheduleCbp.reschedule_count > 0" class="text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-md font-bold">
                                             Reschedule ke-{{ selectedRescheduleCbp.reschedule_count + 1 }}
                                         </span>
                                     </div>
-                                    <div class="flex items-center gap-2.5 flex-wrap">
-                                        <div class="bg-white/90 px-2.5 py-1 rounded-lg border border-amber-200 font-bold text-slate-700">
-                                            <span class="text-[10px] text-slate-400 block font-normal">Jadwal Lama:</span>
-                                            <span>{{ formatDisplayDate(selectedRescheduleCbp.scheduled_date) }}</span>
-                                            <span class="text-[10px] ml-1" :class="getScheduleDateTextColor(selectedRescheduleCbp.scheduled_date, selectedRescheduleCbp.status)">
-                                                ({{ getScheduleBadgeLabel(selectedRescheduleCbp.scheduled_date, selectedRescheduleCbp.status) }})
-                                            </span>
+                                    <div class="grid grid-cols-1 sm:grid-cols-[1fr,auto,1fr] items-center gap-2">
+                                        <div class="bg-white/95 px-3 py-2 rounded-xl border border-amber-200 shadow-2xs">
+                                            <span class="text-[10px] text-slate-400 block font-semibold uppercase tracking-wider">Jadwal Lama:</span>
+                                            <div class="flex items-center gap-1.5 flex-wrap">
+                                                <span class="font-bold text-slate-800 text-xs">{{ formatDisplayDate(selectedRescheduleCbp.scheduled_date) }}</span>
+                                                <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded" :class="getScheduleDateTextColor(selectedRescheduleCbp.scheduled_date, selectedRescheduleCbp.status)">
+                                                    ({{ getScheduleBadgeLabel(selectedRescheduleCbp.scheduled_date, selectedRescheduleCbp.status) }})
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div class="text-amber-600 font-black text-base">➔</div>
-                                        <div class="bg-amber-600 text-white px-2.5 py-1 rounded-lg shadow-sm font-bold">
-                                            <span class="text-[10px] text-amber-200 block font-normal">Jadwal Baru:</span>
-                                            <span>{{ formatDisplayDate(rescheduleForm.scheduled_date) }}</span>
-                                            <span class="text-[10px] ml-1 text-amber-100 font-normal">
-                                                ({{ getDaysDifferenceText(selectedRescheduleCbp.scheduled_date, rescheduleForm.scheduled_date) }})
-                                            </span>
+                                        <div class="flex items-center justify-center text-amber-600 font-black">
+                                            <svg class="w-5 h-5 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                                            <svg class="w-5 h-5 block sm:hidden rotate-90 my-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                                        </div>
+                                        <div class="bg-gradient-to-r from-amber-600 to-orange-600 text-white px-3 py-2 rounded-xl shadow-sm">
+                                            <span class="text-[10px] text-amber-200 block font-semibold uppercase tracking-wider">Jadwal Baru:</span>
+                                            <div class="flex items-center gap-1.5 flex-wrap">
+                                                <span class="font-bold text-white text-xs">{{ formatDisplayDate(rescheduleForm.scheduled_date) }}</span>
+                                                <span class="text-[10px] font-medium text-amber-100 bg-white/20 px-1.5 py-0.5 rounded">
+                                                    {{ getDaysDifferenceText(selectedRescheduleCbp.scheduled_date, rescheduleForm.scheduled_date) }}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -777,55 +787,55 @@
                                     </span>
                                 </div>
 
-                                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                                    <div class="relative flex-1">
+                                <div class="space-y-2.5">
+                                    <div class="relative">
                                         <input 
                                             type="date" 
                                             v-model="rescheduleForm.scheduled_date" 
                                             required
-                                            class="w-full text-xs font-bold text-slate-800 px-3.5 py-2.5 bg-slate-50/80 hover:bg-white border-2 border-slate-200 rounded-xl focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 focus:outline-none transition-all cursor-pointer"
+                                            class="w-full text-xs font-bold text-slate-800 px-3.5 py-2.5 bg-slate-50/80 hover:bg-white border-2 border-slate-200 rounded-xl focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 focus:outline-none transition-all cursor-pointer shadow-2xs"
                                         />
                                     </div>
-                                    <div class="flex items-center gap-1.5 shrink-0 flex-wrap">
+                                    <div class="grid grid-cols-3 sm:grid-cols-5 gap-1.5 sm:gap-2">
                                         <button 
                                             type="button" 
                                             @click="setRescheduleDatePreset(0)" 
-                                            class="px-2.5 py-2 text-xs font-bold rounded-xl border transition-all select-none"
-                                            :class="isRescheduleDatePresetActive(0) ? 'bg-amber-600 text-white border-amber-600 shadow-sm' : 'bg-slate-100 hover:bg-amber-50 text-slate-700 border-slate-200'"
+                                            class="px-2 py-2 text-xs font-bold rounded-xl border transition-all select-none text-center truncate"
+                                            :class="isRescheduleDatePresetActive(0) ? 'bg-amber-600 text-white border-amber-600 shadow-sm ring-2 ring-amber-500/20' : 'bg-slate-50 hover:bg-amber-50 text-slate-700 border-slate-200 hover:border-amber-300'"
                                         >
                                             ⚡ Hari Ini
                                         </button>
                                         <button 
                                             type="button" 
                                             @click="setRescheduleDatePreset(1)" 
-                                            class="px-2.5 py-2 text-xs font-bold rounded-xl border transition-all select-none"
-                                            :class="isRescheduleDatePresetActive(1) ? 'bg-amber-600 text-white border-amber-600 shadow-sm' : 'bg-slate-100 hover:bg-amber-50 text-slate-700 border-slate-200'"
+                                            class="px-2 py-2 text-xs font-bold rounded-xl border transition-all select-none text-center truncate"
+                                            :class="isRescheduleDatePresetActive(1) ? 'bg-amber-600 text-white border-amber-600 shadow-sm ring-2 ring-amber-500/20' : 'bg-slate-50 hover:bg-amber-50 text-slate-700 border-slate-200 hover:border-amber-300'"
                                         >
                                             📅 Besok
                                         </button>
                                         <button 
                                             type="button" 
                                             @click="setRescheduleDatePreset(2)" 
-                                            class="px-2.5 py-2 text-xs font-bold rounded-xl border transition-all select-none"
-                                            :class="isRescheduleDatePresetActive(2) ? 'bg-amber-600 text-white border-amber-600 shadow-sm' : 'bg-slate-100 hover:bg-amber-50 text-slate-700 border-slate-200'"
+                                            class="px-2 py-2 text-xs font-bold rounded-xl border transition-all select-none text-center truncate"
+                                            :class="isRescheduleDatePresetActive(2) ? 'bg-amber-600 text-white border-amber-600 shadow-sm ring-2 ring-amber-500/20' : 'bg-slate-50 hover:bg-amber-50 text-slate-700 border-slate-200 hover:border-amber-300'"
                                         >
                                             📆 Lusa
                                         </button>
                                         <button 
                                             type="button" 
                                             @click="setRescheduleDatePreset(3)" 
-                                            class="px-2.5 py-2 text-xs font-bold rounded-xl border transition-all select-none hidden sm:block"
-                                            :class="isRescheduleDatePresetActive(3) ? 'bg-amber-600 text-white border-amber-600 shadow-sm' : 'bg-slate-100 hover:bg-amber-50 text-slate-700 border-slate-200'"
+                                            class="px-2 py-2 text-xs font-bold rounded-xl border transition-all select-none text-center truncate"
+                                            :class="isRescheduleDatePresetActive(3) ? 'bg-amber-600 text-white border-amber-600 shadow-sm ring-2 ring-amber-500/20' : 'bg-slate-50 hover:bg-amber-50 text-slate-700 border-slate-200 hover:border-amber-300'"
                                         >
-                                            +3 Hari
+                                            ⏱️ +3 Hari
                                         </button>
                                         <button 
                                             type="button" 
                                             @click="setRescheduleDatePreset(7)" 
-                                            class="px-2.5 py-2 text-xs font-bold rounded-xl border transition-all select-none hidden sm:block"
-                                            :class="isRescheduleDatePresetActive(7) ? 'bg-amber-600 text-white border-amber-600 shadow-sm' : 'bg-slate-100 hover:bg-amber-50 text-slate-700 border-slate-200'"
+                                            class="col-span-2 sm:col-span-1 px-2 py-2 text-xs font-bold rounded-xl border transition-all select-none text-center truncate"
+                                            :class="isRescheduleDatePresetActive(7) ? 'bg-amber-600 text-white border-amber-600 shadow-sm ring-2 ring-amber-500/20' : 'bg-slate-50 hover:bg-amber-50 text-slate-700 border-slate-200 hover:border-amber-300'"
                                         >
-                                            +1 Minggu
+                                            🗓️ +1 Minggu
                                         </button>
                                     </div>
                                 </div>
@@ -849,27 +859,27 @@
                                     <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mr-1">Preset Cepat:</span>
                                     <button type="button" 
                                             @click="addRescheduleReason('Pelanggan Tidak Ada di Rumah')" 
-                                            class="text-[10px] font-semibold bg-slate-100 hover:bg-amber-50 hover:text-amber-800 text-slate-600 border border-slate-200 rounded-lg px-2 py-0.5 transition-all">
+                                            class="text-[10px] font-semibold bg-slate-100 hover:bg-amber-50 hover:text-amber-800 text-slate-600 border border-slate-200 rounded-lg px-2 py-1 transition-all">
                                         🏠 Rumah Kosong
                                     </button>
                                     <button type="button" 
                                             @click="addRescheduleReason('Pelanggan Meminta Tunda')" 
-                                            class="text-[10px] font-semibold bg-slate-100 hover:bg-amber-50 hover:text-amber-800 text-slate-600 border border-slate-200 rounded-lg px-2 py-0.5 transition-all">
+                                            class="text-[10px] font-semibold bg-slate-100 hover:bg-amber-50 hover:text-amber-800 text-slate-600 border border-slate-200 rounded-lg px-2 py-1 transition-all">
                                         📞 Pelanggan Minta Tunda
                                     </button>
                                     <button type="button" 
                                             @click="addRescheduleReason('Cuaca Buruk / Hujan Lebat')" 
-                                            class="text-[10px] font-semibold bg-slate-100 hover:bg-amber-50 hover:text-amber-800 text-slate-600 border border-slate-200 rounded-lg px-2 py-0.5 transition-all">
+                                            class="text-[10px] font-semibold bg-slate-100 hover:bg-amber-50 hover:text-amber-800 text-slate-600 border border-slate-200 rounded-lg px-2 py-1 transition-all">
                                         🌧️ Kendala Cuaca
                                     </button>
                                     <button type="button" 
                                             @click="addRescheduleReason('Jadwal Terlewat / Re-alokasi Lapangan')" 
-                                            class="text-[10px] font-semibold bg-slate-100 hover:bg-amber-50 hover:text-amber-800 text-slate-600 border border-slate-200 rounded-lg px-2 py-0.5 transition-all">
+                                            class="text-[10px] font-semibold bg-slate-100 hover:bg-amber-50 hover:text-amber-800 text-slate-600 border border-slate-200 rounded-lg px-2 py-1 transition-all">
                                         ⏳ Jadwal Terlewat
                                     </button>
                                     <button type="button" 
                                             @click="addRescheduleReason('Teknisi Terkendala / Overload')" 
-                                            class="text-[10px] font-semibold bg-slate-100 hover:bg-amber-50 hover:text-amber-800 text-slate-600 border border-slate-200 rounded-lg px-2 py-0.5 transition-all">
+                                            class="text-[10px] font-semibold bg-slate-100 hover:bg-amber-50 hover:text-amber-800 text-slate-600 border border-slate-200 rounded-lg px-2 py-1 transition-all">
                                         🔧 Teknisi Overload
                                     </button>
                                 </div>
@@ -965,24 +975,24 @@
                         </div>
 
                         <!-- Footer -->
-                        <div class="px-6 py-4 bg-white border-t border-slate-100 flex items-center justify-between z-10 shrink-0">
+                        <div class="px-5 sm:px-6 py-4 bg-white border-t border-slate-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 z-10 shrink-0">
                             <button 
                                 type="button" 
                                 @click="shareRescheduleWhatsApp(selectedRescheduleCbp, rescheduleForm.scheduled_date, rescheduleForm.reschedule_reason)" 
-                                class="px-3.5 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-colors inline-flex items-center gap-1.5"
+                                class="w-full sm:w-auto justify-center px-4 py-2.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-colors inline-flex items-center gap-1.5 shadow-2xs shrink-0"
                                 title="Buka Template Pesan WhatsApp Reschedule"
                             >
-                                <svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                                <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
                                 <span>WA Reschedule</span>
                             </button>
 
-                            <div class="flex items-center gap-2.5">
-                                <button type="button" @click="closeRescheduleModal" class="px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">
+                            <div class="flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto justify-end">
+                                <button type="button" @click="closeRescheduleModal" class="flex-1 sm:flex-initial px-4 sm:px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors text-center">
                                     Batal
                                 </button>
                                 <button type="submit" 
                                         :disabled="rescheduleForm.processing || !rescheduleForm.scheduled_date || !rescheduleForm.reschedule_reason" 
-                                        class="bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 hover:from-amber-700 hover:to-orange-700 text-white font-bold text-xs px-6 py-2.5 rounded-xl shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:shadow-none disabled:cursor-not-allowed flex items-center gap-2">
+                                        class="flex-1 sm:flex-initial justify-center bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 hover:from-amber-700 hover:to-orange-700 text-white font-bold text-xs px-5 sm:px-6 py-2.5 rounded-xl shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:shadow-none disabled:cursor-not-allowed flex items-center gap-2 text-center whitespace-nowrap">
                                     <svg v-if="rescheduleForm.processing" class="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                     <span>{{ rescheduleForm.processing ? 'Menyimpan...' : 'Simpan & Jadwal Ulang' }}</span>
                                 </button>
