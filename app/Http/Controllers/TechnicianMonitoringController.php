@@ -254,12 +254,16 @@ class TechnicianMonitoringController extends Controller
         $cbpQuery = CbpRequest::where(function ($q) use ($techId) {
             $q->where('assigned_to', $techId)
               ->orWhereHas('technicians', fn($r) => $r->where('users.id', $techId));
-        })->whereBetween('created_at', [$startDate, $endDate]);
+        })->where(function ($dq) use ($startDate, $endDate) {
+            $dq->whereBetween('scheduled_date', [$startDate, $endDate])
+               ->orWhereBetween('created_at', [$startDate, $endDate])
+               ->orWhereBetween('completed_at', [$startDate, $endDate]);
+        });
 
         $cbpTotal = (clone $cbpQuery)->count();
         $cbpCompleted = (clone $cbpQuery)->where('status', 'completed')->count();
         $cbpInProgress = (clone $cbpQuery)->where('status', 'in_progress')->count();
-        $cbpPending = (clone $cbpQuery)->whereIn('status', ['pending', 'scheduled'])->count();
+        $cbpPending = (clone $cbpQuery)->whereIn('status', ['pending', 'scheduled', 'assigned'])->count();
 
         // 5. TIKET UMUM (Ticket table)
         $ticketQuery = Ticket::where(function ($q) use ($techId) {

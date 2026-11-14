@@ -141,7 +141,8 @@ class OperationalDailyProgressController extends Controller
             'cbp' => count($cbpList),
             'cbp_done' => collect($cbpList)->where('is_done', true)->count(),
             'cbp_in_progress' => collect($cbpList)->where('is_in_progress', true)->count(),
-            'cbp_pending' => collect($cbpList)->where('is_done', false)->where('is_in_progress', false)->count(),
+            'cbp_assigned' => collect($cbpList)->where('is_assigned', true)->count(),
+            'cbp_pending' => collect($cbpList)->where('is_done', false)->where('is_in_progress', false)->where('is_assigned', false)->count(),
 
             'maintenance' => count($maintenanceList),
             'maintenance_done' => collect($maintenanceList)->where('is_done', true)->count(),
@@ -915,16 +916,50 @@ class OperationalDailyProgressController extends Controller
     {
         $items = [];
         $areaIds = is_array($areaId) ? $areaId : ($areaId ? [$areaId] : []);
+        $areaInts = array_values(array_filter(array_map('intval', $areaIds)));
+        $areaNames = !empty($areaInts) ? Area::whereIn('id', $areaInts)->pluck('name')->filter()->toArray() : [];
 
-        $cbpQuery = CbpRequest::with(['customer.ont.odp', 'technicians', 'creator', 'dispatcher'])
-            ->where(function ($q) use ($date) {
-                $q->whereDate('completed_at', $date)
-                  ->orWhereDate('sent_to_schedule_at', $date)
-                  ->orWhereDate('created_at', $date);
+        $isToday = ($date === Carbon::today()->toDateString());
+
+        $cbpQuery = CbpRequest::with(['customer.ont.odp', 'customer.areaModel', 'technicians', 'creator', 'dispatcher'])
+            ->where('status', '!=', 'canceled')
+            ->where(function ($q) use ($date, $isToday) {
+                // 1. Tiket yang dijadwalkan pada tanggal ini
+                $q->whereDate('scheduled_date', $date)
+                  // 2. Atau tiket yang diselesaikan pada tanggal ini
+                  ->orWhereDate('completed_at', $date)
+                  // 3. Atau tiket yang belum punya jadwal (masih pending) pada tanggal pembuatan / disposisinya
+                  ->orWhere(function ($fallback) use ($date) {
+                      $fallback->whereNull('scheduled_date')
+                               ->whereNull('completed_at')
+                               ->where(function ($sq) use ($date) {
+                                   $sq->whereDate('sent_to_schedule_at', $date)
+                                      ->orWhereDate('created_at', $date);
+                               });
+                  });
+
+                // 4. Jika melihat hari ini (today), sertakan juga tiket aktif (pending/assigned/in_progress) yang belum selesai dari jadwal sebelumnya (carry over)
+                if ($isToday) {
+                    $q->orWhere(function ($sq) use ($date) {
+                        $sq->whereIn('status', ['pending', 'assigned', 'in_progress'])
+                           ->whereNull('completed_at')
+                           ->where(function ($ssq) use ($date) {
+                               $ssq->whereNull('scheduled_date')
+                                   ->orWhereDate('scheduled_date', '<=', $date);
+                           });
+                    });
+                }
             });
 
-        if (!empty($areaIds)) {
-            $cbpQuery->whereHas('customer', fn($q) => $q->whereIn('area_id', $areaIds));
+        if (!empty($areaInts)) {
+            $cbpQuery->whereHas('customer', function ($cq) use ($areaInts, $areaNames) {
+                $cq->where(function ($sub) use ($areaInts, $areaNames) {
+                    $sub->whereIn('area_id', $areaInts);
+                    if (!empty($areaNames)) {
+                        $sub->orWhereIn('area', $areaNames);
+                    }
+                });
+            });
         }
 
         foreach ($cbpQuery->get() as $cbp) {
@@ -934,14 +969,15 @@ class OperationalDailyProgressController extends Controller
                 $assignedUser = User::find($cbp->assigned_to);
                 if ($assignedUser) $techNames[] = $assignedUser->name;
             }
-            $techniciansStr = !empty($techNames) ? implode(', ', array_unique($techNames)) : 'Petugas CBP';
+            $techniciansStr = !empty($techNames) ? implode(', ', array_unique($techNames)) : 'Belum Ditugaskan';
 
             $isDone = ($cbp->status === 'completed') || !empty($cbp->completed_at);
             $isInProgress = ($cbp->status === 'in_progress');
             $isRescheduled = ($cbp->status === 'rescheduled');
+            $isAssigned = ($cbp->status === 'assigned');
 
             if ($isDone) {
-                $statusLabel = '✅ Selesai';
+                $statusLabel = '✅ Selesai Cabut';
                 $statusClass = 'completed';
             } elseif ($isInProgress) {
                 $statusLabel = '🛠️ Sedang Dikerjakan';
@@ -949,8 +985,11 @@ class OperationalDailyProgressController extends Controller
             } elseif ($isRescheduled) {
                 $statusLabel = '🗓️ Reschedule';
                 $statusClass = 'rescheduled';
+            } elseif ($isAssigned) {
+                $statusLabel = '🔧 Terjadwal / Ditugaskan';
+                $statusClass = 'assigned';
             } else {
-                $statusLabel = '⏳ Pending';
+                $statusLabel = '⏳ Menunggu Jadwal';
                 $statusClass = 'pending';
             }
 
@@ -967,6 +1006,10 @@ class OperationalDailyProgressController extends Controller
             }
 
             $items[] = [
+                'id' => $cbp->id,
+                'cbp_number' => $cbp->cbp_number,
+                'customer_id' => $cbp->customer_id,
+                'customer_code' => $cust?->customer_code ?? $cbp->cbp_number,
                 'customer_name' => $custName,
                 'detail' => "{$custName} - {$address} (ODP: {$odpName}, Alasan: {$reason})",
                 'address' => $address,
@@ -975,11 +1018,14 @@ class OperationalDailyProgressController extends Controller
                 'phone' => $cust?->phone ?? '-',
                 'technicians' => $techniciansStr,
                 'duration' => $duration,
+                'status' => $cbp->status,
                 'status_label' => $statusLabel,
                 'status_class' => $statusClass,
                 'is_done' => $isDone,
                 'is_in_progress' => $isInProgress,
                 'is_rescheduled' => $isRescheduled,
+                'is_assigned' => $isAssigned,
+                'scheduled_date' => $cbp->scheduled_date ? Carbon::parse($cbp->scheduled_date)->toDateString() : null,
             ];
         }
 
@@ -1663,7 +1709,10 @@ class OperationalDailyProgressController extends Controller
         $lines[] = "* Gangguan: {$summary['gangguan']} ({$summary['gangguan_done']} Selesai, {$summary['gangguan_pending']} Pending)";
         $lines[] = "* Pemasangan: {$summary['pemasangan']} ({$summary['pemasangan_done']} Selesai, {$summary['pemasangan_pending']} Pending)";
         $lines[] = "* Survey: {$summary['survey']} ({$summary['survey_feasible']} Selesai, {$summary['survey_pending']} Tunggu)";
-        $lines[] = "* Pencabutan: {$summary['cbp']} ({$summary['cbp_done']} Selesai, {$summary['cbp_pending']} Pending)";
+        $cbpPendingStr = ($summary['cbp_assigned'] ?? 0) > 0 
+            ? "{$summary['cbp_done']} Selesai, {$summary['cbp_assigned']} Terjadwal" . (($summary['cbp_pending'] ?? 0) > 0 ? ", {$summary['cbp_pending']} Pending" : "")
+            : "{$summary['cbp_done']} Selesai, {$summary['cbp_pending']} Pending";
+        $lines[] = "* Pencabutan: {$summary['cbp']} ({$cbpPendingStr})";
         $lines[] = "* Perapihan/Cek Jalur: {$summary['maintenance']} ({$summary['maintenance_done']} Selesai, {$summary['maintenance_pending']} Pending)";
         $lines[] = "";
 
