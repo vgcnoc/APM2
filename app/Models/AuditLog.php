@@ -11,6 +11,11 @@ class AuditLog extends Model
         'entity_id', 'status_before', 'status_after', 'notes', 'ip_address'
     ];
 
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
     public static function createLog($action, $entity, $statusBefore, $statusAfter, $notes = null)
     {
         $user = auth()->user();
