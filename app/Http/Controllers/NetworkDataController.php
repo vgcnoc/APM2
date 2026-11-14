@@ -51,6 +51,8 @@ class NetworkDataController extends Controller
 
     public function index(Request $request): Response
     {
+        @ini_set('memory_limit', '512M');
+
         $user = auth()->user();
         if ($user && !$user->isAdmin() && !$user->can('menu_network_data')) {
             abort(403, 'Anda tidak memiliki hak akses ke menu Data Jaringan.');
@@ -65,22 +67,29 @@ class NetworkDataController extends Controller
         $search = $request->input('search');
 
         $odcRelations = [
-            'olt',
-            'area',
+            'olt:id,name,pon_vlans',
+            'area:id,name',
             'parent:id,name,capacity,olt_id,pon_port,splitter_ratio,type,is_split,location,parent_odc_id',
             'children:id,name,capacity,olt_id,pon_port,splitter_ratio,type,is_split,location,parent_odc_id',
         ];
 
         $odpRelations = [
-            'odc.olt',
-            'odc.area',
+            'odc:id,name,capacity,olt_id,area_id,pon_port,splitter_ratio,type,is_split,location,parent_odc_id,start_point,end_point,cable_pull',
+            'odc.olt:id,name,pon_vlans',
+            'odc.area:id,name',
             'odc.parent:id,name,capacity,olt_id,pon_port,splitter_ratio,type,is_split,location,parent_odc_id',
             'odc.children:id,name,capacity,olt_id,pon_port,splitter_ratio,type,is_split,location,parent_odc_id',
-            'area',
+            'area:id,name',
             'parent:id,name,odc_id,total_ports,used_ports,type,is_split,parent_odp_id',
             'children:id,name,odc_id,total_ports,used_ports,type,is_split,parent_odp_id',
-            'onts.customer.latestCbpRequest.technicians',
-            'surveys.customer',
+            'onts' => function ($oq) {
+                $oq->select(['id', 'odp_id', 'port_number', 'customer_id', 'vlan_id', 'hotspot_vlan_id', 'status'])
+                   ->with('customer:id,customer_code,name,status,service_status,activation_date,created_at');
+            },
+            'surveys' => function ($sq) {
+                $sq->select(['id', 'odp_id', 'port_number', 'customer_id', 'created_at'])
+                   ->with('customer:id,customer_code,name,status');
+            },
         ];
 
         $expandedOdcFilterIds = $odcId ? $this->expandSplitOdcIds([(int) $odcId]) : [];
@@ -88,12 +97,12 @@ class NetworkDataController extends Controller
 
         if (\App\Services\DataPrivacyMaskingService::isEnabledForUser($user, 'network_data')) {
             $maskedCustomerIds = \App\Services\DataPrivacyMaskingService::getMaskedCustomerIds();
-            $odpRelations = array_values(array_filter($odpRelations, fn($r) => is_string($r) && $r !== 'onts.customer.latestCbpRequest.technicians'));
             $odpRelations['onts'] = function($oq) use ($maskedCustomerIds) {
-                $oq->where(function($q) use ($maskedCustomerIds) {
-                    $q->whereNull('customer_id')
-                      ->orWhereIn('customer_id', !empty($maskedCustomerIds) ? $maskedCustomerIds : [0]);
-                })->with('customer.latestCbpRequest.technicians');
+                $oq->select(['id', 'odp_id', 'port_number', 'customer_id', 'vlan_id', 'hotspot_vlan_id', 'status'])
+                   ->where(function($q) use ($maskedCustomerIds) {
+                       $q->whereNull('customer_id')
+                         ->orWhereIn('customer_id', !empty($maskedCustomerIds) ? $maskedCustomerIds : [0]);
+                   })->with('customer:id,customer_code,name,status,service_status,activation_date,created_at');
             };
         }
 
@@ -305,22 +314,36 @@ class NetworkDataController extends Controller
         DataScopeService::applyCbpScope($baseCbpQuery, $user);
         $totalProsesCbp = (clone $baseCbpQuery)->count();
         
-        $termCustQuery = Customer::where('status', 'terminated')->with(['ont.odp', 'latestCbpRequest.technicians']);
+        $termCustQuery = Customer::where('status', 'terminated')
+            ->select(['id', 'customer_code', 'name', 'status', 'notes', 'updated_at', 'area_id'])
+            ->with([
+                'ont:id,customer_id,odp_id,port_number',
+                'ont.odp:id,name',
+                'latestCbpRequest:id,customer_id,cbp_number,status',
+                'latestCbpRequest.technicians:id,name',
+            ]);
         DataScopeService::applyCustomerScope($termCustQuery, $user, 'network_data');
         $terminatedCustomers = $termCustQuery->get();
 
-        $cbpQuery = \App\Models\CbpRequest::whereIn('status', ['pending', 'assigned'])->with(['customer', 'technicians']);
+        $cbpQuery = \App\Models\CbpRequest::whereIn('status', ['pending', 'assigned'])
+            ->select(['id', 'cbp_number', 'customer_id', 'status', 'assigned_to', 'notes', 'created_at'])
+            ->with([
+                'customer:id,customer_code,name',
+                'technicians:id,name',
+            ]);
         DataScopeService::applyCbpScope($cbpQuery, $user);
         $cbpRequests = $cbpQuery->get();
 
-        $oltFilterQuery = Olt::query()->orderBy('name');
+        $oltFilterQuery = Olt::query()->select(['id', 'name', 'pon_vlans'])->orderBy('name');
         DataScopeService::applyOltScope($oltFilterQuery, $user);
 
-        $odcFilterQuery = Odc::with(['parent:id,name,parent_odc_id', 'children:id,name,parent_odc_id'])
+        $odcFilterQuery = Odc::select(['id', 'name', 'olt_id', 'area_id', 'parent_odc_id', 'is_split'])
+            ->with(['parent:id,name,parent_odc_id', 'children:id,name,parent_odc_id'])
             ->orderByRaw('COALESCE(parent_odc_id, id) ASC, CASE WHEN parent_odc_id IS NULL THEN 0 ELSE 1 END ASC, id ASC');
         DataScopeService::applyOdcScope($odcFilterQuery, $user);
 
-        $odpFilterQuery = Odp::with(['parent:id,name,parent_odp_id', 'children:id,name,parent_odp_id'])
+        $odpFilterQuery = Odp::select(['id', 'name', 'odc_id', 'area_id', 'parent_odp_id', 'is_split', 'total_ports', 'used_ports'])
+            ->with(['parent:id,name,parent_odp_id', 'children:id,name,parent_odp_id'])
             ->orderByRaw('COALESCE(parent_odp_id, id) ASC, CASE WHEN parent_odp_id IS NULL THEN 0 ELSE 1 END ASC, id ASC');
         DataScopeService::applyOdpScope($odpFilterQuery, $user);
 
@@ -351,6 +374,8 @@ class NetworkDataController extends Controller
 
     public function terminated(Request $request): Response
     {
+        @ini_set('memory_limit', '512M');
+
         $user = auth()->user();
         if ($user && !$user->isAdmin() && !$user->can('menu_network_data_terminated') && !$user->can('menu_cbp')) {
             abort(403, 'Anda tidak memiliki hak akses ke menu Cabut Perangkat.');
