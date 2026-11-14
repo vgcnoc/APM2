@@ -156,6 +156,26 @@ class SyncPermissionsCommand extends Command
         }
         $this->line("  ✓ Role 'maintenance' & 'maintenance-1': modul marketing afiliasi dipastikan aktif.");
 
+        // 5. Role CS & Customer Care: Pastikan memiliki seluruh modul siklus PSB (Booking, Survey, Instalasi)
+        $csRoles = Role::whereIn('name', ['cs', 'CS', 'customer care', 'Customer Care'])->get();
+        $psbInstalledPerms = [
+            'menu_customers_installed',
+            'customers_installed_view_all',
+            'customers_installed_view_area',
+            'customers_installed_card_stats',
+            'customers_installed_filter',
+            'customers_installed_assign',
+            'customers_installed_whatsapp',
+            'customers_installed_audit',
+            'customers_installed_report',
+            'customers_installed_edit',
+            'customers_installed_cancel',
+        ];
+        foreach ($csRoles as $cRole) {
+            $cRole->givePermissionTo(array_intersect($psbInstalledPerms, $allNames));
+        }
+        $this->line("  ✓ Role 'cs': modul instalasi jaringan dipastikan aktif.");
+
         // Refresh cache (Spatie + versi RBAC Inertia agar sidebar langsung mengikuti DB)
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
         \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);

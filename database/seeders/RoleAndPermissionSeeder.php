@@ -58,6 +58,25 @@ class RoleAndPermissionSeeder extends Seeder
             $r->givePermissionTo('work_schedules_view_all');
         }
 
+        // Auto-grant installed permissions to CS roles
+        $csRoles = Role::whereIn('name', ['cs', 'CS', 'customer care', 'Customer Care'])->get();
+        $installedPerms = [
+            'menu_customers_installed',
+            'customers_installed_view_all',
+            'customers_installed_view_area',
+            'customers_installed_card_stats',
+            'customers_installed_filter',
+            'customers_installed_assign',
+            'customers_installed_whatsapp',
+            'customers_installed_audit',
+            'customers_installed_report',
+            'customers_installed_edit',
+            'customers_installed_cancel',
+        ];
+        foreach ($csRoles as $r) {
+            $r->givePermissionTo($installedPerms);
+        }
+
         // 3. Assign roles to users based on user->role if they don't have roles assigned
         $users = User::all();
         foreach ($users as $user) {

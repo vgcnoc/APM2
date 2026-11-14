@@ -32,9 +32,9 @@ class DataPrivacyMaskingService
             'target_roles' => json_decode(Setting::get('data_masking_target_roles', '[]'), true) ?: [],
             'target_users' => json_decode(Setting::get('data_masking_target_users', '[]'), true) ?: [],
             'hide_sidebar_menu' => Setting::get('data_masking_hide_sidebar_menu', '1') === '1',
-            'modules' => json_decode(Setting::get('data_masking_modules', '["tax_report", "customers", "invoices", "billing", "financial_reports", "booking", "survey", "installed", "activation", "monitoring_pelanggan", "network_data", "onts", "network_map", "pgk_tickets", "technician_monitoring"]'), true) ?: [
+            'modules' => json_decode(Setting::get('data_masking_modules', '["tax_report", "customers", "invoices", "billing", "financial_reports", "monitoring_pelanggan", "network_data", "onts", "network_map", "pgk_tickets", "technician_monitoring"]'), true) ?: [
                 'tax_report', 'customers', 'invoices', 'billing', 'financial_reports',
-                'booking', 'survey', 'installed', 'activation', 'monitoring_pelanggan',
+                'monitoring_pelanggan',
                 'network_data', 'onts', 'network_map', 'pgk_tickets', 'technician_monitoring'
             ],
             'summary' => json_decode(Setting::get('data_masking_cached_summary', '{}'), true) ?: [],

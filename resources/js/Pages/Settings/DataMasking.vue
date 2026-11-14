@@ -565,7 +565,7 @@ const form = ref({
     hide_sidebar_menu: props.settings.hide_sidebar_menu !== false,
     modules: props.settings.modules || [
         'tax_report', 'customers', 'invoices', 'billing', 'financial_reports',
-        'booking', 'survey', 'installed', 'activation', 'monitoring_pelanggan',
+        'monitoring_pelanggan',
         'network_data', 'onts', 'network_map', 'pgk_tickets', 'technician_monitoring'
     ],
 });
