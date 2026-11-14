@@ -319,7 +319,6 @@ class NetworkDataController extends Controller
             ->with([
                 'ont:id,customer_id,odp_id,port_number',
                 'ont.odp:id,name',
-                'latestCbpRequest:id,customer_id,cbp_number,status',
                 'latestCbpRequest.technicians:id,name',
             ]);
         DataScopeService::applyCustomerScope($termCustQuery, $user, 'network_data');
