@@ -36,6 +36,7 @@ class Customer extends Model
     use HasFactory, \App\Traits\HasDataScope;
 
     protected $fillable = [
+        'company_id',
         'customer_code',
         'name',
         'email',
@@ -134,6 +135,11 @@ class Customer extends Model
     }
 
     // ── Relationships ──────────────────────────────────────────
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
 
     public function user(): BelongsTo
     {

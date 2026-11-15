@@ -3,11 +3,17 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Area extends Model
 {
-    protected $fillable = ['name', 'description', 'address', 'latitude', 'longitude', 'radius_meters', 'coverage_villages'];
+    protected $fillable = ['company_id', 'name', 'description', 'address', 'latitude', 'longitude', 'radius_meters', 'coverage_villages'];
     protected $appends = ['coverage_villages_list'];
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
 
     public function getCoverageVillagesListAttribute(): array
     {

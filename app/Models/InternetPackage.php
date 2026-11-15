@@ -5,12 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class InternetPackage extends Model
 {
     use HasFactory;
 
     protected $fillable = [
+        'company_id',
         'name', 'speed_mbps', 'price', 'installation_fee', 'area_installation_fees', 'access_mode', 'description', 'is_active', 'is_visible_to_sales',
         'color', 'is_promo', 'promo_price', 'is_mikrotik_group_custom', 'mikrotik_group',
         'is_mikrotik_address_list_custom', 'mikrotik_address_list', 'shared_device',
@@ -36,6 +38,11 @@ class InternetPackage extends Model
             'fee_reseller' => 'integer',
             'fee_partner' => 'integer',
         ];
+    }
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
     }
 
     public function customers(): HasMany

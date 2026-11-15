@@ -7,6 +7,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
@@ -14,6 +15,7 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable, HasRoles;
 
     protected $fillable = [
+        'company_id',
         'name',
         'email',
         'password',
@@ -281,7 +283,17 @@ class User extends Authenticatable
             ->select('voucher_profiles.*');
     }
 
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
     // ── Helpers ────────────────────────────────────────────────
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->hasRole(['admin', 'super admin', 'superadmin']) || in_array($this->role, ['admin', 'super admin', 'superadmin'], true);
+    }
 
     public function isAdmin(): bool
     {

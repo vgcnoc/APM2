@@ -12,6 +12,7 @@ class Invoice extends Model
     use HasFactory;
 
     protected $fillable = [
+        'company_id',
         'customer_id', 'invoice_number', 'period_month', 'period_year',
         'amount', 'due_date', 'issued_date', 'status', 'is_prorata', 'billing_type', 'billing_cycle', 'promise_date',
         'is_reseller_balance', 'notes',
@@ -29,6 +30,11 @@ class Invoice extends Model
             'is_prorata' => 'boolean',
             'is_reseller_balance' => 'boolean',
         ];
+    }
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
     }
 
     public function customer(): BelongsTo
