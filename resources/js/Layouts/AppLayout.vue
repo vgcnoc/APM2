@@ -960,10 +960,10 @@ const menuItems = [
                 href: '/customers/paid', 
                 label: '⭐ Pelanggan Berbayar', 
                 active: (url) => (url || '').startsWith('/customers/paid') || (url || '').startsWith('/customers/berbayar'), 
-                permission: ['menu_customers_active', 'menu_customers_all'] 
+                permission: 'menu_customers_active' 
             },
             { href: '/customers/online', label: 'Status Koneksi (Online / Offline)', active: (url) => (url || '').startsWith('/customers/online') || (url || '').startsWith('/customers/offline') || (url || '').startsWith('/customers/connections'), permission: 'menu_customers_online' },
-            { href: '/customers/isolir', label: 'Pelanggan Isolir', active: (url) => (url || '').split('?')[0] === '/customers/isolir', permission: ['menu_customers_isolir', 'menu_customers_all'] },
+            { href: '/customers/isolir', label: 'Pelanggan Isolir', active: (url) => (url || '').split('?')[0] === '/customers/isolir', permission: 'menu_customers_isolir' },
             { href: '/customers/gratis', label: 'Pelanggan Gratis & CSR', active: (url) => (url || '').startsWith('/customers/gratis'), permission: 'menu_customers_gratis' },
             { href: '/customers/free-home', label: 'Pelanggan Free Home', active: (url) => (url || '').startsWith('/customers/free-home'), permission: 'menu_customers_free_home' },
             { href: '/customers/terminated', label: 'Stop Permanen (Terminated)', active: (url) => (url || '').startsWith('/customers/terminated'), permission: 'menu_customers_terminated' },
@@ -1315,11 +1315,11 @@ const menuItems = [
         permission: ['menu_attendances', 'attendance_tab_reguler', 'menu_attendance_leaves', 'attendance_tab_special', 'attendance_tab_field', 'menu_settings_attendance', 'menu_hr_employees', 'menu_attendance_reports', 'menu_employee_locations'],
         children: [
             { href: '/employee-locations', label: 'Pantauan Lokasi (Live GPS)', active: (url) => (url || '').startsWith('/employee-locations'), permission: 'menu_employee_locations' },
-            { href: '/attendances', label: 'Absensi Reguler', active: (url) => (url || '').startsWith('/attendances'), permission: ['menu_attendances', 'attendance_tab_reguler'] },
+            { href: '/attendances', label: 'Absensi Reguler', active: (url) => (url || '').startsWith('/attendances'), permission: 'attendance_tab_reguler' },
             { href: '/attendance-leaves', label: 'Izin, Sakit & Alpha', active: (url) => (url || '').startsWith('/attendance-leaves'), permission: 'menu_attendance_leaves' },
-            { href: '/absen-khusus', label: 'Absen Tim Khusus', active: (url) => (url || '').startsWith('/absen-khusus'), permission: ['attendance_tab_special', 'menu_attendances'] },
-            { href: '/absen-tugas-luar', label: 'Absen Tugas Luar', active: (url) => (url || '').startsWith('/absen-tugas-luar'), permission: ['attendance_tab_field', 'menu_attendances'] },
-            { href: '/attendance-reports', label: 'Laporan Absen', active: (url) => (url || '').startsWith('/attendance-reports'), permission: ['menu_attendance_reports', 'attendance_tab_reports', 'menu_attendances'] },
+            { href: '/absen-khusus', label: 'Absen Tim Khusus', active: (url) => (url || '').startsWith('/absen-khusus'), permission: 'attendance_tab_special' },
+            { href: '/absen-tugas-luar', label: 'Absen Tugas Luar', active: (url) => (url || '').startsWith('/absen-tugas-luar'), permission: 'attendance_tab_field' },
+            { href: '/attendance-reports', label: 'Laporan Absen', active: (url) => (url || '').startsWith('/attendance-reports'), permission: 'menu_attendance_reports' },
             { href: '/settings/attendance', label: 'Pengaturan Absensi', active: (url) => (url || '').startsWith('/settings/attendance'), permission: 'menu_settings_attendance' },
         ]
     },
