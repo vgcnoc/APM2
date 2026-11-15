@@ -7,9 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class AttendanceLeave extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\BelongsToCompany;
 
     protected $fillable = [
+        'company_id',
         'employee_id',
         'date',
         'type',

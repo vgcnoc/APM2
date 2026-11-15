@@ -9,10 +9,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Ticket extends Model
 {
-    use HasFactory, \App\Traits\HasDataScope;
+    use HasFactory, \App\Traits\HasDataScope, \App\Traits\BelongsToCompany;
 
     protected $fillable = [
-        'ticket_number', 'customer_id', 'category', 'priority',
+        'company_id', 'ticket_number', 'customer_id', 'category', 'priority',
         'subject', 'description', 'status', 'assigned_to',
         'resolved_at', 'closed_at',
     ];

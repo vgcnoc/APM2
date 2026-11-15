@@ -42,13 +42,20 @@ class CustomerIsolationController extends Controller
             ->filter(fn($i) => $i['remaining'] > 0)
             ->values();
 
+        $custCompany = $customer->company ?: ($customer->company_id ? \App\Models\Company::find($customer->company_id) : null);
+        $companyName = $custCompany ? ($custCompany->brand_name ?: $custCompany->name) : Setting::get('company_name', config('app.name', 'VIRUZS'));
+        $companyPhone = $custCompany ? ($custCompany->phone ?: Setting::get('company_phone', '088976397034')) : Setting::get('company_phone', '088976397034');
+
         $defaultBanks = [
-            ['bank_name' => 'BCA', 'account_number' => '1234567890', 'account_name' => 'VIRUZS NET'],
-            ['bank_name' => 'BRI', 'account_number' => '0987654321', 'account_name' => 'VIRUZS NET'],
-            ['bank_name' => 'Mandiri', 'account_number' => '1122334455', 'account_name' => 'VIRUZS NET'],
+            ['bank_name' => 'BCA', 'account_number' => '1234567890', 'account_name' => $companyName],
+            ['bank_name' => 'BRI', 'account_number' => '0987654321', 'account_name' => $companyName],
+            ['bank_name' => 'Mandiri', 'account_number' => '1122334455', 'account_name' => $companyName],
         ];
 
-        $savedBanks = json_decode(Setting::get('payment_banks', '[]'), true);
+        $savedBanks = $custCompany ? json_decode($custCompany->getSetting('payment_banks', '[]') ?: '[]', true) : null;
+        if (empty($savedBanks)) {
+            $savedBanks = json_decode(Setting::get('payment_banks', '[]'), true);
+        }
         $banks = (!empty($savedBanks) && is_array($savedBanks)) ? $savedBanks : $defaultBanks;
 
         $isIsolated = ($customer->status === 'suspended' || !empty($customer->billing_isolated_at) || $customer->service_status === 'isolir');
@@ -71,8 +78,8 @@ class CustomerIsolationController extends Controller
             'invoices' => $unpaidInvoices,
             'total_unpaid' => (float) $unpaidInvoices->sum('remaining'),
             'banks' => $banks,
-            'company_name' => Setting::get('company_name', config('app.name', 'VIRUZS')),
-            'company_phone' => Setting::get('company_phone', '088976397034'),
+            'company_name' => $companyName,
+            'company_phone' => $companyPhone,
             'user_id' => $userId,
         ];
     }

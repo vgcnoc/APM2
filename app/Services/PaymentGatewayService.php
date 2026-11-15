@@ -16,10 +16,60 @@ use Illuminate\Support\Facades\Log;
 class PaymentGatewayService
 {
     /**
-     * Dapatkan konfigurasi payment gateway dari database settings
+     * Dapatkan konfigurasi payment gateway dari database settings (mendukung multi-company / kemitraan)
      */
-    public function getConfig(): array
+    public function getConfig(?int $companyId = null): array
     {
+        // 1. Jika companyId tidak ditentukan, cek dari session atau auth user
+        if (!$companyId && auth()->check() && auth()->user()->company_id) {
+            $companyId = (int) auth()->user()->company_id;
+        }
+
+        // 2. Jika ada companyId spesifik (termasuk holding id 1 jika diset di company_settings)
+        if ($companyId) {
+            $company = \App\Models\Company::find($companyId);
+            if ($company) {
+                $provider = $company->getSetting('pg_provider');
+                if ($provider && $provider !== 'none') {
+                    return [
+                        'provider' => $provider,
+                        'environment' => $company->getSetting('pg_environment', 'sandbox'),
+                        'merchant_id' => $company->getSetting('pg_merchant_id', ''),
+                        'api_key' => $company->getSetting('pg_api_key', ''),
+                        'private_key' => $company->getSetting('pg_private_key', ''),
+                        'callback_token' => $company->getSetting('pg_callback_token', ''),
+                    ];
+                }
+
+                // Cek Midtrans mandiri mitra
+                $midtransKey = $company->getSetting('midtrans_server_key');
+                if ($midtransKey) {
+                    return [
+                        'provider' => 'midtrans',
+                        'environment' => $company->getSetting('midtrans_environment', 'production'),
+                        'merchant_id' => $company->getSetting('midtrans_merchant_id', ''),
+                        'api_key' => $midtransKey,
+                        'private_key' => '',
+                        'callback_token' => '',
+                    ];
+                }
+
+                // Cek Tripay mandiri mitra
+                $tripayKey = $company->getSetting('tripay_api_key');
+                if ($tripayKey) {
+                    return [
+                        'provider' => 'tripay',
+                        'environment' => $company->getSetting('tripay_environment', 'production'),
+                        'merchant_id' => $company->getSetting('tripay_merchant_code', ''),
+                        'api_key' => $tripayKey,
+                        'private_key' => $company->getSetting('tripay_private_key', ''),
+                        'callback_token' => '',
+                    ];
+                }
+            }
+        }
+
+        // 3. Fallback: Pengaturan Default / Holding
         return [
             'provider' => Setting::get('pg_provider', 'none'),
             'environment' => Setting::get('pg_environment', 'sandbox'),
@@ -114,7 +164,7 @@ class PaymentGatewayService
      */
     public function createPaymentTransaction(Invoice $invoice, string $channel = 'QRIS'): array
     {
-        $config = $this->getConfig();
+        $config = $this->getConfig($invoice->company_id);
         $referenceId = 'PG-' . date('YmdHis') . '-' . $invoice->id;
 
         // Pilih provider yang aktif

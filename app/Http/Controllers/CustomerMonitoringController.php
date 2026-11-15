@@ -331,10 +331,19 @@ class CustomerMonitoringController extends Controller
             ? Area::whereIn('id', $userAreaIds)->orderBy('name')->get(['id', 'name'])
             : Area::orderBy('name')->get(['id', 'name']);
 
-        // Data Perusahaan untuk Template WhatsApp
-        $companyName = Setting::get('company_name', config('app.name', 'ISP Provider'));
-        $companyPhone = Setting::get('company_phone', '');
-        $paymentBanks = json_decode(Setting::get('payment_banks', '[]'), true) ?: [];
+        // Data Perusahaan untuk Template WhatsApp (mendukung multi-company / kemitraan)
+        $userCompany = auth()->user()?->company;
+        $activeCompanyId = session('active_company_id');
+        if ($activeCompanyId && $activeCompanyId !== 'all') {
+            $userCompany = \App\Models\Company::find($activeCompanyId) ?: $userCompany;
+        }
+
+        $companyName = $userCompany ? ($userCompany->brand_name ?: $userCompany->name) : Setting::get('company_name', config('app.name', 'ISP Provider'));
+        $companyPhone = $userCompany ? ($userCompany->phone ?: Setting::get('company_phone', '')) : Setting::get('company_phone', '');
+        $paymentBanks = $userCompany ? json_decode($userCompany->getSetting('payment_banks', '[]') ?: '[]', true) : null;
+        if (empty($paymentBanks)) {
+            $paymentBanks = json_decode(Setting::get('payment_banks', '[]'), true) ?: [];
+        }
 
         return Inertia::render('Monitoring/CustomerMonitoring', [
             'tab' => $tab,

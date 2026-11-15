@@ -9,9 +9,10 @@ use Illuminate\Support\Facades\DB;
 
 class ProjectInvoice extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\BelongsToCompany;
 
     protected $fillable = [
+        'company_id',
         'invoice_number',
         'client_name',
         'client_pic',

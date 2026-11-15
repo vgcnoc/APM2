@@ -411,7 +411,17 @@ class InvoiceController extends Controller
                 : \App\Models\Area::orderBy('name')->get(['id', 'name']),
             'lead_technicians' => $leadTechnicians,
             'filters' => $request->only(['search', 'status', 'start_date', 'end_date', 'area_id', 'package_id', 'billing_type', 'tab']),
-            'payment_banks' => fn () => json_decode(\App\Models\Setting::get('payment_banks', '[]'), true),
+            'payment_banks' => function () {
+                $userCompanyId = auth()->user()?->company_id;
+                if ($userCompanyId && $userCompanyId > 1) {
+                    $c = \App\Models\Company::find($userCompanyId);
+                    $b = $c ? json_decode($c->getSetting('payment_banks', '[]') ?: '[]', true) : null;
+                    if (!empty($b)) {
+                        return $b;
+                    }
+                }
+                return json_decode(\App\Models\Setting::get('payment_banks', '[]'), true) ?: [];
+            },
         ]);
     }
 
@@ -1084,18 +1094,31 @@ class InvoiceController extends Controller
 
     public function print(Invoice $invoice, Request $request)
     {
-        $invoice->load(['customer.package', 'customer.areaModel', 'payments.collector']);
+        $invoice->load(['customer.package', 'customer.areaModel', 'payments.collector', 'company']);
         
-        $company = [
-            'name' => \App\Models\Setting::get('company_name', config('app.name', 'ISP Management')),
-            'address' => \App\Models\Setting::get('company_address', 'Layanan Internet Cepat & Stabil'),
-            'phone' => \App\Models\Setting::get('company_phone', ''),
-            'email' => \App\Models\Setting::get('company_email', ''),
-            'website' => \App\Models\Setting::get('company_website', ''),
-            'logo' => \App\Models\Setting::get('company_logo', null),
-        ];
-
-        $banks = json_decode(\App\Models\Setting::get('payment_banks', '[]'), true) ?: [];
+        $invCompany = $invoice->company ?: ($invoice->company_id ? \App\Models\Company::find($invoice->company_id) : null);
+        if ($invCompany) {
+            $company = [
+                'name' => $invCompany->brand_name ?: $invCompany->name,
+                'address' => $invCompany->address ?: \App\Models\Setting::get('company_address', 'Layanan Internet Cepat & Stabil'),
+                'phone' => $invCompany->phone ?: \App\Models\Setting::get('company_phone', ''),
+                'email' => $invCompany->email ?: \App\Models\Setting::get('company_email', ''),
+                'website' => $invCompany->website ?: \App\Models\Setting::get('company_website', ''),
+                'logo' => $invCompany->logo_url ?: \App\Models\Setting::get('company_logo', null),
+            ];
+            $savedBanks = json_decode($invCompany->getSetting('payment_banks', '[]') ?: '[]', true) ?: [];
+            $banks = !empty($savedBanks) ? $savedBanks : (json_decode(\App\Models\Setting::get('payment_banks', '[]'), true) ?: []);
+        } else {
+            $company = [
+                'name' => \App\Models\Setting::get('company_name', config('app.name', 'ISP Management')),
+                'address' => \App\Models\Setting::get('company_address', 'Layanan Internet Cepat & Stabil'),
+                'phone' => \App\Models\Setting::get('company_phone', ''),
+                'email' => \App\Models\Setting::get('company_email', ''),
+                'website' => \App\Models\Setting::get('company_website', ''),
+                'logo' => \App\Models\Setting::get('company_logo', null),
+            ];
+            $banks = json_decode(\App\Models\Setting::get('payment_banks', '[]'), true) ?: [];
+        }
 
         if ($request->query('mode') === 'pdf') {
             $logoBase64 = $this->resolveCompanyLogoBase64($company['logo'] ?? null);
@@ -1120,16 +1143,28 @@ class InvoiceController extends Controller
      */
     public function printPromise(Invoice $invoice, Request $request)
     {
-        $invoice->load(['customer.package', 'customer.areaModel', 'payments']);
+        $invoice->load(['customer.package', 'customer.areaModel', 'payments', 'company']);
 
-        $company = [
-            'name' => \App\Models\Setting::get('company_name', config('app.name', 'ISP Management')),
-            'address' => \App\Models\Setting::get('company_address', 'Layanan Internet Cepat & Stabil'),
-            'phone' => \App\Models\Setting::get('company_phone', ''),
-            'email' => \App\Models\Setting::get('company_email', ''),
-            'website' => \App\Models\Setting::get('company_website', ''),
-            'logo' => \App\Models\Setting::get('company_logo', null),
-        ];
+        $invCompany = $invoice->company ?: ($invoice->company_id ? \App\Models\Company::find($invoice->company_id) : null);
+        if ($invCompany) {
+            $company = [
+                'name' => $invCompany->brand_name ?: $invCompany->name,
+                'address' => $invCompany->address ?: \App\Models\Setting::get('company_address', 'Layanan Internet Cepat & Stabil'),
+                'phone' => $invCompany->phone ?: \App\Models\Setting::get('company_phone', ''),
+                'email' => $invCompany->email ?: \App\Models\Setting::get('company_email', ''),
+                'website' => $invCompany->website ?: \App\Models\Setting::get('company_website', ''),
+                'logo' => $invCompany->logo_url ?: \App\Models\Setting::get('company_logo', null),
+            ];
+        } else {
+            $company = [
+                'name' => \App\Models\Setting::get('company_name', config('app.name', 'ISP Management')),
+                'address' => \App\Models\Setting::get('company_address', 'Layanan Internet Cepat & Stabil'),
+                'phone' => \App\Models\Setting::get('company_phone', ''),
+                'email' => \App\Models\Setting::get('company_email', ''),
+                'website' => \App\Models\Setting::get('company_website', ''),
+                'logo' => \App\Models\Setting::get('company_logo', null),
+            ];
+        }
 
         $customer = $invoice->customer;
         $logoBase64 = $this->resolveCompanyLogoBase64($company['logo'] ?? null);

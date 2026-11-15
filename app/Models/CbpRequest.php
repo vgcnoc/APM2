@@ -3,11 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToCompany;
 
 class CbpRequest extends Model
 {
+    use BelongsToCompany;
+
     protected $fillable = [
-        'cbp_number', 'customer_id', 'reason', 'status', 'scheduled_date',
+        'company_id', 'cbp_number', 'customer_id', 'reason', 'status', 'scheduled_date',
         'assigned_to', 'created_by', 'completed_at', 'notes',
         'start_time', 'end_time', 'photo', 'photos',
         'sent_to_schedule_at', 'sent_to_schedule_by', 'dispatch_notes',

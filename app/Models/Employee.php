@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use App\Traits\BelongsToCompany;
 
 class Employee extends Model
 {
+    use BelongsToCompany;
+
     protected $guarded = ['id'];
 
     protected $casts = [

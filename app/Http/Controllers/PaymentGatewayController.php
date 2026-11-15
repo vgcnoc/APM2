@@ -101,7 +101,7 @@ class PaymentGatewayController extends Controller
             'invoice' => $invoice,
             'channels' => $channels,
             'paymentData' => $payload,
-            'config' => $this->pgService->getConfig(),
+            'config' => $this->pgService->getConfig($invoice->company_id),
         ]);
     }
 
@@ -112,7 +112,22 @@ class PaymentGatewayController extends Controller
     {
         Log::info('[PaymentGateway Webhook] Received:', $request->all());
 
-        $config = $this->pgService->getConfig();
+        $data = $request->all();
+        $targetRef = $data['merchant_ref'] ?? $request->order_id ?? $request->external_id ?? $request->merchantOrderId ?? $data['reference'] ?? null;
+        $companyId = null;
+
+        if ($targetRef) {
+            $invNum = explode('-', $targetRef)[0];
+            $matchedInvoice = Invoice::withoutGlobalScopes()
+                ->where('payment_ref', $targetRef)
+                ->orWhere('invoice_number', $invNum)
+                ->first();
+            if ($matchedInvoice) {
+                $companyId = $matchedInvoice->company_id;
+            }
+        }
+
+        $config = $this->pgService->getConfig($companyId);
         $provider = $config['provider'];
 
         // 1. Validasi Tripay Callback
@@ -126,12 +141,12 @@ class PaymentGatewayController extends Controller
                 return response()->json(['success' => false, 'message' => 'Invalid signature'], 403);
             }
 
-            $data = $request->all();
             $merchantRef = $data['merchant_ref'] ?? null;
             $status = strtoupper($data['status'] ?? '');
 
             if ($status === 'PAID') {
-                $invoice = Invoice::where('payment_ref', $data['reference'] ?? '')
+                $invoice = Invoice::withoutGlobalScopes()
+                    ->where('payment_ref', $data['reference'] ?? '')
                     ->orWhere('invoice_number', explode('-', $merchantRef)[0])
                     ->first();
 
@@ -163,7 +178,8 @@ class PaymentGatewayController extends Controller
 
             $transactionStatus = $request->transaction_status;
             if ($transactionStatus === 'settlement' || $transactionStatus === 'capture') {
-                $invoice = Invoice::where('payment_ref', $orderId)
+                $invoice = Invoice::withoutGlobalScopes()
+                    ->where('payment_ref', $orderId)
                     ->orWhere('invoice_number', explode('-', $orderId)[0])
                     ->first();
                 if ($invoice) {
@@ -191,7 +207,8 @@ class PaymentGatewayController extends Controller
             $status = strtoupper($request->status ?? '');
             if ($status === 'PAID') {
                 $externalId = $request->external_id;
-                $invoice = Invoice::where('payment_ref', $request->id)
+                $invoice = Invoice::withoutGlobalScopes()
+                    ->where('payment_ref', $request->id)
                     ->orWhere('payment_ref', $externalId)
                     ->orWhere('invoice_number', explode('-', $externalId)[0])
                     ->first();
@@ -222,7 +239,8 @@ class PaymentGatewayController extends Controller
             }
 
             if ($resultCode === '00') {
-                $invoice = Invoice::where('payment_ref', $request->reference ?? '')
+                $invoice = Invoice::withoutGlobalScopes()
+                    ->where('payment_ref', $request->reference ?? '')
                     ->orWhere('payment_ref', $merchantOrderId)
                     ->orWhere('invoice_number', explode('-', $merchantOrderId)[0])
                     ->first();
@@ -244,7 +262,8 @@ class PaymentGatewayController extends Controller
             $status = strtolower($request->status ?? '');
             if ($status === 'berhasil') {
                 $trxId = $request->trx_id ?? $request->sid;
-                $invoice = Invoice::where('payment_ref', $trxId)
+                $invoice = Invoice::withoutGlobalScopes()
+                    ->where('payment_ref', $trxId)
                     ->orWhere('payment_ref', $request->reference)
                     ->first();
 
@@ -273,7 +292,8 @@ class PaymentGatewayController extends Controller
             }
 
             if ($status === 'Success') {
-                $invoice = Invoice::where('payment_ref', $request->pay_id ?? '')
+                $invoice = Invoice::withoutGlobalScopes()
+                    ->where('payment_ref', $request->pay_id ?? '')
                     ->orWhere('payment_ref', $uniqueCode)
                     ->orWhere('invoice_number', explode('-', $uniqueCode)[0])
                     ->first();
@@ -296,7 +316,7 @@ class PaymentGatewayController extends Controller
             if (in_array($event, ['payment.received', 'payment.success'])) {
                 $data = $request->data ?? [];
                 $id = $data['id'] ?? null;
-                $invoice = Invoice::where('payment_ref', $id)->first();
+                $invoice = Invoice::withoutGlobalScopes()->where('payment_ref', $id)->first();
 
                 if ($invoice) {
                     $this->pgService->settleInvoice($invoice, [
@@ -313,7 +333,8 @@ class PaymentGatewayController extends Controller
         // 8. Fallback Generic Callback
         $ref = $request->reference ?? $request->order_id ?? $request->merchant_ref ?? $request->external_id ?? $request->unique_code;
         if ($ref) {
-            $invoice = Invoice::where('payment_ref', $ref)
+            $invoice = Invoice::withoutGlobalScopes()
+                ->where('payment_ref', $ref)
                 ->orWhere('invoice_number', explode('-', $ref)[0])
                 ->first();
             if ($invoice) {

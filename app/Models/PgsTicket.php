@@ -10,9 +10,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PgsTicket extends Model
 {
-    use HasFactory, \App\Traits\HasDataScope;
+    use HasFactory, \App\Traits\HasDataScope, \App\Traits\BelongsToCompany;
 
     protected $fillable = [
+        'company_id',
         'ticket_number',
         'customer_id',
         'area_id',

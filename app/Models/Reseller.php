@@ -9,9 +9,10 @@ use Illuminate\Support\Str;
 class Reseller extends Model
 {
     /** @use HasFactory<\Database\Factories\ResellerFactory> */
-    use HasFactory;
+    use HasFactory, \App\Traits\BelongsToCompany;
 
     protected $fillable = [
+        'company_id',
         'customer_id',
         'user_id',
         'balance',
