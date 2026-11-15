@@ -59,6 +59,13 @@ class NetworkDataController extends Controller
             abort(403, 'Anda tidak memiliki hak akses ke menu Data Jaringan.');
         }
 
+        if ($user && $user->company_id > 1) {
+            $company = $user->company ?: \App\Models\Company::find($user->company_id);
+            if ($company && !$company->is_holding && !$company->hasModule('network')) {
+                abort(403, 'Akses modul Infrastruktur & Data Jaringan belum diaktifkan oleh Administrator Holding untuk perusahaan Anda.');
+            }
+        }
+
         // Get filter inputs
         $oltId = $request->input('olt_id');
         $odcId = $request->input('odc_id');

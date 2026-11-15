@@ -22,6 +22,13 @@ class NetworkMapController extends Controller
     {
         abort_unless(in_array($user->role, ['admin', 'super admin', 'superadmin', 'super-admin'], true)
             || $user->hasAnyRole(['admin', 'super admin']) || $user->can('menu_network_map'), 403);
+
+        if ($user->company_id > 1) {
+            $company = $user->company ?: \App\Models\Company::find($user->company_id);
+            if ($company && !$company->is_holding && !$company->hasModule('network')) {
+                abort(403, 'Akses modul Infrastruktur & Data Jaringan belum diaktifkan oleh Administrator Holding untuk perusahaan Anda.');
+            }
+        }
     }
 
     private function mapCustomers(User $user): Builder

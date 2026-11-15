@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+            'company_module' => \App\Http\Middleware\EnsureCompanyModule::class,
         ]);
         $middleware->web(append: [
             \App\Http\Middleware\NormalizeCoordinates::class,

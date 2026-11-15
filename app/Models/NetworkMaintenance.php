@@ -11,11 +11,12 @@ use Carbon\Carbon;
 
 class NetworkMaintenance extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\BelongsToCompany;
 
     protected $table = 'network_maintenances';
 
     protected $fillable = [
+        'company_id',
         'maintenance_number',
         'category',
         'title',

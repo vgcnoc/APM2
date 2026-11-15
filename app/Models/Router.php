@@ -3,10 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToCompany;
 
 class Router extends Model
 {
+    use BelongsToCompany;
+
     protected $fillable = [
+        'company_id',
         'name',
         'area_id',
         'nas_id',

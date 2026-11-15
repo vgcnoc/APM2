@@ -253,66 +253,73 @@ Route::middleware(['auth'])->group(function () {
         return redirect()->route('customers.index')->with('error', 'Pelanggan tidak ditemukan atau sudah dihapus dari sistem.');
     });
 
-    // ── Data OLT ──────────────────────────────────────────────
-    Route::post('olts/bulk-destroy', [OltController::class, 'bulkDestroy'])->name('olts.bulk-destroy');
-    Route::resource('olts', OltController::class);
-    Route::post('olts/{olt}/update', [OltController::class, 'update'])->name('olts.update.post');
-    Route::post('olts/{olt}/delete', [OltController::class, 'destroy'])->name('olts.destroy.post');
+    // ── Infrastruktur Jaringan & OSP (Module: network) ────────
+    Route::middleware(['company_module:network'])->group(function () {
+        // Data OLT
+        Route::post('olts/bulk-destroy', [OltController::class, 'bulkDestroy'])->name('olts.bulk-destroy');
+        Route::resource('olts', OltController::class);
+        Route::post('olts/{olt}/update', [OltController::class, 'update'])->name('olts.update.post');
+        Route::post('olts/{olt}/delete', [OltController::class, 'destroy'])->name('olts.destroy.post');
 
-    // Smart GIS Network & Customer Map with Routing
-    Route::get('network-map', [\App\Http\Controllers\NetworkMapController::class, 'index'])->name('network-map.index');
-    Route::get('network-map/connections', [\App\Http\Controllers\NetworkMapController::class, 'connections'])->name('network-map.connections');
-    Route::post('network-map/route', [\App\Http\Controllers\NetworkMapController::class, 'calculateRoute'])->name('network-map.route');
-    Route::post('network-map/nearby-odps', [\App\Http\Controllers\NetworkMapController::class, 'findNearbyOdps'])->name('network-map.nearby-odps');
+        // Smart GIS Network & Customer Map with Routing
+        Route::get('network-map', [\App\Http\Controllers\NetworkMapController::class, 'index'])->name('network-map.index');
+        Route::get('network-map/connections', [\App\Http\Controllers\NetworkMapController::class, 'connections'])->name('network-map.connections');
+        Route::post('network-map/route', [\App\Http\Controllers\NetworkMapController::class, 'calculateRoute'])->name('network-map.route');
+        Route::post('network-map/nearby-odps', [\App\Http\Controllers\NetworkMapController::class, 'findNearbyOdps'])->name('network-map.nearby-odps');
 
-    // Network Topology & Radar
-    Route::get('network-topology', [NetworkTopologyController::class, 'index'])->name('network-topology.index');
-    Route::get('network-radar', [\App\Http\Controllers\NetworkRadarController::class, 'index'])->name('network-radar.index');
-    Route::post('network-radar/nearby', [\App\Http\Controllers\NetworkRadarController::class, 'nearby'])->name('network-radar.nearby');
-    Route::post('network-radar/route', [\App\Http\Controllers\NetworkRadarController::class, 'calculateRoute'])->name('network-radar.route');
+        // Network Topology & Radar
+        Route::get('network-topology', [NetworkTopologyController::class, 'index'])->name('network-topology.index');
+        Route::get('network-radar', [\App\Http\Controllers\NetworkRadarController::class, 'index'])->name('network-radar.index');
+        Route::post('network-radar/nearby', [\App\Http\Controllers\NetworkRadarController::class, 'nearby'])->name('network-radar.nearby');
+        Route::post('network-radar/route', [\App\Http\Controllers\NetworkRadarController::class, 'calculateRoute'])->name('network-radar.route');
 
-    Route::post('odcs/bulk-destroy', [OdcController::class, 'bulkDestroy'])->name('odcs.bulk-destroy');
-    Route::resource('odcs', OdcController::class);
-    Route::post('odcs/{odc}/update', [OdcController::class, 'update'])->name('odcs.update.post');
-    Route::post('odcs/{odc}/delete', [OdcController::class, 'destroy'])->name('odcs.destroy.post');
+        Route::post('odcs/bulk-destroy', [OdcController::class, 'bulkDestroy'])->name('odcs.bulk-destroy');
+        Route::resource('odcs', OdcController::class);
+        Route::post('odcs/{odc}/update', [OdcController::class, 'update'])->name('odcs.update.post');
+        Route::post('odcs/{odc}/delete', [OdcController::class, 'destroy'])->name('odcs.destroy.post');
 
-    Route::post('odps/bulk-destroy', [OdpController::class, 'bulkDestroy'])->name('odps.bulk-destroy');
-    Route::resource('odps', OdpController::class);
-    Route::post('odps/{odp}/update', [OdpController::class, 'update'])->name('odps.update.post');
-    Route::post('odps/{odp}/delete', [OdpController::class, 'destroy'])->name('odps.destroy.post');
+        Route::post('odps/bulk-destroy', [OdpController::class, 'bulkDestroy'])->name('odps.bulk-destroy');
+        Route::resource('odps', OdpController::class);
+        Route::post('odps/{odp}/update', [OdpController::class, 'update'])->name('odps.update.post');
+        Route::post('odps/{odp}/delete', [OdpController::class, 'destroy'])->name('odps.destroy.post');
 
-    // ── Monitoring Kapasitas ODC & ODP ───────────────────────
-    Route::middleware(['permission:menu_network_capacity|menu_network_odc|menu_network_odp|menu_customers_booking'])->get('network/capacity-monitoring', [\App\Http\Controllers\CapacityMonitoringController::class, 'index'])->name('network.capacity-monitoring');
+        // Monitoring Kapasitas ODC & ODP
+        Route::middleware(['permission:menu_network_capacity|menu_network_odc|menu_network_odp|menu_customers_booking'])->get('network/capacity-monitoring', [\App\Http\Controllers\CapacityMonitoringController::class, 'index'])->name('network.capacity-monitoring');
 
-    // ── Rollout & Penugasan Pembangunan ODC & ODP ─────────────
-    Route::middleware(['permission:menu_infrastructure_work_orders|menu_network_odc|menu_network_odp'])->prefix('infrastructure/work-orders')->name('infrastructure.work-orders.')->group(function () {
-        Route::get('/', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'index'])->name('index');
-        Route::get('/create', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'create'])->name('create');
-        Route::get('/api/bom', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'getBOM'])->name('bom');
-        Route::post('/', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'store'])->name('store');
-        Route::get('/{workOrder}', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'show'])->name('show');
-        Route::match(['put', 'patch'], '/{workOrder}', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'update'])->name('update');
-        Route::get('/{workOrder}/print-surat-jalan', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'printSuratJalan'])->name('print-surat-jalan');
-        Route::post('/{workOrder}/approve-material', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'approveMaterial'])->name('approve-material');
-        Route::post('/{workOrder}/start-work', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'startWork'])->name('start-work');
-        Route::post('/{workOrder}/submit-report', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'submitReport'])->name('submit-report');
-        Route::post('/{workOrder}/request-material', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'requestMaterial'])->name('request-material');
-        Route::post('/{workOrder}/material-requests/{materialRequest}/approve', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'approveMaterialRequest'])->name('material-requests.approve');
-        Route::post('/{workOrder}/material-requests/{materialRequest}/reject', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'rejectMaterialRequest'])->name('material-requests.reject');
-        Route::post('/{workOrder}/approve', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'approve'])->name('approve');
-        Route::post('/{workOrder}/reject', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'reject'])->name('reject');
-        Route::post('/{workOrder}/upload-photo', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'uploadPhoto'])->name('upload-photo');
-        Route::delete('/{workOrder}', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'destroy'])->name('destroy');
+        // Rollout & Penugasan Pembangunan ODC & ODP
+        Route::middleware(['permission:menu_infrastructure_work_orders|menu_network_odc|menu_network_odp'])->prefix('infrastructure/work-orders')->name('infrastructure.work-orders.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'index'])->name('index');
+            Route::get('/create', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'create'])->name('create');
+            Route::get('/api/bom', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'getBOM'])->name('bom');
+            Route::post('/', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'store'])->name('store');
+            Route::get('/{workOrder}', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'show'])->name('show');
+            Route::match(['put', 'patch'], '/{workOrder}', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'update'])->name('update');
+            Route::get('/{workOrder}/print-surat-jalan', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'printSuratJalan'])->name('print-surat-jalan');
+            Route::post('/{workOrder}/approve-material', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'approveMaterial'])->name('approve-material');
+            Route::post('/{workOrder}/start-work', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'startWork'])->name('start-work');
+            Route::post('/{workOrder}/submit-report', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'submitReport'])->name('submit-report');
+            Route::post('/{workOrder}/request-material', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'requestMaterial'])->name('request-material');
+            Route::post('/{workOrder}/material-requests/{materialRequest}/approve', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'approveMaterialRequest'])->name('material-requests.approve');
+            Route::post('/{workOrder}/material-requests/{materialRequest}/reject', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'rejectMaterialRequest'])->name('material-requests.reject');
+            Route::post('/{workOrder}/approve', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'approve'])->name('approve');
+            Route::post('/{workOrder}/reject', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'reject'])->name('reject');
+            Route::post('/{workOrder}/upload-photo', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'uploadPhoto'])->name('upload-photo');
+            Route::delete('/{workOrder}', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'destroy'])->name('destroy');
+        });
+
+        Route::get('onts/generate-pppoe', [OntController::class, 'generatePppoe'])->name('onts.generate-pppoe');
+        Route::get('onts/check-pppoe-user', [OntController::class, 'checkPppoeUser'])->name('onts.check-pppoe-user');
+        Route::post('onts/update-pppoe-settings', [OntController::class, 'updatePppoeSettings'])->name('onts.update-pppoe-settings');
+        Route::post('onts/bulk-destroy', [OntController::class, 'bulkDestroy'])->name('onts.bulk-destroy');
+        Route::resource('onts', OntController::class);
+        Route::post('onts/{ont}/update', [OntController::class, 'update'])->name('onts.update.post');
+        Route::post('onts/{ont}/delete', [OntController::class, 'destroy'])->name('onts.destroy.post');
+        Route::get('find-onu', [OntController::class, 'findOnu'])->name('find-onu.index');
+
+        // Data Jaringan (Dashboard Topology)
+        Route::get('/network-data', [\App\Http\Controllers\NetworkDataController::class, 'index'])->name('network-data.index');
+        Route::get('/network-data/terminated', [\App\Http\Controllers\NetworkDataController::class, 'terminated'])->name('network-data.terminated');
     });
-
-    Route::get('onts/generate-pppoe', [OntController::class, 'generatePppoe'])->name('onts.generate-pppoe');
-    Route::get('onts/check-pppoe-user', [OntController::class, 'checkPppoeUser'])->name('onts.check-pppoe-user');
-    Route::post('onts/update-pppoe-settings', [OntController::class, 'updatePppoeSettings'])->name('onts.update-pppoe-settings');
-    Route::post('onts/bulk-destroy', [OntController::class, 'bulkDestroy'])->name('onts.bulk-destroy');
-    Route::resource('onts', OntController::class);
-    Route::post('onts/{ont}/update', [OntController::class, 'update'])->name('onts.update.post');
-    Route::post('onts/{ont}/delete', [OntController::class, 'destroy'])->name('onts.destroy.post');
-    Route::get('find-onu', [OntController::class, 'findOnu'])->name('find-onu.index');
 
     Route::resource('materials', MaterialController::class);
     Route::post('employees/bulk-destroy', [\App\Http\Controllers\EmployeeController::class, 'bulkDestroy'])->name('employees.bulk-destroy');
@@ -446,9 +453,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('material-handovers/dismantles/{dismantle}/receive', [\App\Http\Controllers\MaterialHandoverController::class, 'receiveDismantle'])->name('material-handovers.receive-dismantle');
 
 
-    // ── Data Jaringan (Dashboard Topology) ─────────────────────
-    Route::get('/network-data', [\App\Http\Controllers\NetworkDataController::class, 'index'])->name('network-data.index');
-    Route::get('/network-data/terminated', [\App\Http\Controllers\NetworkDataController::class, 'terminated'])->name('network-data.terminated');
+
 
     // ── Vouchers & Profil Voucher ─────────────────────────────
     Route::get('/vouchers/profiles', [\App\Http\Controllers\VoucherProfileController::class, 'index'])->name('vouchers.profiles.index');
@@ -882,8 +887,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('internet-packages/{internet_package}/delete', [\App\Http\Controllers\InternetPackageController::class, 'destroy'])->name('internet-packages.destroy.post');
     });
 
-    // ── Data Router & RADIUS ───────────────────────────────────
-    Route::middleware(['permission:menu_routers|menu_radius_nas'])->group(function () {
+    // ── Data Router & RADIUS (Module: network) ─────────────────
+    Route::middleware(['company_module:network', 'permission:menu_routers|menu_radius_nas'])->group(function () {
         Route::resource('routers', \App\Http\Controllers\RouterController::class)->except(['create', 'show', 'edit']);
         Route::post('routers/{router}/update', [\App\Http\Controllers\RouterController::class, 'update'])->name('routers.update.post');
         Route::post('routers/{router}/delete', [\App\Http\Controllers\RouterController::class, 'destroy'])->name('routers.destroy.post');
@@ -899,7 +904,7 @@ Route::middleware(['auth'])->group(function () {
 
             Route::get('online-users', [\App\Http\Controllers\Radius\OnlineUserController::class, 'index'])->name('online-users.index');
             Route::post('online-users/disconnect', [\App\Http\Controllers\Radius\OnlineUserController::class, 'disconnect'])
-                ->withoutMiddleware(['permission:menu_routers|menu_radius_nas'])
+                ->withoutMiddleware(['permission:menu_routers|menu_radius_nas', 'company_module:network'])
                 ->middleware(['permission:menu_routers|menu_radius_nas|menu_customers_online|customers_active_suspend|menu_vouchers_monitoring|voucher_monitoring_btn_kick'])
                 ->name('online-users.disconnect');
 

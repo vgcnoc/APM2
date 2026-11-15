@@ -66,6 +66,7 @@ class CompanyController extends Controller
                 ['id' => 'materials', 'name' => 'Logistik & Stok Gudang Mitra', 'desc' => 'Pendataan stok modem, kabel, dan surat jalan material'],
                 ['id' => 'vouchers', 'name' => 'Sistem Hotspot & Voucher', 'desc' => 'Generate dan cetak voucher hotspot WiFi'],
                 ['id' => 'resellers', 'name' => 'Mitra Loket & Reseller Kasbon', 'desc' => 'Manajemen loket pembayaran tagihan agen mitra'],
+                ['id' => 'network', 'name' => 'Infrastruktur & Data Jaringan', 'desc' => 'Peta GIS, topologi, data OLT, ODC, ODP, ONT, dan router mandiri mitra'],
             ],
         ]);
     }

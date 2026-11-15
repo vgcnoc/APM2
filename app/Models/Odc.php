@@ -9,9 +9,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Odc extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\BelongsToCompany;
 
     protected $fillable = [
+        'company_id',
         'olt_id',
         'pon_id',
         'pon_port',

@@ -958,7 +958,7 @@ const menuItems = [
     { type: 'link', href: '/bonus-target-market', icon: 'target', label: 'Target Market', active: (url) => (url || '').startsWith('/bonus-target-market'), permission: ['menu_target_market', 'payroll_tab_target'] },
     
     // 2. PELANGGAN & LAYANAN
-    { type: 'group', label: 'PELANGGAN & LAYANAN', theme: 'blue' },
+    { type: 'group', label: 'PELANGGAN & LAYANAN', theme: 'blue', module: 'customers' },
     {
         type: 'dropdown',
         icon: 'users',
@@ -1029,7 +1029,7 @@ const menuItems = [
         ]
     },
     // 3. BILLING & KEUANGAN
-    { type: 'group', label: 'BILLING & KEUANGAN', theme: 'green' },
+    { type: 'group', label: 'BILLING & KEUANGAN', theme: 'green', module: 'billing' },
     { type: 'link', href: '/invoices', icon: 'document-text', label: 'Invoice Pelanggan', theme: 'green', active: (url) => (url || '').length > 0 && url === '/invoices', permission: 'menu_invoices' },
     {
         type: 'link',
@@ -1068,7 +1068,7 @@ const menuItems = [
     },
 
     // 4. OPERASIONAL & GANGGUAN (TIKET)
-    { type: 'group', label: 'OPERASIONAL & GANGGUAN', theme: 'rose' },
+    { type: 'group', label: 'OPERASIONAL & GANGGUAN', theme: 'rose', module: 'tickets' },
     {
         type: 'link',
         href: '/operational/daily-progress',
@@ -1159,7 +1159,7 @@ const menuItems = [
     },
 
     // 5. HOTSPOT & VOUCHER
-    { type: 'group', label: 'HOTSPOT & VOUCHER', theme: 'purple' },
+    { type: 'group', label: 'HOTSPOT & VOUCHER', theme: 'purple', module: 'vouchers' },
     { 
         type: 'dropdown',
         icon: 'ticket',
@@ -1177,7 +1177,7 @@ const menuItems = [
     },
 
     // 6. MITRA & RESELLER
-    { type: 'group', label: 'MITRA & RESELLER', theme: 'green' },
+    { type: 'group', label: 'MITRA & RESELLER', theme: 'green', module: 'resellers' },
     { type: 'link', href: '/resellers', icon: 'users', label: 'Data Reseller', theme: 'green', active: (url) => (url || '').startsWith('/resellers'), permission: 'menu_resellers' },
     {
         type: 'dropdown',
@@ -1238,12 +1238,13 @@ const menuItems = [
     },
 
     // 7. INFRASTRUKTUR JARINGAN
-    { type: 'group', label: 'INFRASTRUKTUR JARINGAN', theme: 'pink' },
+    { type: 'group', label: 'INFRASTRUKTUR JARINGAN', theme: 'pink', module: 'network' },
     {
         type: 'dropdown',
         icon: 'globe',
         label: 'Peta & Topologi',
         theme: 'pink',
+        module: 'network',
         active: (url) => ['/network-map', '/network-topology', '/network-radar', '/network-data'].some(path => (url || '').startsWith(path)),
         permission: ['menu_network_map', 'menu_network_topology', 'menu_network_radar', 'menu_network_data', 'menu_network_data_terminated', 'menu_ftth'],
         children: [
@@ -1259,6 +1260,7 @@ const menuItems = [
         icon: 'server',
         label: 'Perangkat OSP / FTTH',
         theme: 'pink',
+        module: 'network',
         active: (url) => ['/olts', '/odcs', '/odps', '/onts', '/find-onu', '/infrastructure/work-orders', '/network/capacity-monitoring'].some(path => (url || '').startsWith(path)),
         permission: ['menu_network_capacity', 'menu_infrastructure_work_orders', 'menu_network_olt', 'menu_network_odc', 'menu_network_odp', 'menu_network_ont', 'menu_network_find_onu'],
         children: [
@@ -1276,6 +1278,7 @@ const menuItems = [
         icon: 'wifi',
         label: 'MikroTik & RADIUS',
         theme: 'pink',
+        module: 'network',
         active: (url) => (url || '').startsWith('/routers') || (url || '').startsWith('/radius'),
         permission: ['menu_routers', 'menu_radius_nas', 'menu_radius_online_users', 'menu_radius_auth_logs'],
         children: [
@@ -1286,8 +1289,8 @@ const menuItems = [
         ]
     },
 
-    // 7. LOGISTIK & GUDANG
-    { type: 'group', label: 'LOGISTIK & GUDANG', theme: 'brown' },
+    // 8. LOGISTIK & GUDANG
+    { type: 'group', label: 'LOGISTIK & GUDANG', theme: 'brown', module: 'materials' },
     {
         type: 'dropdown',
         icon: 'archive',
@@ -1337,6 +1340,7 @@ const menuItems = [
         icon: 'badge-check',
         label: 'Sistem Presensi & Absensi',
         theme: 'slate',
+        module: 'attendance',
         active: (url) => ['/attendances', '/attendance-leaves', '/absen-khusus', '/absen-tugas-luar', '/settings/attendance', '/employee-locations', '/attendance-reports'].some(path => (url || '').startsWith(path)),
         permission: ['menu_attendances', 'attendance_tab_reguler', 'menu_attendance_leaves', 'attendance_tab_special', 'attendance_tab_field', 'menu_settings_attendance', 'menu_hr_employees', 'menu_attendance_reports', 'menu_employee_locations'],
         children: [
@@ -1354,6 +1358,7 @@ const menuItems = [
         icon: 'calculator',
         label: 'Penggajian & Insentif',
         theme: 'slate',
+        module: 'payroll',
         active: (url) => ['/payroll', '/insentif-potongan'].some(path => (url || '').startsWith(path)),
         permission: ['menu_payroll', 'payroll_view_own', 'payroll_tab_slip', 'payroll_tab_incentives', 'menu_incentives_deductions'],
         children: [
@@ -1450,6 +1455,22 @@ const isPathHiddenByMasking = (hrefOrPath) => {
     }
 };
 
+const isModuleAllowed = (moduleKey) => {
+    if (!moduleKey) return true;
+    const company = page.props?.current_company;
+    if (!company) return true;
+    // Holding pusat selalu memiliki akses penuh ke seluruh modul
+    if (company.is_holding) return true;
+    if (!Array.isArray(company.allowed_modules)) return false;
+    return company.allowed_modules.includes(moduleKey);
+};
+
+const isHoldingSuperAdmin = () => {
+    const isHolding = Boolean(page.props?.current_company?.is_holding);
+    const uRole = String(page.props?.auth?.user?.role || '').toLowerCase();
+    return isHolding && ['admin', 'super admin', 'superadmin'].includes(uRole);
+};
+
 const filteredMenuItems = computed(() => {
     try {
         const filtered = [];
@@ -1459,9 +1480,20 @@ const filteredMenuItems = computed(() => {
             if (item.type === 'group') {
                 currentGroup = item;
             } else {
+                // Saring jika modul di level group tidak diizinkan untuk mitra
+                if (currentGroup?.module && !isModuleAllowed(currentGroup.module)) {
+                    return;
+                }
+                // Saring jika modul di level item dropdown/link tidak diizinkan untuk mitra
+                if (item.module && !isModuleAllowed(item.module)) {
+                    return;
+                }
+
                 let isAllowed = false;
                 if (item.type === 'dropdown' && item.children) {
                     const allowedChildren = item.children.filter(c => {
+                        if (c.module && !isModuleAllowed(c.module)) return false;
+                        if (c.href === '/settings/companies' && !isHoldingSuperAdmin()) return false;
                         const hasChildAccess = !c.permission || hasPermission(c.permission);
                         const isHidden = isPathHiddenByMasking(c.href);
                         return hasChildAccess && !isHidden;
@@ -1477,6 +1509,7 @@ const filteredMenuItems = computed(() => {
                         return;
                     }
                 } else {
+                    if (item.href === '/settings/companies' && !isHoldingSuperAdmin()) return;
                     const hasPerm = !item.permission || hasPermission(item.permission);
                     const isHidden = isPathHiddenByMasking(item.href);
                     isAllowed = hasPerm && !isHidden;
