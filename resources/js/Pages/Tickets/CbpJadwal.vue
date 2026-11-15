@@ -170,7 +170,7 @@
                                 <th class="p-4">Alasan Cabut</th>
                                 <th class="p-4">Status</th>
                                 <th class="p-4">Teknisi</th>
-                                <th class="p-4 w-60 text-center whitespace-nowrap">Aksi</th>
+                                <th class="p-4 w-20 text-center whitespace-nowrap">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 text-sm">
@@ -244,95 +244,19 @@
                                     <span v-else class="text-xs text-gray-400 italic">Belum ditugaskan</span>
                                 </td>
                                 <td class="p-4 text-center whitespace-nowrap">
-                                    <div class="inline-flex items-center justify-center gap-1.5 p-1 bg-slate-50/80 border border-slate-200/70 rounded-2xl shadow-2xs">
-                                        <!-- Kirim Disposisi WhatsApp -->
-                                        <button 
-                                            type="button" 
-                                            @click="shareWhatsApp(req)" 
-                                            class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-700 border border-emerald-200/80 shadow-2xs hover:shadow-xs transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0" 
-                                            title="Kirim Disposisi ke Kepala Teknisi (WhatsApp)"
-                                        >
-                                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
-                                        </button>
-
-                                        <!-- Tugaskan Teknisi (Pending) -->
-                                        <button 
-                                            v-if="req.status === 'pending' && can('cbp_btn_assign')" 
-                                            type="button" 
-                                            @click="openAssignModal(req)" 
-                                            class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700 border border-blue-200/80 shadow-2xs hover:shadow-xs transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0" 
-                                            title="Tugaskan Tim Teknisi"
-                                        >
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
-                                        </button>
-
-                                        <!-- Ubah Teknisi (Assigned) -->
-                                        <button 
-                                            v-if="req.status === 'assigned' && can('cbp_btn_assign')" 
-                                            type="button" 
-                                            @click="openAssignModal(req)" 
-                                            class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-orange-600 bg-orange-50 hover:bg-orange-100 hover:text-orange-700 border border-orange-200/80 shadow-2xs hover:shadow-xs transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0" 
-                                            title="Ubah Penugasan Teknisi"
-                                        >
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                        </button>
-
-                                        <!-- Tombol Aksi Reschedule (Jadwal Ulang) -->
-                                        <button 
-                                            v-if="can(['cbp_btn_reschedule', 'cbp_btn_assign', 'cbp_manage'])" 
-                                            type="button" 
-                                            @click="openRescheduleModal(req)" 
-                                            class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-amber-600 bg-amber-50 hover:bg-amber-100 hover:text-amber-700 border border-amber-200/80 shadow-2xs hover:shadow-xs transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0 group" 
-                                            title="Jadwalkan Ulang (Reschedule) CBP"
-                                        >
-                                            <svg class="w-4 h-4 transition-transform duration-200 group-hover:rotate-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 12v3l2 2"/>
-                                            </svg>
-                                        </button>
-
-                                        <!-- Tombol Lapor (Assigned) -->
-                                        <Link 
-                                            v-if="req.status === 'assigned' && can('cbp_btn_report')" 
-                                            :href="'/cbp/laporan?search=' + req.cbp_number" 
-                                            class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-teal-600 bg-teal-50 hover:bg-teal-100 hover:text-teal-700 border border-teal-200/80 shadow-2xs hover:shadow-xs transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0" 
-                                            title="Lapor Hasil Eksekusi CBP"
-                                        >
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                        </Link>
-
-                                        <!-- Tombol Laporan Selesai (Completed) -->
-                                        <Link 
-                                            v-else-if="req.status === 'completed'" 
-                                            :href="'/cbp/laporan?search=' + req.cbp_number" 
-                                            class="h-8 px-2.5 rounded-xl inline-flex items-center gap-1 shrink-0 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 shadow-2xs hover:shadow-xs transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0" 
-                                            title="Lihat Detail Laporan Selesai"
-                                        >
-                                            <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                                            <span>Selesai</span>
-                                        </Link>
-
-                                        <!-- Riwayat CBP -->
-                                        <button 
-                                            type="button" 
-                                            @click="openHistoryModal(req)" 
-                                            class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 hover:text-indigo-700 border border-indigo-200/80 shadow-2xs hover:shadow-xs transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0" 
-                                            title="Riwayat CBP"
-                                        >
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                        </button>
-
-                                        <!-- Batalkan CBP (Pending) -->
-                                        <button 
-                                            v-if="req.status === 'pending'" 
-                                            type="button" 
-                                            @click="cancelCbp(req)" 
-                                            class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-rose-600 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 border border-rose-200/80 shadow-2xs hover:shadow-xs transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0" 
-                                            title="Batalkan CBP"
-                                        >
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                        </button>
-                                    </div>
+                                    <button 
+                                        type="button" 
+                                        @click.stop="toggleActionMenu($event, req)" 
+                                        class="w-8 h-8 rounded-xl inline-flex items-center justify-center bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200/80 hover:border-slate-300 shadow-2xs hover:shadow-xs transition-all active:scale-95 cursor-pointer"
+                                        :class="{ 'ring-2 ring-blue-500 bg-blue-50 text-blue-600 border-blue-300': activeActionRow?.id === req.id }"
+                                        title="Pilihan Aksi"
+                                    >
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                            <circle cx="12" cy="5" r="2"/>
+                                            <circle cx="12" cy="12" r="2"/>
+                                            <circle cx="12" cy="19" r="2"/>
+                                        </svg>
+                                    </button>
                                 </td>
                             </tr>
                             <tr v-if="!requests.data.length">
@@ -1080,11 +1004,184 @@
                 </div>
             </div>
         </Teleport>
+
+        <!-- Floating Action Dropdown Menu (Titik 3) -->
+        <Teleport to="body">
+            <div 
+                v-if="activeActionRow" 
+                class="fixed inset-0 z-[120]" 
+                @click="closeActionMenu" 
+                @contextmenu.prevent="closeActionMenu"
+            >
+                <div 
+                    :style="{ top: `${actionMenuPos.top}px`, left: `${actionMenuPos.left}px` }"
+                    class="fixed w-60 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200/90 py-1.5 z-[121] text-xs divide-y divide-slate-100 animate-fade-in-up"
+                    @click.stop
+                >
+                    <!-- Header Info Singkat Tiket -->
+                    <div class="px-3 py-2 bg-slate-50/70 -mt-1.5 rounded-t-2xl border-b border-slate-100 flex items-center justify-between">
+                        <div class="min-w-0 flex-1">
+                            <div class="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider">Aksi CBP</div>
+                            <div class="text-xs font-bold text-slate-900 truncate">{{ activeActionRow.cbp_number }}</div>
+                            <div class="text-[11px] text-slate-500 truncate">{{ activeActionRow.customer?.name || '-' }}</div>
+                        </div>
+                        <span 
+                            class="px-2 py-0.5 rounded-full text-[9px] font-bold border shrink-0"
+                            :class="{
+                                'bg-orange-50 text-orange-700 border-orange-200': activeActionRow.status === 'pending',
+                                'bg-blue-50 text-blue-700 border-blue-200': activeActionRow.status === 'assigned',
+                                'bg-emerald-50 text-emerald-700 border-emerald-200': activeActionRow.status === 'completed'
+                            }"
+                        >
+                            {{ activeActionRow.status === 'pending' ? 'Pending' : activeActionRow.status === 'assigned' ? 'Ditugaskan' : 'Selesai' }}
+                        </span>
+                    </div>
+
+                    <!-- Grup 1: Penugasan & Reschedule -->
+                    <div class="py-1">
+                        <!-- Tugaskan Teknisi (Pending) -->
+                        <button 
+                            v-if="activeActionRow.status === 'pending' && can('cbp_btn_assign')" 
+                            type="button" 
+                            @click="runAction(() => openAssignModal(activeActionRow))"
+                            class="w-full text-left px-3 py-2 hover:bg-blue-50/80 text-slate-700 flex items-center gap-2.5 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 group-hover:bg-blue-100 flex items-center justify-center shrink-0 border border-blue-100 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                            </div>
+                            <div>
+                                <div class="font-bold text-xs text-slate-800 group-hover:text-blue-800">Tugaskan Teknisi</div>
+                                <div class="text-[10px] text-slate-400">Atur personel lapangan</div>
+                            </div>
+                        </button>
+
+                        <!-- Ubah Teknisi (Assigned) -->
+                        <button 
+                            v-if="activeActionRow.status === 'assigned' && can('cbp_btn_assign')" 
+                            type="button" 
+                            @click="runAction(() => openAssignModal(activeActionRow))"
+                            class="w-full text-left px-3 py-2 hover:bg-orange-50/80 text-slate-700 flex items-center gap-2.5 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-7 h-7 rounded-lg bg-orange-50 text-orange-600 group-hover:bg-orange-100 flex items-center justify-center shrink-0 border border-orange-100 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            </div>
+                            <div>
+                                <div class="font-bold text-xs text-slate-800 group-hover:text-orange-800">Ubah Teknisi</div>
+                                <div class="text-[10px] text-slate-400">Ganti personel tugas</div>
+                            </div>
+                        </button>
+
+                        <!-- Reschedule (Jadwalkan Ulang) -->
+                        <button 
+                            v-if="can(['cbp_btn_reschedule', 'cbp_btn_assign', 'cbp_manage'])" 
+                            type="button" 
+                            @click="runAction(() => openRescheduleModal(activeActionRow))"
+                            class="w-full text-left px-3 py-2 hover:bg-amber-50/80 text-slate-700 flex items-center gap-2.5 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 group-hover:bg-amber-100 flex items-center justify-center shrink-0 border border-amber-100 transition-colors">
+                                <svg class="w-3.5 h-3.5 transition-transform duration-200 group-hover:rotate-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 12v3l2 2"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="font-bold text-xs text-slate-800 group-hover:text-amber-800">Reschedule Jadwal</div>
+                                <div class="text-[10px] text-slate-400">Atur ulang tanggal cabut</div>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Grup 2: Laporan & WhatsApp -->
+                    <div class="py-1">
+                        <!-- Lapor Eksekusi (Assigned) -->
+                        <Link 
+                            v-if="activeActionRow.status === 'assigned' && can('cbp_btn_report')" 
+                            :href="'/cbp/laporan?search=' + activeActionRow.cbp_number" 
+                            @click="closeActionMenu"
+                            class="w-full text-left px-3 py-2 hover:bg-teal-50/80 text-slate-700 flex items-center gap-2.5 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-7 h-7 rounded-lg bg-teal-50 text-teal-600 group-hover:bg-teal-100 flex items-center justify-center shrink-0 border border-teal-100 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <div>
+                                <div class="font-bold text-xs text-slate-800 group-hover:text-teal-800">Lapor Hasil Eksekusi</div>
+                                <div class="text-[10px] text-slate-400">Input material & bukti</div>
+                            </div>
+                        </Link>
+
+                        <!-- Detail Laporan Selesai (Completed) -->
+                        <Link 
+                            v-else-if="activeActionRow.status === 'completed'" 
+                            :href="'/cbp/laporan?search=' + activeActionRow.cbp_number" 
+                            @click="closeActionMenu"
+                            class="w-full text-left px-3 py-2 hover:bg-emerald-50/80 text-slate-700 flex items-center gap-2.5 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100 flex items-center justify-center shrink-0 border border-emerald-100 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                            </div>
+                            <div>
+                                <div class="font-bold text-xs text-slate-800 group-hover:text-emerald-800">Detail Laporan Selesai</div>
+                                <div class="text-[10px] text-slate-400">Lihat bukti & retur gudang</div>
+                            </div>
+                        </Link>
+
+                        <!-- WhatsApp Share -->
+                        <button 
+                            type="button" 
+                            @click="runAction(() => shareWhatsApp(activeActionRow))"
+                            class="w-full text-left px-3 py-2 hover:bg-emerald-50/80 text-slate-700 flex items-center gap-2.5 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100 flex items-center justify-center shrink-0 border border-emerald-100 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                            </div>
+                            <div>
+                                <div class="font-bold text-xs text-slate-800 group-hover:text-emerald-800">Kirim WA Disposisi</div>
+                                <div class="text-[10px] text-slate-400">Share info ke WhatsApp</div>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Grup 3: Riwayat & Batalkan -->
+                    <div class="py-1">
+                        <!-- Riwayat CBP -->
+                        <button 
+                            type="button" 
+                            @click="runAction(() => openHistoryModal(activeActionRow))"
+                            class="w-full text-left px-3 py-2 hover:bg-indigo-50/80 text-slate-700 flex items-center gap-2.5 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100 flex items-center justify-center shrink-0 border border-indigo-100 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <div>
+                                <div class="font-bold text-xs text-slate-800 group-hover:text-indigo-800">Riwayat CBP</div>
+                                <div class="text-[10px] text-slate-400">Audit log & kronologi</div>
+                            </div>
+                        </button>
+
+                        <!-- Batalkan CBP (Pending) -->
+                        <button 
+                            v-if="activeActionRow.status === 'pending'" 
+                            type="button" 
+                            @click="runAction(() => cancelCbp(activeActionRow))"
+                            class="w-full text-left px-3 py-2 hover:bg-rose-50/80 text-slate-700 flex items-center gap-2.5 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 group-hover:bg-rose-100 flex items-center justify-center shrink-0 border border-rose-100 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </div>
+                            <div>
+                                <div class="font-bold text-xs text-rose-700 group-hover:text-rose-800">Batalkan CBP</div>
+                                <div class="text-[10px] text-slate-400">Batalkan tiket jadwal</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
     </AppLayout>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { usePermission } from '@/Composables/usePermission';
@@ -1549,4 +1646,62 @@ function shareRescheduleWhatsApp(cbp, newDate, reason) {
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
 }
+
+// ========================================================
+// FLOATING ACTION DROPDOWN (TITIK 3)
+// ========================================================
+const activeActionRow = ref(null);
+const actionMenuPos = ref({ top: 0, left: 0 });
+
+function toggleActionMenu(event, req) {
+    if (activeActionRow.value && activeActionRow.value.id === req.id) {
+        activeActionRow.value = null;
+        return;
+    }
+    const rect = event.currentTarget.getBoundingClientRect();
+    const menuWidth = 240;
+    const menuHeight = 310;
+
+    let top = rect.bottom + 6;
+    if (top + menuHeight > window.innerHeight) {
+        if (rect.top > menuHeight) {
+            top = Math.max(10, rect.top - menuHeight - 6);
+        } else {
+            top = Math.max(10, window.innerHeight - menuHeight - 10);
+        }
+    }
+
+    let left = rect.right - menuWidth;
+    if (left < 10) {
+        left = 10;
+    }
+
+    actionMenuPos.value = { top, left };
+    activeActionRow.value = req;
+}
+
+function closeActionMenu() {
+    activeActionRow.value = null;
+}
+
+function runAction(actionFn) {
+    closeActionMenu();
+    actionFn();
+}
+
+function handleWindowChange() {
+    if (activeActionRow.value) {
+        activeActionRow.value = null;
+    }
+}
+
+onMounted(() => {
+    window.addEventListener('scroll', handleWindowChange, { passive: true });
+    window.addEventListener('resize', handleWindowChange);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('scroll', handleWindowChange);
+    window.removeEventListener('resize', handleWindowChange);
+});
 </script>
