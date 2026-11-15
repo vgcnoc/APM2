@@ -107,15 +107,19 @@ class MaterialHandoverService
         string $technicianName,
         ?int $areaId = null,
         ?string $notes = null,
-        ?User $user = null
+        ?User $user = null,
+        ?int $customerId = null,
+        ?int $oldOntId = null
     ): MaterialTransaction {
-        return DB::transaction(function () use ($sourceType, $sourceId, $sourceRef, $items, $technicianName, $areaId, $notes, $user) {
+        return DB::transaction(function () use ($sourceType, $sourceId, $sourceRef, $items, $technicianName, $areaId, $notes, $user, $customerId, $oldOntId) {
             $userId = $user?->id ?? auth()->id();
             $area = $areaId ? Area::find($areaId) : null;
             $areaName = $area?->name ?? 'Gudang Utama';
 
             $prefix = strtoupper(substr($sourceType, 0, 3));
             $trxNumber = MaterialService::generateTransactionNumber('RTR-' . $prefix);
+
+            $resolvedCustomerId = $customerId ?: ($sourceType === 'instalasi' ? $sourceId : ($sourceType === 'cbp' && $sourceId ? \App\Models\CbpRequest::find($sourceId)?->customer_id : null));
 
             $transaction = MaterialTransaction::create([
                 'transaction_number' => $trxNumber,
@@ -128,7 +132,8 @@ class MaterialHandoverService
                 'purpose' => "Serah Terima Pengembalian {$sourceType} [{$sourceRef}]",
                 'source_type' => $sourceType,
                 'source_id' => $sourceId,
-                'customer_id' => ($sourceType === 'instalasi' ? $sourceId : null),
+                'customer_id' => $resolvedCustomerId,
+                'old_ont_id' => $oldOntId,
                 'source_reference' => $sourceRef,
                 'area' => $areaName,
                 'area_id' => $areaId,

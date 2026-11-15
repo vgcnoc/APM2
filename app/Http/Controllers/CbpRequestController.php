@@ -167,7 +167,9 @@ class CbpRequestController extends Controller
             'dispatcher',
             'rescheduler',
             'auditLogs.user',
-            'materialReturns.items.material'
+            'materialReturns.items.material',
+            'materialReturns.receiver',
+            'materialReturns.oldOnt'
         ])
             ->whereNotNull('sent_to_schedule_at');
 
@@ -271,7 +273,9 @@ class CbpRequestController extends Controller
             'technicians',
             'creator',
             'auditLogs.user',
-            'materialReturns.items.material'
+            'materialReturns.items.material',
+            'materialReturns.receiver',
+            'materialReturns.oldOnt'
         ])->whereIn('status', ['assigned', 'completed']);
 
         // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
@@ -530,9 +534,13 @@ class CbpRequestController extends Controller
             'photos' => 'nullable|array',
             'photos.*' => 'nullable|file|image|max:10240',
             'materials' => 'nullable|array',
-            'materials.*.material_id' => 'required|exists:materials,id',
+            'materials.*.material_id' => 'nullable',
             'materials.*.quantity' => 'required|numeric|min:0.01',
             'materials.*.unit' => 'nullable|string',
+            'materials.*.condition' => 'nullable|string|in:Layak Pakai,Rusak,Tidak Layak',
+            'materials.*.type' => 'nullable|string',
+            'materials.*.name' => 'nullable|string',
+            'materials.*.ont_id' => 'nullable',
         ]);
 
         $uploadedPhotoPaths = [];
@@ -552,34 +560,166 @@ class CbpRequestController extends Controller
         $allPhotos = array_values(array_unique(array_filter(array_merge($existingPhotos, $uploadedPhotoPaths))));
         $primaryPhoto = $allPhotos[0] ?? $cbp->photo;
 
+        $returnItems = [];
+        $uninstalledOnt = null;
+        $ontLog = '';
+
         if ($cbp->status !== 'completed') {
             $validated['completed_at'] = now();
+            $customer = $cbp->customer;
 
-            // Handle Returned Materials via Serah Terima Gudang
+            // 1. Tangani Pelepasan ONT & ODP Port jika ada perangkat ONT yang dicabut
+            $ontItems = collect($validated['materials'] ?? [])->filter(function ($m) {
+                $type = strtolower($m['type'] ?? '');
+                $name = strtolower($m['name'] ?? '');
+                return $type === 'ont' || str_contains($name, 'ont') || str_contains($name, 'modem');
+            });
+
+            if ($ontItems->isNotEmpty()) {
+                $customer?->loadMissing('ont');
+                $uninstalledOnt = $customer?->ont;
+                if (!$uninstalledOnt && !empty($ontItems->first()['ont_id'])) {
+                    $uninstalledOnt = \App\Models\Ont::find($ontItems->first()['ont_id']);
+                }
+                if (!$uninstalledOnt && $cbp->customer_id) {
+                    $uninstalledOnt = \App\Models\Ont::where('customer_id', $cbp->customer_id)->first();
+                }
+
+                if ($uninstalledOnt) {
+                    $firstOntItem = $ontItems->first();
+                    $ontCond = $firstOntItem['condition'] ?? 'Layak Pakai';
+                    $isRusak = in_array(strtolower($ontCond), ['rusak', 'tidak layak']);
+                    $newOntStatus = $isRusak ? 'rusak' : 'Belum Set/Baru Input';
+
+                    $oldOdpId = $uninstalledOnt->odp_id;
+                    $oldPortNum = $uninstalledOnt->port_number;
+
+                    // Bebaskan port ODP
+                    if ($oldOdpId && $oldPortNum) {
+                        \App\Models\OdpPort::where('odp_id', $oldOdpId)
+                            ->where('port_number', $oldPortNum)
+                            ->update(['status' => 'available', 'description' => null]);
+
+                        $odp = \App\Models\Odp::find($oldOdpId);
+                        if ($odp) {
+                            $used = \App\Models\Ont::where('odp_id', $oldOdpId)->where('id', '!=', $uninstalledOnt->id)->count();
+                            $odp->update([
+                                'used_ports' => $used,
+                                'status' => ($used >= $odp->total_ports) ? 'full' : 'active',
+                            ]);
+                        }
+                    }
+
+                    // Lepas dari pelanggan dan alokasikan ke gudang
+                    $uninstalledOnt->update([
+                        'customer_id' => null,
+                        'odp_id' => null,
+                        'odp_port_id' => null,
+                        'port_number' => null,
+                        'rx_power' => null,
+                        'status' => $newOntStatus,
+                        'description' => "Dicabut dari pelanggan " . ($customer?->name ?? "ID #{$cbp->customer_id}") . " via CBP #{$cbp->cbp_number} tgl " . now()->format('d/m/Y H:i') . " [Kondisi: {$ontCond}]. Menunggu serah terima gudang.",
+                    ]);
+
+                    // Update CustomerInstalledMaterial untuk ONT jika ada
+                    \App\Models\CustomerInstalledMaterial::where('customer_id', $cbp->customer_id)
+                        ->where(function ($q) use ($uninstalledOnt) {
+                            $q->where('item_name', 'like', '%ont%')
+                              ->orWhere('item_name', 'like', '%modem%')
+                              ->orWhere('serial_number', $uninstalledOnt->serial_number);
+                        })
+                        ->update([
+                            'status' => 'dismantled',
+                            'notes' => "Dicabut pada tiket CBP #{$cbp->cbp_number}",
+                        ]);
+
+                    $ontLog = " Perangkat ONT {$uninstalledOnt->brand} {$uninstalledOnt->model} (SN: {$uninstalledOnt->serial_number}) dicabut [Kondisi: {$ontCond}] & port ODP dibebaskan.";
+                }
+            }
+
+            // 2. Handle Returned Materials via Serah Terima Gudang (MaterialHandoverService)
             if (!empty($validated['materials'])) {
-                $returnItems = [];
                 foreach ($validated['materials'] as $item) {
-                    $material = \App\Models\Material::find($item['material_id']);
-                    if ($material) {
-                        $returnItems[] = [
-                            'material_id' => $material->id,
-                            'quantity' => (float) $item['quantity'],
-                            'unit' => $item['unit'] ?? $material->unit ?? 'pcs',
-                            'condition' => 'Layak Pakai',
-                        ];
+                    $materialId = $item['material_id'] ?? null;
+                    $material = $materialId ? \App\Models\Material::find($materialId) : null;
+                    $itemName = $item['name'] ?? ($material?->name ?? 'Material Cabutan');
+                    $cond = $item['condition'] ?? 'Layak Pakai';
+                    $qty = (float) ($item['quantity'] ?? 1);
+                    $unit = $item['unit'] ?? ($material?->unit ?? 'pcs');
+
+                    // Jika item ONT, pastikan nama dan SN tercatat rapi
+                    $isOntType = strtolower($item['type'] ?? '') === 'ont' || str_contains(strtolower($itemName), 'ont');
+                    if ($isOntType) {
+                        if ($uninstalledOnt) {
+                            $itemName = "ONT {$uninstalledOnt->brand} {$uninstalledOnt->model} (SN: {$uninstalledOnt->serial_number})";
+                        }
+                        if (!$material) {
+                            $material = \App\Models\Material::where('category', 'like', '%ont%')->orWhere('name', 'like', '%ont%')->first();
+                        }
+                    }
+
+                    $returnItems[] = [
+                        'material_id' => $material?->id,
+                        'material_name' => $itemName,
+                        'quantity' => $qty,
+                        'unit' => $unit,
+                        'condition' => $cond,
+                        'notes' => 'Pencabutan ' . $itemName . ' dari pelanggan ' . ($customer?->name ?? '') . ' via CBP #' . $cbp->cbp_number,
+                    ];
+
+                    // Update CustomerInstalledMaterial untuk material lain jika cocok
+                    if (!$isOntType) {
+                        \App\Models\CustomerInstalledMaterial::where('customer_id', $cbp->customer_id)
+                            ->where(function ($q) use ($itemName, $materialId) {
+                                if ($materialId) $q->where('material_id', $materialId);
+                                else $q->where('item_name', 'like', '%' . explode(' ', $itemName)[0] . '%');
+                            })
+                            ->where('status', '!=', 'dismantled')
+                            ->update([
+                                'status' => 'dismantled',
+                                'notes' => "Dicabut ({$qty} {$unit}) pada tiket CBP #{$cbp->cbp_number}",
+                            ]);
                     }
                 }
 
                 if (!empty($returnItems)) {
-                    \App\Services\MaterialHandoverService::submitReturnHandover(
+                    $technicianNames = $cbp->technicians()->pluck('name')->implode(', ') ?: auth()->user()->name;
+                    $areaId = $cbp->area_id ?: ($customer?->area_id ?? null);
+
+                    $handoverTrx = \App\Services\MaterialHandoverService::submitReturnHandover(
                         sourceType: 'cbp',
                         sourceId: $cbp->id,
                         sourceRef: $cbp->cbp_number,
                         items: $returnItems,
-                        technicianName: auth()->user()->name,
-                        areaId: $cbp->area_id ?: ($cbp->customer?->area_id ?? null),
-                        notes: 'Pengembalian Cabut Perangkat ' . $cbp->cbp_number . ' (' . ($cbp->customer?->name ?? '') . ')'
+                        technicianName: $technicianNames,
+                        areaId: $areaId,
+                        notes: 'Pengembalian Cabut Perangkat ' . $cbp->cbp_number . ' (' . ($customer?->name ?? '') . ') - ' . count($returnItems) . ' item dicabut.',
+                        customerId: $cbp->customer_id,
+                        oldOntId: $uninstalledOnt?->id
                     );
+
+                    // Catat ke customer_material_dismantles untuk riwayat historis
+                    if ($handoverTrx) {
+                        foreach ($returnItems as $rItem) {
+                            \App\Models\CustomerMaterialDismantle::create([
+                                'ticket_type' => 'cbp',
+                                'ticket_id' => $cbp->id,
+                                'ticket_number' => $cbp->cbp_number,
+                                'customer_id' => $cbp->customer_id,
+                                'material_id' => $rItem['material_id'] ?? null,
+                                'item_name' => $rItem['material_name'] ?? 'Material Cabut',
+                                'replacement_type' => 'full',
+                                'quantity' => $rItem['quantity'],
+                                'unit' => $rItem['unit'],
+                                'condition' => (strtolower($rItem['condition']) === 'rusak' ? 'rusak_scrap' : 'normal_reusable'),
+                                'damage_reason' => 'Pencabutan perangkat (Stop Berlangganan)',
+                                'technician_id' => auth()->id(),
+                                'technician_name' => $technicianNames,
+                                'handover_status' => 'pending_handover',
+                                'material_transaction_id' => $handoverTrx->id,
+                            ]);
+                        }
+                    }
                 }
             }
         }
@@ -602,7 +742,7 @@ class CbpRequestController extends Controller
             $cbp,
             $oldStatus,
             'completed',
-            "Menyelesaikan laporan cabut perangkat {$cbp->cbp_number}. Jam: {$validated['start_time']} - {$validated['end_time']}." . $itemSummary . (!empty($validated['notes']) ? " Catatan: {$validated['notes']}" : '')
+            "Menyelesaikan laporan cabut perangkat {$cbp->cbp_number}. Jam: {$validated['start_time']} - {$validated['end_time']}." . $itemSummary . $ontLog . (!empty($validated['notes']) ? " Catatan: {$validated['notes']}" : '')
         );
 
         return redirect()->back()->with('success', 'Laporan Pencabutan berhasil disimpan.');

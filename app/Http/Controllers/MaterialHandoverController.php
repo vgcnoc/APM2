@@ -240,6 +240,18 @@ class MaterialHandoverController extends Controller
             ]);
         }
 
+        // Sinkronisasi status ONT di tabel onts jika ada old_ont_id terkait
+        if ($transaction->old_ont_id) {
+            $ont = \App\Models\Ont::find($transaction->old_ont_id);
+            if ($ont) {
+                $hasLayak = collect($validated['items'])->contains(fn($i) => ($i['condition'] ?? '') === 'Layak Pakai');
+                $ont->update([
+                    'status' => $hasLayak ? 'Belum Set/Baru Input' : 'rusak',
+                    'description' => trim(($ont->description ? $ont->description . ' | ' : '') . "Diterima di gudang oleh " . auth()->user()->name . " (" . ($hasLayak ? 'Layak Pakai / Stok Gudang' : 'Rusak / Afkir') . ") pada " . now()->format('d/m/Y H:i')),
+                ]);
+            }
+        }
+
         return back()->with('success', "Serah terima material [{$transaction->transaction_number}] berhasil diverifikasi dan stok masuk ke Inventory Gudang.");
     }
 

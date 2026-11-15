@@ -380,6 +380,20 @@
                                     </span>
                                 </div>
 
+                                <!-- Smart Explanatory Flow Banner -->
+                                <div class="mb-3 p-3 rounded-xl bg-gradient-to-r from-blue-50/95 via-indigo-50/80 to-blue-50/95 border border-blue-200/90 text-xs text-blue-900 shadow-2xs">
+                                    <div class="flex items-start gap-2">
+                                        <span class="text-base shrink-0 leading-none mt-0.5">ℹ️</span>
+                                        <div>
+                                            <span class="font-bold text-[11px] text-blue-950 block">Alur Otomatis Pengembalian Perangkat:</span>
+                                            <p class="text-[10px] text-blue-800 mt-0.5 leading-relaxed">
+                                                Item yang ditandai <b>Cabut</b> akan otomatis dibuatkan <b>Serah Terima Pengembalian (RTR-CBP)</b> ke Gudang. 
+                                                Port ODP pelanggan akan otomatis dibebaskan ke sistem dan ONT dialokasikan ke inventaris Gudang.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div v-if="hardwareItems.length > 0" class="space-y-2.5">
                                     <div 
                                         v-for="item in hardwareItems" 
@@ -416,7 +430,7 @@
                                                     v-if="!hasMaterial(item.id)" 
                                                     type="button" 
                                                     @click="cabutItem(item)" 
-                                                    class="text-xs bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 font-black px-3 py-1.5 rounded-lg transition-all shadow-sm active:scale-95"
+                                                    class="text-xs bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 font-black px-3.5 py-1.5 rounded-lg transition-all shadow-sm active:scale-95"
                                                 >
                                                     Cabut
                                                 </button>
@@ -432,6 +446,46 @@
                                                 </button>
                                             </div>
                                         </div>
+
+                                        <!-- Panel Kondisi & Status Alur saat Dicabut -->
+                                        <div v-if="hasMaterial(item.id)" class="pt-2 mt-1 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2 text-xs">
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="text-[10px] font-bold text-slate-500 uppercase">Kondisi:</span>
+                                                <div class="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5 shadow-2xs">
+                                                    <button 
+                                                        type="button" 
+                                                        @click="setItemCondition(item.id, 'Layak Pakai')" 
+                                                        class="px-2 py-0.5 rounded-md text-[10px] font-bold transition-all"
+                                                        :class="getMaterial(item.id).condition === 'Layak Pakai' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-emerald-700'"
+                                                    >
+                                                        ✨ Layak Pakai
+                                                    </button>
+                                                    <button 
+                                                        type="button" 
+                                                        @click="setItemCondition(item.id, 'Rusak')" 
+                                                        class="px-2 py-0.5 rounded-md text-[10px] font-bold transition-all"
+                                                        :class="getMaterial(item.id).condition === 'Rusak' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-600 hover:text-rose-700'"
+                                                    >
+                                                        ⚠️ Rusak
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div class="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 flex items-center gap-1">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                                                <span v-if="item.type === 'ONT'">Bebaskan Port ODP & Masuk Gudang</span>
+                                                <span v-else>Masuk Serah Terima Gudang</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Summary Banner jika ada item dicabut -->
+                                    <div v-if="progressForm.materials.length > 0" class="mt-2.5 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center justify-between shadow-2xs">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                            <span class="font-bold">{{ progressForm.materials.length }} item akan dialokasikan ke Serah Terima Gudang</span>
+                                        </div>
+                                        <span class="text-[10px] font-mono font-bold bg-white px-2 py-0.5 rounded border border-emerald-200 text-emerald-700">RTR-CBP</span>
                                     </div>
                                 </div>
                                 <div v-else class="text-xs text-slate-500 italic p-3 bg-white border border-slate-200 rounded-xl">
@@ -702,6 +756,82 @@
                         <div v-if="selectedDetailCbp?.notes" class="bg-slate-50 rounded-xl p-3 border border-slate-200">
                             <div class="text-[10px] font-bold text-slate-400 uppercase mb-1">Catatan Hasil Pencabutan</div>
                             <p class="text-xs text-slate-700 whitespace-pre-line leading-relaxed">{{ selectedDetailCbp.notes }}</p>
+                        </div>
+
+                        <!-- Status Perangkat Dicabut & Serah Terima Gudang -->
+                        <div class="bg-gradient-to-br from-slate-50 to-emerald-50/50 rounded-2xl p-4 border border-emerald-200/80 shadow-sm space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-7 h-7 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
+                                        📦
+                                    </div>
+                                    <div>
+                                        <h5 class="text-xs font-black text-slate-900 uppercase tracking-wider">Perangkat & Material Dicabut</h5>
+                                        <p class="text-[10px] text-slate-500 font-medium">Status Pengembalian ke Inventaris Gudang</p>
+                                    </div>
+                                </div>
+                                <div v-if="getHandoverTrx(selectedDetailCbp)" class="text-right">
+                                    <span 
+                                        class="px-2.5 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 shadow-2xs"
+                                        :class="getHandoverTrx(selectedDetailCbp).handover_status === 'received' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-800 border border-amber-300'"
+                                    >
+                                        <span class="w-1.5 h-1.5 rounded-full" :class="getHandoverTrx(selectedDetailCbp).handover_status === 'received' ? 'bg-emerald-600' : 'bg-amber-500 animate-pulse'"></span>
+                                        {{ getHandoverTrx(selectedDetailCbp).handover_status === 'received' ? 'Diterima Gudang (Stok Masuk)' : 'Menunggu Diterima Gudang' }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Jika ada data serah terima -->
+                            <div v-if="getHandoverTrx(selectedDetailCbp)" class="space-y-2">
+                                <div class="bg-white p-3 rounded-xl border border-slate-200 text-xs space-y-2">
+                                    <div class="flex items-center justify-between text-[11px] pb-1.5 border-b border-slate-100">
+                                        <span class="font-bold text-slate-500">Nomor Dokumen Retur:</span>
+                                        <span class="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                            {{ getHandoverTrx(selectedDetailCbp).transaction_number }}
+                                        </span>
+                                    </div>
+
+                                    <!-- List items -->
+                                    <div class="space-y-1.5">
+                                        <div v-for="hItem in getHandoverTrx(selectedDetailCbp).items" :key="hItem.id" class="flex items-center justify-between py-1 border-b border-slate-50 last:border-0 gap-2">
+                                            <div class="min-w-0 flex-1">
+                                                <span class="font-bold text-slate-800 text-xs block truncate">{{ hItem.material_name || hItem.material?.name || 'Material Cabutan' }}</span>
+                                                <span class="text-[10px] text-slate-400 font-medium">Jumlah: {{ Number(hItem.quantity) }} {{ hItem.unit }}</span>
+                                            </div>
+                                            <span 
+                                                class="text-[10px] font-bold px-2 py-0.5 rounded shrink-0 shadow-2xs"
+                                                :class="hItem.condition === 'Layak Pakai' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'"
+                                            >
+                                                {{ hItem.condition || 'Layak Pakai' }}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Keterangan Verifikasi Gudang -->
+                                    <div v-if="getHandoverTrx(selectedDetailCbp).handover_status === 'received'" class="pt-1.5 border-t border-slate-100 text-[10px] text-emerald-700 font-medium flex items-center justify-between">
+                                        <span>Diterima oleh: <b>{{ getHandoverTrx(selectedDetailCbp).receiver?.name || 'Petugas Gudang' }}</b></span>
+                                        <span>{{ formatDetailDate(getHandoverTrx(selectedDetailCbp).received_at) }}</span>
+                                    </div>
+                                    <div v-else class="pt-1.5 border-t border-slate-100 text-[10px] text-amber-700 font-medium flex items-center gap-1.5">
+                                        <span>⏳ Fisik barang dibawa teknisi ke kantor & menunggu diverifikasi Petugas Gudang / Ka. Teknisi.</span>
+                                    </div>
+                                </div>
+
+                                <!-- Tombol Buka Modul Serah Terima Gudang -->
+                                <a 
+                                    :href="'/material-handovers?search=' + getHandoverTrx(selectedDetailCbp).transaction_number" 
+                                    target="_blank" 
+                                    class="inline-flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 hover:text-emerald-700 transition-colors shadow-2xs"
+                                >
+                                    <span>Buka Modul Serah Terima Gudang</span>
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                </a>
+                            </div>
+
+                            <!-- Fallback jika belum tercatat -->
+                            <div v-else class="bg-white p-3 rounded-xl border border-slate-200 text-xs text-slate-500">
+                                Item instalasi telah dicabut saat eksekusi dan port ODP pelanggan telah dibebaskan.
+                            </div>
                         </div>
 
                         <!-- Galeri Foto Bukti -->
@@ -1065,6 +1195,20 @@ const hardwareItems = computed(() => {
     const schedule = selectedCbp.value.customer.technician_schedules?.find(s => s.type === 'installation');
     let items = [];
     let idCounter = 1;
+    let ontFound = false;
+
+    // 1. Prioritaskan data ONT riil pelanggan yang aktif
+    const custOnt = selectedCbp.value.customer.ont;
+    if (custOnt) {
+        items.push({
+            id: idCounter++,
+            type: 'ONT',
+            ont_id: custOnt.id,
+            sn: custOnt.serial_number || '-',
+            name: `ONT ${custOnt.brand || ''} ${custOnt.model || ''} (SN: ${custOnt.serial_number || '-'})`.trim()
+        });
+        ontFound = true;
+    }
     
     if (schedule && schedule.notes) {
         const lines = schedule.notes.split('\n');
@@ -1076,7 +1220,16 @@ const hardwareItems = computed(() => {
                 inNoteSection = false;
                 const onts = text.replace('ONT: ', '').split(', ');
                 onts.forEach(ont => {
-                    if (ont.trim()) items.push({ id: idCounter++, type: 'ONT', name: ont.trim() });
+                    if (ont.trim() && !ontFound) {
+                        items.push({ 
+                            id: idCounter++, 
+                            type: 'ONT', 
+                            name: ont.trim(),
+                            ont_id: custOnt?.id || null,
+                            sn: custOnt?.serial_number || '-'
+                        });
+                        ontFound = true;
+                    }
                 });
             } else if (text.startsWith('Material: ') || text.startsWith('Material Terpasang: ')) {
                 inNoteSection = false;
@@ -1112,13 +1265,9 @@ const hardwareItems = computed(() => {
         });
     }
 
-    // Fallback if installation notes didn't yield items
-    if (items.length === 0 && selectedCbp.value.customer.ont) {
-        items.push({
-            id: idCounter++,
-            type: 'ONT',
-            name: `ONT ${selectedCbp.value.customer.ont.brand || ''} ${selectedCbp.value.customer.ont.model || ''} (SN: ${selectedCbp.value.customer.ont.serial_number || '-'})`.trim()
-        });
+    // Pastikan minimal ada item kabel dropcore
+    const hasKabel = items.some(i => i.type === 'Material' && i.name.toLowerCase().includes('kabel'));
+    if (!hasKabel) {
         items.push({
             id: idCounter++,
             type: 'Material',
@@ -1139,7 +1288,11 @@ function getMaterial(id) {
 
 function cabutItem(item) {
     let unit = 'pcs';
-    if (item.type === 'Material' && item.name.toLowerCase().includes('kabel')) unit = 'm';
+    let defaultQty = 1;
+    if (item.type === 'Material' && item.name.toLowerCase().includes('kabel')) {
+        unit = 'm';
+        defaultQty = 100;
+    }
     
     let matId = '';
     const nameLower = item.name.toLowerCase();
@@ -1159,12 +1312,24 @@ function cabutItem(item) {
     
     progressForm.materials.push({
         material_id: matId || (props.materials[0]?.id || 1),
-        quantity: unit === 'm' ? 100 : 1,
+        quantity: defaultQty,
         unit: unit,
+        condition: 'Layak Pakai',
+        type: item.type,
+        name: item.name,
+        ont_id: item.ont_id || selectedCbp.value?.customer?.ont?.id || null,
         _id: item.id,
         _name: item.name
     });
     saveDraft();
+}
+
+function setItemCondition(itemId, condition) {
+    const mat = getMaterial(itemId);
+    if (mat) {
+        mat.condition = condition;
+        saveDraft();
+    }
 }
 
 function uncabutItem(item) {
@@ -1268,6 +1433,30 @@ function getDetailPhotos(cbp) {
         return [cbp.photo];
     }
     return [];
+}
+
+function getHandoverTrx(cbp) {
+    if (!cbp) return null;
+    const ret = cbp.material_returns || cbp.materialReturns;
+    if (ret && Array.isArray(ret) && ret.length > 0) {
+        return ret[0];
+    }
+    return null;
+}
+
+function formatDetailDate(d) {
+    if (!d) return '-';
+    try {
+        return new Date(d).toLocaleDateString('id-ID', { 
+            day: 'numeric', 
+            month: 'short', 
+            year: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+    } catch {
+        return String(d);
+    }
 }
 
 function shareReportWhatsApp(cbp) {
