@@ -13,6 +13,7 @@ conn.on('ready', () => {
         'php artisan route:cache',
         'php artisan view:cache',
         'chown -R www-data:www-data /var/www/APM2/storage /var/www/APM2/bootstrap/cache /var/www/APM2/public/build',
+        'systemctl reload php8.5-fpm',
         'git log -1 --oneline'
     ].join(' && ');
 
