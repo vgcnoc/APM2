@@ -147,6 +147,21 @@ class RoleController extends Controller
                     $this->markRoleCustomized($t);
                 }
             }
+
+            // Samakan maintenance dan maintenance-1 secara otomatis
+            if ($role->name === 'maintenance') {
+                $m1 = Role::where('name', 'maintenance-1')->first();
+                if ($m1) {
+                    $m1->syncPermissions($request->input('permissions'));
+                    $this->markRoleCustomized($m1);
+                }
+            } elseif ($role->name === 'maintenance-1') {
+                $m = Role::where('name', 'maintenance')->first();
+                if ($m) {
+                    $m->syncPermissions($request->input('permissions'));
+                    $this->markRoleCustomized($m);
+                }
+            }
         }
 
         // Clear permission cache
