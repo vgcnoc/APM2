@@ -1332,7 +1332,7 @@ const menuItems = [
         permission: ['menu_payroll', 'payroll_view_own', 'payroll_tab_slip', 'payroll_tab_incentives', 'menu_incentives_deductions'],
         children: [
             { href: '/payroll', label: 'Gaji & Payroll', active: (url) => (url || '').length > 0 && url === '/payroll', permission: ['menu_payroll', 'payroll_view_own', 'payroll_tab_slip'] },
-            { href: '/insentif-potongan', label: 'Histori Insentif', active: (url) => (url || '').startsWith('/insentif-potongan'), permission: ['menu_incentives_deductions', 'menu_payroll', 'payroll_tab_incentives', 'payroll_view_own'] },
+            { href: '/insentif-potongan', label: 'Histori Insentif', active: (url) => (url || '').startsWith('/insentif-potongan'), permission: 'menu_incentives_deductions' },
         ]
     },
 
@@ -1350,10 +1350,10 @@ const menuItems = [
             { href: '/settings/terms-conditions', label: 'Template S&K Berlangganan', active: (url) => (url || '').startsWith('/settings/terms-conditions'), permission: 'menu_settings_billing' },
             { href: '/settings/billing', label: 'Billing / Invoice', active: (url) => (url || '').startsWith('/settings/billing'), permission: 'menu_settings_billing' },
             { href: '/settings/payroll', label: 'Sistem Gaji', active: (url) => (url || '').startsWith('/settings/payroll'), permission: 'menu_settings_payroll' },
-            { href: '/settings/resellers', label: 'Pengaturan Reseller', active: (url) => (url || '').startsWith('/settings/resellers'), permission: ['menu_settings_resellers', 'menu_resellers', 'menu_settings_roles'] },
+            { href: '/settings/resellers', label: 'Pengaturan Reseller', active: (url) => (url || '').startsWith('/settings/resellers'), permission: 'menu_settings_resellers' },
             { href: '/settings/api', label: 'API & Integrasi', active: (url) => (url || '').startsWith('/settings/api'), permission: 'menu_settings_api' },
             { href: '/settings/data-migration', label: '⚡ Data Migration Center', active: (url) => (url || '').startsWith('/settings/data-migration'), permission: 'menu_data_migration' },
-            { href: '/settings/data-masking', label: '🔒 Privasi & Target Omset', active: (url) => (url || '').startsWith('/settings/data-masking'), permission: ['menu_data_masking', 'menu_financial_reports', 'menu_settings_roles'] },
+            { href: '/settings/data-masking', label: '🔒 Privasi & Target Omset', active: (url) => (url || '').startsWith('/settings/data-masking'), permission: 'menu_data_masking' },
         ]
     },
     {
@@ -1366,7 +1366,7 @@ const menuItems = [
         children: [
             { href: '/internet-packages', label: 'Paket Langganan & Tarif', active: (url) => (url || '').startsWith('/internet-packages'), permission: 'menu_internet_packages' },
             { href: '/settings/areas', label: 'Master Area', active: (url) => (url || '').startsWith('/settings/areas'), permission: 'menu_settings_areas' },
-            { href: '/settings/expense-categories', label: 'Kategori Pengeluaran', active: (url) => (url || '').startsWith('/settings/expense-categories'), permission: ['menu_expense_categories', 'menu_settings_areas', 'menu_financial_reports'] },
+            { href: '/settings/expense-categories', label: 'Kategori Pengeluaran', active: (url) => (url || '').startsWith('/settings/expense-categories'), permission: 'menu_expense_categories' },
             { href: '/settings/master-fees', label: 'Master Fee Teknisi/Sales', active: (url) => (url || '').startsWith('/settings/master-fees'), permission: 'menu_master_fees' },
             { href: '/settings/payroll-categories', label: 'Kategori Insentif/Potongan', active: (url) => (url || '').startsWith('/settings/payroll-categories'), permission: 'menu_payroll_categories' },
         ]
