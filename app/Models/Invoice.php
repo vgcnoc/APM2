@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Invoice extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\BelongsToCompany;
 
     protected $fillable = [
         'company_id',

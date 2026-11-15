@@ -71,6 +71,24 @@ class Company extends Model
     }
 
     /**
+     * Jalankan eksekusi query / fungsi dalam lingkup company tertentu secara terisolasi
+     */
+    public static function scoped(int $companyId, callable $callback)
+    {
+        $previous = app()->has('forced_company_id') ? app('forced_company_id') : null;
+        app()->instance('forced_company_id', $companyId);
+        try {
+            return $callback();
+        } finally {
+            if ($previous !== null) {
+                app()->instance('forced_company_id', $previous);
+            } else {
+                app()->forgetInstance('forced_company_id');
+            }
+        }
+    }
+
+    /**
      * Ambil setting spesifik untuk perusahaan ini dengan fallback
      */
     public function getSetting(string $key, $default = null)

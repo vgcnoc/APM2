@@ -435,6 +435,26 @@
                     </div>
                 </div>
                     <div class="flex items-center gap-2 sm:gap-3">
+                        <!-- Company Switcher for Super Admin Holding -->
+                        <div v-if="$page.props.all_companies && $page.props.all_companies.length > 1" class="hidden sm:flex items-center">
+                            <select 
+                                :value="$page.props.current_company?.id || 'all'" 
+                                @change="switchCompanyHeader($event.target.value)"
+                                class="text-xs font-bold bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 rounded-xl py-1.5 pl-2.5 pr-8 shadow-2xs hover:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                                title="Beralih Tampilan Mitra / Holding"
+                            >
+                                <option value="all">🏢 Semua Mitra (Holding)</option>
+                                <option v-for="comp in $page.props.all_companies" :key="comp.id" :value="comp.id">
+                                    {{ comp.is_holding ? '⭐ ' + comp.name + ' (Pusat)' : '🏢 ' + comp.name }}
+                                </option>
+                            </select>
+                        </div>
+                        <div v-else-if="$page.props.current_company && !$page.props.current_company.is_holding" class="hidden sm:flex items-center">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shadow-2xs">
+                                🏢 {{ $page.props.current_company.name }}
+                            </span>
+                        </div>
+
                         <!-- Corak Background Picker -->
                         <PatternPicker />
 
@@ -588,7 +608,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import { Link, usePage } from '@inertiajs/vue3';
+import { Link, usePage, router } from '@inertiajs/vue3';
 import axios from 'axios';
 import AppLogo from '@/Components/AppLogo.vue';
 import ThemeToggle from '@/Components/ThemeToggle.vue';
@@ -626,6 +646,12 @@ const searchQuery = ref('');
 
 // Baca tema langsung dari <html> agar ikon tidak berkedip saat render pertama
 const { isDarkMode, toggleTheme, initTheme } = useTheme();
+
+function switchCompanyHeader(id) {
+    router.post(`/settings/companies/switch/${id}`, {}, {
+        preserveScroll: true,
+    });
+}
 
 // ==================== LIVE GPS TRACKING KARYAWAN ====================
 const isEmployee = computed(() => {
@@ -1376,11 +1402,12 @@ const menuItems = [
         icon: 'lock-closed',
         label: 'Hak Akses Pengguna',
         theme: 'violet',
-        active: (url) => ['/users', '/settings/roles'].some(path => (url || '').startsWith(path)),
+        active: (url) => ['/users', '/settings/roles', '/settings/companies'].some(path => (url || '').startsWith(path)),
         permission: ['menu_users', 'menu_settings_roles'],
         children: [
             { href: '/users', label: 'Manajemen User', active: (url) => (url || '').startsWith('/users'), permission: 'menu_users' },
             { href: '/settings/roles', label: 'Role & Akses', active: (url) => (url || '').startsWith('/settings/roles'), permission: 'menu_settings_roles' },
+            { href: '/settings/companies', label: '🏢 Manajemen Mitra (Holding)', active: (url) => (url || '').startsWith('/settings/companies'), permission: 'menu_settings_roles' },
         ]
     }
 ];

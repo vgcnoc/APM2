@@ -870,6 +870,11 @@ Route::middleware(['auth'])->group(function () {
         Route::post('settings/roles/{role}/delete', [\App\Http\Controllers\RoleController::class, 'destroy'])->name('roles.destroy.post');
     });
 
+    // ── Manajemen Mitra / Multi-Company (Holding) ─────────────
+    Route::resource('settings/companies', \App\Http\Controllers\CompanyController::class)->except(['create', 'show', 'edit']);
+    Route::post('settings/companies/{company}/update', [\App\Http\Controllers\CompanyController::class, 'update'])->name('companies.update.post');
+    Route::post('settings/companies/switch/{id}', [\App\Http\Controllers\CompanyController::class, 'switchCompany'])->name('companies.switch');
+
     // ── Master Paket Internet & Tarif ─────────────────────────
     Route::middleware(['permission:menu_internet_packages'])->group(function () {
         Route::resource('internet-packages', \App\Http\Controllers\InternetPackageController::class)->except(['create', 'show', 'edit']);

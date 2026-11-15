@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Area extends Model
 {
+    use \App\Traits\BelongsToCompany;
     protected $fillable = ['company_id', 'name', 'description', 'address', 'latitude', 'longitude', 'radius_meters', 'coverage_villages'];
     protected $appends = ['coverage_villages_list'];
 

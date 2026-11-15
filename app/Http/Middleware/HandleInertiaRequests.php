@@ -150,6 +150,35 @@ class HandleInertiaRequests extends Middleware
                 'tax_bhp' => (float) \App\Models\Setting::get('tax_bhp', '0'),
                 'tax_uso' => (float) \App\Models\Setting::get('tax_uso', '0'),
             ],
+            'current_company' => function () use ($request) {
+                $user = $request->user();
+                if (!$user) return null;
+                $switchId = session('active_company_id');
+                if ($switchId && $switchId !== 'all') {
+                    $c = \App\Models\Company::find($switchId);
+                } else {
+                    $c = $user->company ?: \App\Models\Company::holding();
+                }
+                return $c ? [
+                    'id' => $c->id,
+                    'name' => $c->name,
+                    'code' => $c->code,
+                    'brand_name' => $c->brand_name,
+                    'logo_url' => $c->logo_url ? asset('storage/' . $c->logo_url) : null,
+                    'is_holding' => (bool) $c->is_holding,
+                    'allowed_modules' => $c->allowed_modules,
+                ] : null;
+            },
+            'all_companies' => function () use ($request) {
+                $user = $request->user();
+                if ($user && method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
+                    return \App\Models\Company::where('status', 'active')
+                        ->orderBy('id', 'asc')
+                        ->get(['id', 'name', 'code', 'brand_name', 'is_holding'])
+                        ->toArray();
+                }
+                return [];
+            },
             'app_logo' => fn () => \App\Models\Setting::get('app_logo') ? asset('storage/' . \App\Models\Setting::get('app_logo')) : null,
             'app_favicon' => fn () => \App\Models\Setting::get('app_favicon') ? asset('storage/' . \App\Models\Setting::get('app_favicon')) : null,
             'company_logo' => fn () => \App\Models\Setting::get('company_logo') ? asset('storage/' . \App\Models\Setting::get('company_logo')) : null,

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Payment extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\BelongsToCompany;
 
     protected $fillable = [
         'company_id',
