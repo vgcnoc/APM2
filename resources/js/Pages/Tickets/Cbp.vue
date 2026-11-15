@@ -271,7 +271,7 @@
                                 <th class="p-4">Status</th>
                                 <th class="p-4">Teknisi</th>
                                 <th class="p-4">Waktu Selesai</th>
-                                <th class="p-4 w-52 text-center">Aksi</th>
+                                <th class="p-4 w-60 text-center whitespace-nowrap">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 text-sm">
@@ -365,8 +365,8 @@
                                     <span v-if="req.completed_at" class="text-xs text-gray-600 font-medium">{{ formatDate(req.completed_at) }}</span>
                                     <span v-else class="text-xs text-gray-400">-</span>
                                 </td>
-                                <td class="p-4 text-center">
-                                    <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                                <td class="p-4 text-center whitespace-nowrap">
+                                    <div class="inline-flex items-center justify-center gap-1.5 p-1 bg-slate-50/80 border border-slate-200/70 rounded-2xl shadow-2xs">
                                         <!-- Tombol Canggih: Kirim ke Jadwal CBP -->
                                         <button 
                                             v-if="!req.sent_to_schedule_at && req.status === 'pending' && can(['cbp_btn_dispatch', 'cbp_btn_request', 'cbp_manage'])" 
@@ -391,7 +391,7 @@
                                                 v-if="can(['cbp_btn_dispatch', 'cbp_btn_request', 'cbp_manage'])" 
                                                 type="button" 
                                                 @click="retractCbp(req)" 
-                                                class="p-1.5 text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors" 
+                                                class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-amber-600 bg-amber-50 hover:bg-amber-100 hover:text-amber-700 border border-amber-200/80 shadow-2xs hover:shadow-xs transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0" 
                                                 title="Tarik Kembali dari Jadwal CBP"
                                             >
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
@@ -399,22 +399,44 @@
                                         </div>
 
                                         <!-- WhatsApp Share -->
-                                        <button type="button" @click="shareWhatsApp(req)" class="p-1.5 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors" title="Kirim Disposisi ke Kepala Teknisi (WhatsApp)">
+                                        <button 
+                                            type="button" 
+                                            @click="shareWhatsApp(req)" 
+                                            class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-700 border border-emerald-200/80 shadow-2xs hover:shadow-xs transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0" 
+                                            title="Kirim Disposisi ke Kepala Teknisi (WhatsApp)"
+                                        >
                                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
                                         </button>
 
                                         <!-- Riwayat -->
-                                        <button type="button" @click="openHistoryModal(req)" class="p-1.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors" title="Riwayat CBP">
+                                        <button 
+                                            type="button" 
+                                            @click="openHistoryModal(req)" 
+                                            class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 hover:text-indigo-700 border border-indigo-200/80 shadow-2xs hover:shadow-xs transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0" 
+                                            title="Riwayat CBP"
+                                        >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                         </button>
 
                                         <!-- Batalkan Request CBP -->
-                                        <button v-if="req.status === 'pending' && can('cbp_btn_cancel')" type="button" @click="cancelCbp(req)" class="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors" title="Batalkan CBP">
+                                        <button 
+                                            v-if="req.status === 'pending' && can('cbp_btn_cancel')" 
+                                            type="button" 
+                                            @click="cancelCbp(req)" 
+                                            class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-rose-600 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 border border-rose-200/80 shadow-2xs hover:shadow-xs transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0" 
+                                            title="Batalkan CBP"
+                                        >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                         </button>
 
                                         <!-- Hapus Tiket CBP (Salah Satu) -->
-                                        <button v-if="can('cbp_btn_delete')" type="button" @click="openDeleteModal('single', req)" class="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors" title="Hapus Tiket CBP">
+                                        <button 
+                                            v-if="can('cbp_btn_delete')" 
+                                            type="button" 
+                                            @click="openDeleteModal('single', req)" 
+                                            class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-rose-600 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 border border-rose-200/80 shadow-2xs hover:shadow-xs transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0" 
+                                            title="Hapus Tiket CBP"
+                                        >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                         </button>
                                     </div>

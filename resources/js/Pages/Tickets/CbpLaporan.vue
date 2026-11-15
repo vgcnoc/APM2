@@ -121,7 +121,7 @@
                                 <th class="p-4">Alasan Cabut</th>
                                 <th class="p-4">Status</th>
                                 <th class="p-4">Teknisi</th>
-                                <th class="p-4 w-36 text-center">Aksi</th>
+                                <th class="p-4 w-52 text-center whitespace-nowrap">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 text-sm">
@@ -181,8 +181,8 @@
                                     </div>
                                     <span v-else class="text-xs text-gray-400 italic">Belum ditugaskan</span>
                                 </td>
-                                <td class="p-4 text-center">
-                                    <div class="flex items-center justify-center gap-2">
+                                <td class="p-4 text-center whitespace-nowrap">
+                                    <div class="inline-flex items-center justify-center gap-1.5 p-1 bg-slate-50/80 border border-slate-200/70 rounded-2xl shadow-2xs">
                                         <!-- Jika Ditugaskan: Tombol Lapor Selesai / Lanjutkan Berjalan -->
                                         <button 
                                             v-if="req.status === 'assigned' && can('cbp_btn_report')" 
@@ -210,7 +210,12 @@
                                         </button>
 
                                         <!-- History Modal Button -->
-                                        <button type="button" @click="openHistoryModal(req)" class="p-1.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors" title="Riwayat CBP">
+                                        <button 
+                                            type="button" 
+                                            @click="openHistoryModal(req)" 
+                                            class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 hover:text-indigo-700 border border-indigo-200/80 shadow-2xs hover:shadow-xs transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0" 
+                                            title="Riwayat CBP"
+                                        >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                         </button>
                                     </div>
