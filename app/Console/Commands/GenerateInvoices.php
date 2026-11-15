@@ -131,7 +131,12 @@ class GenerateInvoices extends Command
                 continue;
             }
 
-            // Jika suspended murni stop sementara manual (tanpa tunggakan), jangan buat tagihan baru
+            // Jika pelanggan dalam masa cuti / Stop Sementara (memiliki suspend_end aktif), jangan buat tagihan baru
+            if ($customer->status === 'suspended' && !empty($customer->suspend_end) && \Carbon\Carbon::parse($customer->suspend_end)->isFuture()) {
+                continue;
+            }
+
+            // Jika suspended murni (tanpa tunggakan), jangan buat tagihan baru
             if ($customer->status === 'suspended' && $unpaidCount === 0) {
                 continue;
             }

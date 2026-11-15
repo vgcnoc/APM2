@@ -44,6 +44,25 @@ class BillingIsolationService
                     Log::info('[BILLING] Scheduled isolation reached', ['customer_id' => $customer->id]);
                 } elseif ($customer->status === 'suspended' && $customer->billing_isolated_at && !$due && !$customer->suspend_start && !$customer->suspend_end) {
                     $customer->forceFill(['status' => 'active', 'billing_isolated_at' => null, 'billing_isolation_pending' => true])->saveQuietly();
+                } elseif ($customer->status === 'suspended' && $customer->suspend_end && \Carbon\Carbon::parse($customer->suspend_end)->endOfDay()->isPast()) {
+                    if (!$due) {
+                        $customer->forceFill([
+                            'status' => 'active',
+                            'suspend_start' => null,
+                            'suspend_end' => null,
+                            'billing_isolated_at' => null,
+                            'billing_isolation_pending' => true,
+                        ])->saveQuietly();
+                        Log::info('[BILLING] Cuti stop sementara ended, auto resumed to active', ['customer_id' => $customer->id]);
+                    } else {
+                        $customer->forceFill([
+                            'suspend_start' => null,
+                            'suspend_end' => null,
+                            'billing_isolated_at' => now(),
+                            'billing_isolation_pending' => true,
+                        ])->saveQuietly();
+                        Log::info('[BILLING] Cuti stop sementara ended with due balance, transitioned to isolated', ['customer_id' => $customer->id]);
+                    }
                 }
                 return $customer->billing_isolation_pending ? $customer : null;
             });

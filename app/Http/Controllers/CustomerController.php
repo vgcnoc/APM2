@@ -168,6 +168,10 @@ class CustomerController extends Controller
                     $q->where('connection_disabled', true);
                 } elseif ($status === 'inactive') {
                     $q->where(fn ($sub) => $sub->where('status', 'suspended')->orWhere('connection_disabled', true));
+                } elseif ($status === 'terisolir') {
+                    $q->where('status', 'suspended')->whereNull('suspend_end');
+                } elseif ($status === 'stop_sementara') {
+                    $q->where('status', 'suspended')->whereNotNull('suspend_end');
                 } elseif ($status === 'active') {
                     $q->where('status', 'active')->where(fn ($sub) => $sub->where('connection_disabled', false)->orWhereNull('connection_disabled'));
                 } else {
@@ -247,7 +251,9 @@ class CustomerController extends Controller
                 'booking' => '• Tahap Booking',
                 'survey' => '• Tahap Survey',
                 'installing' => '• Tahap Pasang / Instalasi',
-                'suspended' => 'Isolir',
+                'terisolir' => 'Terisolir (Tunggakan Tagihan)',
+                'stop_sementara' => 'Stop Sementara (Cuti Berlangganan)',
+                'suspended' => 'Semua Suspended (Isolir & Cuti)',
                 'disabled' => 'Disable Koneksi',
                 'inactive' => 'Nonaktif (Semua Isolir & Disable)',
             ],

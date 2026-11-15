@@ -435,7 +435,7 @@ class Customer extends Model
             'survey' => 'Proses Survey',
             'installing' => 'Proses Pemasangan',
             'active' => 'Aktif',
-            'suspended' => 'ISOLIR',
+            'suspended' => $this->suspend_end ? 'Stop Sementara (Cuti)' : 'ISOLIR',
             'terminated' => 'Berhenti',
             default => $this->status,
         };
@@ -451,7 +451,7 @@ class Customer extends Model
             'survey' => 'blue',
             'installing' => 'indigo',
             'active' => 'green',
-            'suspended' => 'orange',
+            'suspended' => $this->suspend_end ? 'amber' : 'orange',
             'terminated' => 'red',
             default => 'gray',
         };

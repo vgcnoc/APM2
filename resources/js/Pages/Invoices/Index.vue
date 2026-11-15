@@ -81,9 +81,13 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                 Janji Bayar <span class="bg-yellow-50 text-yellow-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats?.janji_bayar ?? 0 }}</span>
             </button>
-            <button v-can="'invoices_tab_isolated'" @click="filterTab('stop_sementara')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'stop_sementara' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-gray-500 hover:text-gray-700']">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                Terisolir / Stop Sementara <span class="bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats?.stop_sementara ?? 0 }}</span>
+            <button v-can="'invoices_tab_isolated'" @click="filterTab('terisolir')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'terisolir' ? 'text-rose-600 border-b-2 border-rose-600' : 'text-gray-500 hover:text-gray-700']">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                Terisolir <span class="bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats?.terisolir ?? 0 }}</span>
+            </button>
+            <button v-can="'invoices_tab_isolated'" @click="filterTab('stop_sementara')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'stop_sementara' ? 'text-amber-600 border-b-2 border-amber-600' : 'text-gray-500 hover:text-gray-700']">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Stop Sementara (Cuti) <span class="bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats?.stop_sementara ?? 0 }}</span>
             </button>
             <button v-can="'invoices_tab_isolated'" @click="filterTab('stop_permanen')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'stop_permanen' ? 'text-red-800 border-b-2 border-red-800' : 'text-gray-500 hover:text-gray-700']">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
@@ -444,15 +448,20 @@
                     </div>
                 </td>
                 <td>
-                    <span v-if="row.customer" :class="[
-                        'px-2 py-1 text-[10px] font-bold uppercase rounded-md text-white whitespace-nowrap',
-                        (row.customer.status === 'active' || row.customer.status === 'aktif') ? 'bg-emerald-600' :
-                        (row.customer.status === 'suspended' && row.customer.suspend_end) ? 'bg-orange-600' :
-                        row.customer.status === 'suspended' ? 'bg-rose-600' :
-                        row.customer.status === 'terminated' ? 'bg-slate-700' : 'bg-gray-500'
-                    ]">
-                        {{ (row.customer.status === 'active' || row.customer.status === 'aktif') ? 'Aktif' : (row.customer.status === 'suspended' ? (row.customer.suspend_end ? 'Stop Sementara' : 'Terisolir') : row.customer.status === 'terminated' ? 'Stop Permanen' : row.customer.status) }}
-                    </span>
+                    <div v-if="row.customer" class="space-y-1">
+                        <span :class="[
+                            'px-2 py-1 text-[10px] font-bold uppercase rounded-md text-white whitespace-nowrap inline-block',
+                            (row.customer.status === 'active' || row.customer.status === 'aktif') ? 'bg-emerald-600' :
+                            (row.customer.status === 'suspended' && row.customer.suspend_end) ? 'bg-amber-600' :
+                            row.customer.status === 'suspended' ? 'bg-rose-600' :
+                            row.customer.status === 'terminated' ? 'bg-slate-700' : 'bg-gray-500'
+                        ]">
+                            {{ (row.customer.status === 'active' || row.customer.status === 'aktif') ? 'Aktif' : (row.customer.status === 'suspended' ? (row.customer.suspend_end ? 'Stop Sementara (Cuti)' : 'Terisolir') : row.customer.status === 'terminated' ? 'Stop Permanen' : row.customer.status) }}
+                        </span>
+                        <div v-if="row.customer.status === 'suspended' && row.customer.suspend_end" class="text-[10px] text-amber-700 font-bold flex items-center gap-1 whitespace-nowrap">
+                            <span>🗓️ Cuti s/d {{ formatCutiDate(row.customer.suspend_end) }}</span>
+                        </div>
+                    </div>
                 </td>
                 <td>
                     <div class="flex items-center gap-1.5 flex-wrap">
@@ -720,20 +729,71 @@
                             </div>
                         </button>
 
-                        <!-- Stop Sementara -->
+                        <!-- Stop Sementara (Cuti) jika pelanggan aktif atau bukan sedang cuti -->
                         <button 
                             v-can="['customers_active_suspend', 'invoices_stop_sementara']"
                             v-if="activeDropdownRow.customer.status !== 'terminated' && !(activeDropdownRow.customer.status === 'suspended' && activeDropdownRow.customer.suspend_end)"
                             type="button" 
                             @click="stopSementara(activeDropdownRow); closeDropdown()"
-                            class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-gray-700 hover:bg-orange-50 hover:text-orange-800 transition-colors font-medium cursor-pointer"
+                            class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-gray-700 hover:bg-amber-50 hover:text-amber-800 transition-colors font-medium cursor-pointer"
                         >
-                            <div class="w-6 h-6 rounded-md bg-orange-50 flex items-center justify-center shrink-0">
-                                <svg class="w-3.5 h-3.5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <div class="w-6 h-6 rounded-md bg-amber-50 flex items-center justify-center shrink-0">
+                                <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             </div>
                             <div>
-                                <span class="font-semibold">Stop Sementara</span>
-                                <p class="text-[10px] text-gray-400 font-normal">Isolir sementara layanan</p>
+                                <span class="font-semibold">{{ activeDropdownRow.customer.status === 'suspended' ? 'Alihkan ke Stop Sementara (Cuti)' : 'Stop Sementara (Cuti)' }}</span>
+                                <p class="text-[10px] text-gray-400 font-normal">Cuti sementara (misal 1 bulan)</p>
+                            </div>
+                        </button>
+
+                        <!-- Lanjut Langganan (Selesai Cuti) jika sedang Stop Sementara -->
+                        <button 
+                            v-can="['customers_active_suspend', 'invoices_stop_sementara']"
+                            v-if="activeDropdownRow.customer.status === 'suspended' && activeDropdownRow.customer.suspend_end"
+                            type="button" 
+                            @click="resumeLangganan(activeDropdownRow); closeDropdown()"
+                            class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-emerald-700 hover:bg-emerald-50 transition-colors font-medium cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-md bg-emerald-50 flex items-center justify-center shrink-0">
+                                <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <div>
+                                <span class="font-semibold">Lanjut Langganan (Selesai Cuti)</span>
+                                <p class="text-[10px] text-emerald-500 font-normal">Aktifkan kembali internet pelanggan</p>
+                            </div>
+                        </button>
+
+                        <!-- Ubah / Perpanjang Cuti jika sedang Stop Sementara -->
+                        <button 
+                            v-can="['customers_active_suspend', 'invoices_stop_sementara']"
+                            v-if="activeDropdownRow.customer.status === 'suspended' && activeDropdownRow.customer.suspend_end"
+                            type="button" 
+                            @click="stopSementara(activeDropdownRow); closeDropdown()"
+                            class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-amber-700 hover:bg-amber-50 transition-colors font-medium cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-md bg-amber-50 flex items-center justify-center shrink-0">
+                                <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            </div>
+                            <div>
+                                <span class="font-semibold">Ubah / Perpanjang Cuti</span>
+                                <p class="text-[10px] text-amber-500 font-normal">Sesuaikan tanggal selesai cuti</p>
+                            </div>
+                        </button>
+
+                        <!-- Buka Isolir jika sedang Terisolir -->
+                        <button 
+                            v-can="['customers_active_suspend', 'invoices_stop_sementara']"
+                            v-if="activeDropdownRow.customer.status === 'suspended' && !activeDropdownRow.customer.suspend_end"
+                            type="button" 
+                            @click="bukaIsolir(activeDropdownRow); closeDropdown()"
+                            class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-emerald-700 hover:bg-emerald-50 transition-colors font-medium cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-md bg-emerald-50 flex items-center justify-center shrink-0">
+                                <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+                            </div>
+                            <div>
+                                <span class="font-semibold">Buka Isolir Layanan</span>
+                                <p class="text-[10px] text-emerald-500 font-normal">Aktifkan kembali koneksi internet</p>
                             </div>
                         </button>
 
@@ -1408,24 +1468,47 @@
             <div v-if="showStopSementaraModal" class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
                 <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="closeStopSementaraModal"></div>
 
-                <div class="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-sm relative z-10 animate-fade-in-up">
-                    <div class="px-6 py-4 border-b border-orange-100 flex items-center gap-3 bg-orange-50/50">
-                        <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
-                            <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <div class="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-lg relative z-10 animate-fade-in-up">
+                    <div class="px-6 py-4 border-b border-amber-100 flex items-center justify-between bg-gradient-to-r from-amber-500 to-orange-500 text-white">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0 text-white shadow-inner">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-base sm:text-lg font-black text-white">Stop Sementara (Cuti Berlangganan)</h3>
+                                <p class="text-[11px] text-amber-100">Nonaktifkan sementara layanan internet pelanggan untuk periode cuti</p>
+                            </div>
                         </div>
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-900">Stop Sementara</h3>
-                            <p class="text-[11px] font-medium text-gray-500 mt-0.5">Suspend sementara pelanggan {{ selectedInvoice?.customer?.name }}</p>
-                        </div>
+                        <button type="button" @click="closeStopSementaraModal" class="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition cursor-pointer">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
                     </div>
 
                     <form @submit.prevent="submitStopSementara">
                         <div class="p-6 space-y-4">
+                            <!-- Target Info Pelanggan -->
+                            <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                                <div>
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Pelanggan</span>
+                                    <span class="text-sm font-extrabold text-slate-800">{{ selectedInvoice?.customer?.name }}</span>
+                                    <span class="text-xs font-semibold text-slate-500 block">{{ selectedInvoice?.customer?.customer_code }} • Paket: {{ selectedInvoice?.customer?.package?.name || selectedInvoice?.package_name || '-' }}</span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Status Saat Ini</span>
+                                    <span :class="[
+                                        'px-2 py-0.5 rounded text-[11px] font-bold inline-block',
+                                        selectedInvoice?.customer?.status === 'suspended' ? (selectedInvoice?.customer?.suspend_end ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800') : 'bg-emerald-100 text-emerald-800'
+                                    ]">
+                                        {{ selectedInvoice?.customer?.status === 'suspended' ? (selectedInvoice?.customer?.suspend_end ? 'Sedang Cuti' : 'Terisolir') : 'Aktif' }}
+                                    </span>
+                                </div>
+                            </div>
+
                             <!-- Info Petugas yang Memproses -->
-                            <div class="flex items-center justify-between p-2.5 bg-orange-50/60 border border-orange-200 rounded-xl text-xs">
-                                <span class="text-orange-800 font-medium">Petugas yang Memproses:</span>
-                                <span class="font-bold text-orange-950 flex items-center gap-1.5">
-                                    <svg class="w-3.5 h-3.5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                            <div class="flex items-center justify-between p-2.5 bg-amber-50/70 border border-amber-200/80 rounded-xl text-xs">
+                                <span class="text-amber-800 font-medium">Petugas yang Memproses:</span>
+                                <span class="font-bold text-amber-950 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                                     {{ $page.props.auth?.user?.name }} (Anda)
                                 </span>
                             </div>
@@ -1433,25 +1516,102 @@
                             <div v-if="Object.keys(stopSementaraForm.errors).length > 0" class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold">
                                 <p v-for="(err, key) in stopSementaraForm.errors" :key="key">{{ err }}</p>
                             </div>
-                            <p class="text-sm text-gray-600 mb-4">
-                                Harap tentukan tanggal mulai dan tanggal selesai untuk menghentikan layanan (isolir) sementara. Tagihan baru tidak akan tercetak selama masa ini.
-                            </p>
+
+                            <!-- Pilihan Cepat Durasi Cuti -->
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 mb-1">Tanggal Mulai (Start Date)</label>
-                                <input type="date" v-model="stopSementaraForm.start_date" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-orange-500" required>
+                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Pilihan Durasi Cuti Cepat</label>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <button 
+                                        type="button" 
+                                        @click="setCutiPreset(1)" 
+                                        :class="[
+                                            'px-3 py-2 rounded-xl text-xs font-bold border transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer',
+                                            activeCutiPreset === 1 ? 'bg-amber-500 text-white border-amber-600 shadow-sm' : 'bg-white hover:bg-amber-50 text-gray-700 border-gray-200'
+                                        ]"
+                                    >
+                                        <span>⚡ 1 Bulan</span>
+                                        <span class="text-[10px] font-normal" :class="activeCutiPreset === 1 ? 'text-amber-100' : 'text-gray-400'">(30 Hari)</span>
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        @click="setCutiPreset(2)" 
+                                        :class="[
+                                            'px-3 py-2 rounded-xl text-xs font-bold border transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer',
+                                            activeCutiPreset === 2 ? 'bg-amber-500 text-white border-amber-600 shadow-sm' : 'bg-white hover:bg-amber-50 text-gray-700 border-gray-200'
+                                        ]"
+                                    >
+                                        <span>2 Bulan</span>
+                                        <span class="text-[10px] font-normal" :class="activeCutiPreset === 2 ? 'text-amber-100' : 'text-gray-400'">(60 Hari)</span>
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        @click="setCutiPreset(3)" 
+                                        :class="[
+                                            'px-3 py-2 rounded-xl text-xs font-bold border transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer',
+                                            activeCutiPreset === 3 ? 'bg-amber-500 text-white border-amber-600 shadow-sm' : 'bg-white hover:bg-amber-50 text-gray-700 border-gray-200'
+                                        ]"
+                                    >
+                                        <span>3 Bulan</span>
+                                        <span class="text-[10px] font-normal" :class="activeCutiPreset === 3 ? 'text-amber-100' : 'text-gray-400'">(90 Hari)</span>
+                                    </button>
+                                </div>
                             </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 mb-1">Mulai Cuti (Start Date)</label>
+                                    <input 
+                                        type="date" 
+                                        v-model="stopSementaraForm.start_date" 
+                                        @change="onCutiDateChange"
+                                        class="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-amber-500" 
+                                        required
+                                    >
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 mb-1">Selesai Cuti (End Date)</label>
+                                    <input 
+                                        type="date" 
+                                        v-model="stopSementaraForm.end_date" 
+                                        :min="stopSementaraForm.start_date" 
+                                        @change="activeCutiPreset = null"
+                                        class="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-amber-500" 
+                                        required
+                                    >
+                                </div>
+                            </div>
+
+                            <!-- Alasan / Catatan Cuti -->
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 mb-1">Tanggal Selesai (End Date)</label>
-                                <input type="date" v-model="stopSementaraForm.end_date" :min="stopSementaraForm.start_date" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-orange-500" required>
+                                <label class="block text-xs font-bold text-gray-700 mb-1">Alasan Cuti / Catatan (Opsional)</label>
+                                <input 
+                                    type="text" 
+                                    v-model="stopSementaraForm.reason" 
+                                    placeholder="Contoh: Cuti keluar kota 1 bulan, renovasi rumah..."
+                                    class="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:bg-white focus:ring-2 focus:ring-amber-500"
+                                >
+                            </div>
+
+                            <!-- Ringkasan Info Cuti -->
+                            <div class="p-3 bg-amber-50/70 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1">
+                                <div class="font-bold flex items-center gap-1.5">
+                                    <span>🗓️</span>
+                                    <span>Masa Cuti: {{ calculatedCutiDays }} Hari (s/d {{ formatStopDisplayDate(stopSementaraForm.end_date) }})</span>
+                                </div>
+                                <ul class="list-disc list-inside text-[11px] text-amber-800 space-y-0.5">
+                                    <li>Layanan internet dinonaktifkan sementara di RADIUS.</li>
+                                    <li>Tagihan bulanan baru tidak akan diterbitkan selama masa cuti.</li>
+                                    <li>Layanan dapat dilanjutkan kembali kapan saja melalui menu Aksi.</li>
+                                </ul>
                             </div>
                         </div>
 
-                        <div class="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex justify-end gap-2">
-                            <button type="button" @click="closeStopSementaraModal" class="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
+                        <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-2">
+                            <button type="button" @click="closeStopSementaraModal" class="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer">
                                 Batal
                             </button>
-                            <button type="submit" :disabled="stopSementaraForm.processing" class="bg-orange-500 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-sm shadow-orange-500/20 hover:bg-orange-600 transition-all disabled:opacity-50 flex items-center gap-2">
-                                {{ stopSementaraForm.processing ? 'Menyimpan...' : 'Stop Sementara' }}
+                            <button type="submit" :disabled="stopSementaraForm.processing" class="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-sm shadow-amber-500/25 hover:from-amber-600 hover:to-orange-600 transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer">
+                                {{ stopSementaraForm.processing ? 'Menyimpan...' : 'Simpan Stop Sementara (Cuti)' }}
                             </button>
                         </div>
                     </form>
@@ -2145,7 +2305,7 @@ watch(() => props.filters, (newFilters) => {
 
 function filterTab(tab) {
     filterTabVal.value = tab;
-    if (['lunas', 'piutang', 'jatuh_tempo', 'belum_lunas', 'prorata', 'janji_bayar'].includes(tab)) {
+    if (['lunas', 'piutang', 'jatuh_tempo', 'belum_lunas', 'prorata', 'janji_bayar', 'terisolir', 'stop_sementara', 'stop_permanen'].includes(tab)) {
         filterStatusVal.value = '';
     }
     applyFilters();
@@ -2453,18 +2613,55 @@ function setPromiseEndOfMonth() {
     promiseForm.promise_date = toLocalDateString(lastDay);
 }
 
-// Stop Sementara Modal Logic
+// Stop Sementara (Cuti Berlangganan) Modal Logic
 const showStopSementaraModal = ref(false);
+const activeCutiPreset = ref(1);
 const stopSementaraForm = useForm({
     start_date: '',
     end_date: '',
+    reason: '',
 });
+
+const calculatedCutiDays = computed(() => {
+    if (!stopSementaraForm.start_date || !stopSementaraForm.end_date) return 0;
+    try {
+        const start = new Date(stopSementaraForm.start_date + 'T00:00:00');
+        const end = new Date(stopSementaraForm.end_date + 'T00:00:00');
+        const diff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+        return diff > 0 ? diff : 0;
+    } catch {
+        return 0;
+    }
+});
+
+function setCutiPreset(months) {
+    activeCutiPreset.value = months;
+    if (!stopSementaraForm.start_date) {
+        stopSementaraForm.start_date = toLocalDateString(new Date());
+    }
+    const d = new Date(stopSementaraForm.start_date + 'T00:00:00');
+    d.setMonth(d.getMonth() + months);
+    stopSementaraForm.end_date = toLocalDateString(d);
+}
+
+function onCutiDateChange() {
+    if (activeCutiPreset.value) {
+        setCutiPreset(activeCutiPreset.value);
+    }
+}
 
 function stopSementara(row) {
     selectedInvoice.value = row;
     stopSementaraForm.clearErrors();
-    stopSementaraForm.start_date = toLocalDateString(new Date());
-    stopSementaraForm.end_date = '';
+    const cust = row.customer;
+    stopSementaraForm.start_date = cust?.suspend_start || toLocalDateString(new Date());
+    if (cust?.suspend_end) {
+        stopSementaraForm.end_date = cust.suspend_end;
+        activeCutiPreset.value = null;
+    } else {
+        setCutiPreset(1);
+    }
+    stopSementaraForm.reason = '';
     showStopSementaraModal.value = true;
 }
 
@@ -2479,6 +2676,24 @@ function submitStopSementara() {
         preserveScroll: true,
         onSuccess: () => closeStopSementaraModal(),
     });
+}
+
+function resumeLangganan(row) {
+    const custName = row.customer?.name || `#${row.invoice_number}`;
+    if (confirm(`Apakah Anda yakin ingin melanjutkan layanan internet untuk pelanggan ${custName}? Masa cuti akan diselesaikan dan koneksi internet akan diaktifkan kembali.`)) {
+        router.post(`/invoices/${row.id}/lanjutkan-langganan`, {}, {
+            preserveScroll: true,
+        });
+    }
+}
+
+function bukaIsolir(row) {
+    const custName = row.customer?.name || `#${row.invoice_number}`;
+    if (confirm(`Buka isolir untuk pelanggan ${custName}? Layanan internet akan diaktifkan kembali.`)) {
+        router.post(`/invoices/${row.id}/lanjutkan-langganan`, {}, {
+            preserveScroll: true,
+        });
+    }
 }
 
 // ── Stop Permanen & Eskalasi CBP Modal Logic ───────────────────
@@ -2514,6 +2729,19 @@ function formatStopDisplayDate(dateStr) {
             month: 'long',
             year: 'numeric'
         });
+    } catch (e) {
+        return dateStr;
+    }
+}
+
+function formatCutiDate(dateStr) {
+    if (!dateStr) return '';
+    try {
+        const parts = String(dateStr).substring(0, 10).split('-');
+        if (parts.length !== 3) return dateStr;
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        const mIdx = Number(parts[1]) - 1;
+        return `${Number(parts[2])} ${months[mIdx]} ${parts[0]}`;
     } catch (e) {
         return dateStr;
     }

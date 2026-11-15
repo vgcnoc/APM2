@@ -25,7 +25,12 @@ class SuspendOverdueCustomers extends Command
                     $invoice->whereIn('status', ['unpaid', 'partial', 'overdue'])->where('is_reseller_balance', false)
                         ->where(fn ($date) => $date->whereNull('isolation_at')->orWhere('isolation_at', '<=', now()));
                 });
-            })->orWhereNotNull('billing_isolated_at')->orWhere('billing_isolation_pending', true);
+            })->orWhereNotNull('billing_isolated_at')->orWhere('billing_isolation_pending', true)
+              ->orWhere(function ($cuti) {
+                  $cuti->where('status', 'suspended')
+                       ->whereNotNull('suspend_end')
+                       ->where('suspend_end', '<', now()->toDateString());
+              });
         })->chunkById(200, function ($customers) use ($isolation, &$count, $limit) {
             foreach ($customers as $customer) {
                 if ($this->option('dry-run')) {

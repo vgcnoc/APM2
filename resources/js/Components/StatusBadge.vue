@@ -24,6 +24,8 @@ const statusMap = {
     menunggu_aktivasi: { label: 'Menunggu Aktivasi', color: 'indigo' },
     active: { label: 'Aktif', color: 'green' },
     suspended: { label: 'ISOLIR', color: 'orange' },
+    terisolir: { label: 'TERISOLIR', color: 'red' },
+    stop_sementara: { label: 'Stop Sementara (Cuti)', color: 'amber' },
     terminated: { label: 'Terminated', color: 'red' },
     // Pembatalan
     batal_booking: { label: 'Batal Booking', color: 'amber' },

@@ -264,7 +264,8 @@ class InvoiceController extends Controller
                   ->orWhere('notes', 'like', '%Downgrade%');
             })->count(),
             'janji_bayar' => (clone $activeBaseQuery)->whereNotNull('promise_date')->whereIn('status', ['unpaid', 'partial', 'overdue'])->count(),
-            'stop_sementara' => (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', 'suspended'))->count(),
+            'terisolir' => (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', 'suspended')->whereNull('suspend_end'))->count(),
+            'stop_sementara' => (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', 'suspended')->whereNotNull('suspend_end'))->count(),
             'stop_permanen' => (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', 'terminated'))->count(),
 
             // Amounts for cards (Konsisten dengan data aktif & filter)
@@ -786,15 +787,25 @@ class InvoiceController extends Controller
         $request->validate([
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
+            'reason' => 'nullable|string',
+            'notes' => 'nullable|string',
         ]);
 
         $customer = $invoice->customer;
         if ($customer && $customer->status !== 'terminated') {
             $oldStatus = $customer->status;
+            $reason = $request->input('reason') ?: $request->input('notes') ?: 'Cuti berlangganan sementara';
+            $customerNotes = $customer->notes;
+            if ($reason) {
+                $cutiTag = "[Cuti {$request->start_date} s/d {$request->end_date}: {$reason}]";
+                $customerNotes = $customerNotes ? $customerNotes . " | " . $cutiTag : $cutiTag;
+            }
+
             $customer->update([
                 'status' => 'suspended',
                 'suspend_start' => $request->start_date,
                 'suspend_end' => $request->end_date,
+                'notes' => $customerNotes,
             ]);
             $radius->guard(fn($r) => $r->syncCustomer($customer));
             $accounts = $radius->customerAccounts($customer);
@@ -803,14 +814,69 @@ class InvoiceController extends Controller
             }
 
             \App\Models\AuditLog::createLog(
-                'Stop Sementara Layanan Pelanggan',
+                'Stop Sementara (Cuti) Layanan',
                 $customer,
                 $oldStatus,
                 'suspended',
-                "Layanan pelanggan di-Stop Sementara ({$request->start_date} s/d {$request->end_date}) dari invoice #{$invoice->invoice_number} oleh " . (auth()->user()?->name ?? 'Petugas')
+                "Layanan pelanggan di-Stop Sementara / Cuti ({$request->start_date} s/d {$request->end_date}) Alasan: {$reason} dari invoice #{$invoice->invoice_number} oleh " . (auth()->user()?->name ?? 'Petugas')
             );
         }
-        return redirect()->back()->with('success', 'Pelanggan berhasil di-Stop Sementara mulai ' . $request->start_date . ' sampai ' . $request->end_date . '.');
+        return redirect()->back()->with('success', 'Pelanggan ' . ($customer?->name ?? '') . ' berhasil di-Stop Sementara (Cuti) mulai ' . $request->start_date . ' sampai ' . $request->end_date . '.');
+    }
+
+    /**
+     * Lanjutkan kembali layanan pelanggan (Selesai Cuti / Buka Isolir)
+     */
+    public function lanjutkanLangganan(Request $request, Invoice $invoice, \App\Services\RadiusService $radius)
+    {
+        $customer = $invoice->customer;
+        if (!$customer) {
+            return redirect()->back()->with('error', 'Data pelanggan tidak ditemukan.');
+        }
+
+        if ($customer->status !== 'suspended') {
+            return redirect()->back()->with('info', "Pelanggan {$customer->name} sudah dalam status aktif.");
+        }
+
+        $wasCuti = !empty($customer->suspend_end);
+        $oldSuspendEnd = $customer->suspend_end;
+
+        $customer->update([
+            'status' => 'active',
+            'suspend_start' => null,
+            'suspend_end' => null,
+            'billing_isolated_at' => null,
+            'billing_isolation_pending' => false,
+        ]);
+
+        try {
+            $radius->syncCustomer($customer);
+            $accounts = $radius->customerAccounts($customer);
+            foreach (array_keys($accounts) as $username) {
+                $radius->disconnect($username);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('[RADIUS] Lanjutkan langganan sync error: ' . $e->getMessage());
+        }
+
+        $actionTitle = $wasCuti ? 'Lanjut Berlangganan (Selesai Cuti)' : 'Buka Isolir Layanan';
+        $logDetail = $wasCuti
+            ? "Masa cuti selesai / dilanjutkan kembali (sebelumnya terjadwal s/d " . ($oldSuspendEnd ?: '-') . ") oleh " . (auth()->user()?->name ?? 'Petugas')
+            : "Layanan dibuka dari isolir oleh " . (auth()->user()?->name ?? 'Petugas');
+
+        \App\Models\AuditLog::createLog(
+            $actionTitle,
+            $customer,
+            'suspended',
+            'active',
+            $logDetail
+        );
+
+        $msg = $wasCuti
+            ? "Layanan internet pelanggan {$customer->name} berhasil dilanjutkan kembali. Masa cuti telah selesai."
+            : "Isolir layanan pelanggan {$customer->name} berhasil dibuka dan aktif kembali.";
+
+        return redirect()->back()->with('success', $msg);
     }
 
     public function stopPermanen(Request $request, Invoice $invoice, \App\Services\RadiusService $radius)
@@ -1569,8 +1635,10 @@ class InvoiceController extends Controller
                 $targetQuery->whereNotNull('promise_date')
                     ->whereIn('status', ['unpaid', 'partial', 'overdue'])
                     ->whereHas('customer', fn($q) => $q->where('status', '!=', 'terminated'));
+            } elseif ($tab === 'terisolir') {
+                $targetQuery->whereHas('customer', fn($q) => $q->where('status', 'suspended')->whereNull('suspend_end'));
             } elseif ($tab === 'stop_sementara') {
-                $targetQuery->whereHas('customer', fn($q) => $q->where('status', 'suspended'));
+                $targetQuery->whereHas('customer', fn($q) => $q->where('status', 'suspended')->whereNotNull('suspend_end'));
             } elseif ($tab === 'stop_permanen') {
                 $targetQuery->whereHas('customer', fn($q) => $q->where('status', 'terminated'));
             }
