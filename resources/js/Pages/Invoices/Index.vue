@@ -2115,6 +2115,14 @@
                 </div>
             </div>
         </Teleport>
+
+        <!-- Quick Detail & Edit Customer Modal -->
+        <CustomerQuickDetailModal
+            :show="showCustomerModal"
+            :customer="selectedCustomer"
+            @close="showCustomerModal = false"
+            @updated="onCustomerUpdated"
+        />
     </AppLayout>
 </template>
 
