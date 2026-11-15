@@ -49,3 +49,4 @@ class CompanySetting extends Model
         Cache::forget("company_setting_{$companyId}_{$key}");
     }
 }
+

@@ -255,3 +255,4 @@ class CompanyController extends Controller
         return redirect()->back()->with('success', "Mitra '{$name}' berhasil dinonaktifkan.");
     }
 }
+

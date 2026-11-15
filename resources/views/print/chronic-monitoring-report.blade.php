@@ -557,7 +557,12 @@
                             <td>
                                 <strong>{{ $pathNode['area_name'] }}</strong>
                                 @if(($pathNode['total_ports'] ?? 0) > 0)
-                                    <br><span class="text-muted">Port: {{ $pathNode['used_ports'] }}/{{ $pathNode['total_ports'] }} ({{ $pathNode['port_utilization'] }}%)</span>
+                                    @php
+                                        $uPorts = (int) ($pathNode['used_ports'] ?? 0);
+                                        $tPorts = (int) ($pathNode['total_ports'] ?? 0);
+                                        $pUtil = $pathNode['port_utilization'] ?? ($tPorts > 0 ? round(($uPorts / $tPorts) * 100) : 0);
+                                    @endphp
+                                    <br><span class="text-muted">Port: {{ $uPorts }}/{{ $tPorts }} ({{ $pUtil }}%)</span>
                                 @endif
                             </td>
                             <td>

@@ -674,3 +674,4 @@ function confirmDeleteCompany(company) {
     }
 }
 </script>
+
