@@ -125,29 +125,6 @@ class SyncPermissionsCommand extends Command
             }
         }
 
-        // 2. Samakan role teknisi-2 persis dengan teknisi (Yahya Maulana)
-        $roleTeknisi2 = Role::where('name', 'teknisi-2')->first();
-        if ($roleTeknisi && $roleTeknisi2) {
-            $teknisiPerms = $roleTeknisi->permissions->pluck('name')->toArray();
-            $roleTeknisi2->syncPermissions($teknisiPerms);
-            if ($hasLockColumn) {
-                $roleTeknisi2->update(['permissions_customized_at' => now()]);
-            }
-            $this->line("  ✓ Role 'teknisi-2': disinkronkan persis identik dengan role 'teknisi' (" . count($teknisiPerms) . " izin).");
-        }
-
-        // 2b. Samakan role maintenance persis identik dengan maintenance-1
-        $roleMaint1 = Role::where('name', 'maintenance-1')->first();
-        $roleMaint = Role::where('name', 'maintenance')->first();
-        if ($roleMaint1 && $roleMaint) {
-            $maint1Perms = $roleMaint1->permissions->pluck('name')->toArray();
-            $roleMaint->syncPermissions($maint1Perms);
-            if ($hasLockColumn) {
-                $roleMaint->update(['permissions_customized_at' => now()]);
-            }
-            $this->line("  ✓ Role 'maintenance': disinkronkan persis identik dengan role 'maintenance-1' (" . count($maint1Perms) . " izin).");
-        }
-
         // 3. Role sales: Bersihkan menu_network_capacity & network_capacity_view_area
         $roleSales = Role::where('name', 'sales')->first();
         if ($roleSales) {

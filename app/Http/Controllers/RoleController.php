@@ -132,36 +132,6 @@ class RoleController extends Controller
         if ($request->exists('permissions') && is_array($request->input('permissions'))) {
             $role->syncPermissions($request->input('permissions'));
             $this->markRoleCustomized($role);
-
-            // Samakan teknisi-2 dengan teknisi secara otomatis (Yahya Maulana)
-            if ($role->name === 'teknisi') {
-                $t2 = Role::where('name', 'teknisi-2')->first();
-                if ($t2) {
-                    $t2->syncPermissions($request->input('permissions'));
-                    $this->markRoleCustomized($t2);
-                }
-            } elseif ($role->name === 'teknisi-2') {
-                $t = Role::where('name', 'teknisi')->first();
-                if ($t) {
-                    $t->syncPermissions($request->input('permissions'));
-                    $this->markRoleCustomized($t);
-                }
-            }
-
-            // Samakan maintenance dan maintenance-1 secara otomatis
-            if ($role->name === 'maintenance') {
-                $m1 = Role::where('name', 'maintenance-1')->first();
-                if ($m1) {
-                    $m1->syncPermissions($request->input('permissions'));
-                    $this->markRoleCustomized($m1);
-                }
-            } elseif ($role->name === 'maintenance-1') {
-                $m = Role::where('name', 'maintenance')->first();
-                if ($m) {
-                    $m->syncPermissions($request->input('permissions'));
-                    $this->markRoleCustomized($m);
-                }
-            }
         }
 
         // Clear permission cache
