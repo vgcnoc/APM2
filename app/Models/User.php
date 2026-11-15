@@ -292,6 +292,12 @@ class User extends Authenticatable
 
     public function isSuperAdmin(): bool
     {
+        // Hanya pengguna di Perusahaan Pusat (Holding / company_id = 1) yang berstatus Super Admin Holding
+        $companyId = (int) ($this->company_id ?: 1);
+        if ($companyId !== 1) {
+            return false;
+        }
+
         return $this->hasRole(['admin', 'super admin', 'superadmin']) || in_array($this->role, ['admin', 'super admin', 'superadmin'], true);
     }
 

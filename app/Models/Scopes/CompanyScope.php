@@ -23,12 +23,12 @@ class CompanyScope implements Scope
             return;
         }
 
-        // 2. Jika dieksekusi via CLI/Artisan (tanpa forced_company_id), biarkan terbuka agar cron holding aman
-        if (app()->runningInConsole()) {
+        // 2. Jika dieksekusi via CLI/Artisan tanpa user terautentikasi, biarkan terbuka agar cron holding aman
+        if (app()->runningInConsole() && !Auth::check()) {
             return;
         }
 
-        // 3. Jika user login di browser
+        // 3. Jika user login (di browser web maupun sesi CLI)
         if (Auth::check()) {
             $user = Auth::user();
 
