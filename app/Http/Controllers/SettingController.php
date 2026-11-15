@@ -57,7 +57,7 @@ class SettingController extends Controller
     {
         return Inertia::render('Settings/Payroll', [
             'payroll_cutoff_date' => Setting::get('payroll_cutoff_date', '1'),
-            'payroll_payment_date' => Setting::get('payroll_payment_date', '12'),
+            'payroll_payment_date' => Setting::get('payroll_payment_date', Setting::get('payroll_disbursement_date', '13')),
             'payroll_components' => json_decode(Setting::get('payroll_components', '["insentif", "potongan"]'), true),
             'payroll_note' => Setting::get('payroll_note', ''),
             'payroll_incentive_mode' => Setting::get('payroll_incentive_mode', 'Bulanan (sekali sebulan)'),
@@ -100,6 +100,7 @@ class SettingController extends Controller
 
         Setting::set('payroll_cutoff_date', $request->payroll_cutoff_date);
         Setting::set('payroll_payment_date', $request->payroll_payment_date);
+        Setting::set('payroll_disbursement_date', $request->payroll_payment_date);
         Setting::set('payroll_components', json_encode($request->payroll_components ?? []));
         Setting::set('payroll_note', $request->payroll_note ?? '');
         Setting::set('payroll_incentive_mode', $request->payroll_incentive_mode);

@@ -104,7 +104,7 @@ class PayrollController extends Controller
         }
         
         // Pengaturan Tanggal Pencairan & Tarif BPJS
-        $disbursementDate = Setting::get('payroll_disbursement_date', '25'); // Default tanggal 25
+        $disbursementDate = Setting::get('payroll_disbursement_date', Setting::get('payroll_payment_date', '13'));
         $bpjsSettings = [
             'bpjs_kesehatan_employee_pct' => (float) Setting::get('bpjs_kesehatan_employee_pct', 1.0),
             'bpjs_kesehatan_company_pct' => (float) Setting::get('bpjs_kesehatan_company_pct', 4.0),
@@ -417,6 +417,7 @@ class PayrollController extends Controller
 
         if ($request->has('disbursement_date')) {
             Setting::set('payroll_disbursement_date', $request->disbursement_date);
+            Setting::set('payroll_payment_date', $request->disbursement_date);
         }
         if ($request->has('bpjs_kesehatan_employee_pct')) {
             Setting::set('bpjs_kesehatan_employee_pct', $request->bpjs_kesehatan_employee_pct);
