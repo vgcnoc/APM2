@@ -146,9 +146,12 @@ class SyncPermissionsCommand extends Command
             }
         }
 
-        // 4. Role maintenance & maintenance-1: Pastikan tetap memiliki modul afiliasi
+        // 4. Role maintenance & maintenance-1: Pastikan tetap memiliki modul afiliasi (hanya jika belum dikustomisasi admin)
         $maintRoles = Role::whereIn('name', ['maintenance', 'maintenance-1'])->get();
         foreach ($maintRoles as $mRole) {
+            if ($hasLockColumn && !empty($mRole->permissions_customized_at) && !$isForce) {
+                continue;
+            }
             $affiliatePerms = array_intersect(['menu_marketing_affiliates', 'menu_affiliate_portal'], $allNames);
             if (!empty($affiliatePerms)) {
                 $mRole->givePermissionTo($affiliatePerms);
@@ -194,7 +197,7 @@ class SyncPermissionsCommand extends Command
         }
         $this->line("  ✓ Role CS, Staff Administrasi, Finance & HRD: hak akses Stop Permanen & Stop Sementara tagihan dipastikan aktif.");
 
-        // 7. Role Maintenance & Maintenance-1: Pastikan memiliki modul Jadwal & Laporan CBP sesuai area
+        // 7. Role Maintenance & Maintenance-1: Pastikan memiliki modul Jadwal & Laporan CBP sesuai area (hanya jika belum dikustomisasi admin)
         $maintCbpRoles = Role::whereIn('name', ['maintenance', 'maintenance-1', 'Maintenance', 'Maintenance-1', 'kepala teknisi', 'Kepala Teknisi'])->get();
         $cbpMaintPerms = [
             'menu_cbp_jadwal',
@@ -207,6 +210,9 @@ class SyncPermissionsCommand extends Command
             'cbp_view_assigned',
         ];
         foreach ($maintCbpRoles as $mRole) {
+            if ($hasLockColumn && !empty($mRole->permissions_customized_at) && !$isForce) {
+                continue;
+            }
             $mRole->givePermissionTo(array_intersect($cbpMaintPerms, $allNames));
         }
         $this->line("  ✓ Role Maintenance & Maintenance-1: modul Jadwal & Laporan CBP dipastikan aktif.");
