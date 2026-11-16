@@ -135,15 +135,31 @@ class SyncCompletedCbpNetworkPorts extends Command
         }
 
         // 3. Bersihkan port hantu (status 'used' tapi tidak ada ONT atau Survey aktif yang memegang)
-        $ghostPortsUpdated = OdpPort::where('status', 'used')
+        $activeSurveyKeys = Survey::whereNotNull('odp_id')
+            ->whereNotNull('port_number')
+            ->whereHas('customer', fn ($cq) => $cq->whereIn('status', ['survey', 'installing']))
+            ->get()
+            ->map(fn ($s) => $s->odp_id . '-' . $s->port_number)
+            ->flip();
+
+        $ghostPortsUpdated = 0;
+        $usedOdpPorts = OdpPort::where('status', 'used')
             ->whereDoesntHave('ont')
-            ->whereDoesntHave('survey', function ($sq) {
-                $sq->whereHas('customer', fn ($cq) => $cq->whereIn('status', ['survey', 'installing']));
-            })
-            ->update([
-                'status' => 'available',
-                'description' => null,
-            ]);
+            ->get();
+
+        foreach ($usedOdpPorts as $op) {
+            $key = $op->odp_id . '-' . $op->port_number;
+            // Periksa jika ada ONT yang menunjuk ke odp_id dan port_number
+            $hasMatchingOnt = Ont::where('odp_id', $op->odp_id)
+                ->where('port_number', $op->port_number)
+                ->whereNotNull('customer_id')
+                ->exists();
+
+            if (!$hasMatchingOnt && !isset($activeSurveyKeys[$key])) {
+                $op->update(['status' => 'available', 'description' => null]);
+                $ghostPortsUpdated++;
+            }
+        }
 
         // 4. Sinkronisasi total used_ports & status untuk seluruh ODP
         $allOdps = Odp::all();
