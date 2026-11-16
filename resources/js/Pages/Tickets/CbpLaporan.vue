@@ -1264,6 +1264,35 @@ const hardwareItems = computed(() => {
         });
         ontFound = true;
     }
+
+    // 1b. Cek material ONT dari customer_installed_materials (jika belum tercatat di tabel onts)
+    const custInstalledMaterials = selectedCbp.value.customer.installed_materials || selectedCbp.value.customer.installedMaterials || [];
+    if (!ontFound && Array.isArray(custInstalledMaterials)) {
+        const installedOnt = custInstalledMaterials.find(m => 
+            m.status !== 'dismantled' && (
+                (m.item_name && (
+                    m.item_name.toLowerCase().includes('ont') || 
+                    m.item_name.toLowerCase().includes('modem') || 
+                    m.item_name.toLowerCase().includes('zte') || 
+                    m.item_name.toLowerCase().includes('huawei') ||
+                    m.item_name.toLowerCase().includes('fiberhome') ||
+                    m.item_name.toLowerCase().includes('netvibes')
+                ))
+            )
+        );
+        if (installedOnt) {
+            items.push({
+                id: idCounter++,
+                type: 'ONT',
+                material_id: installedOnt.material_id,
+                ont_id: null,
+                sn: installedOnt.serial_number || '-',
+                name: installedOnt.item_name + (installedOnt.serial_number ? ` (SN: ${installedOnt.serial_number})` : ''),
+                installed_material_id: installedOnt.id
+            });
+            ontFound = true;
+        }
+    }
     
     if (schedule && schedule.notes) {
         const lines = schedule.notes.split('\n');
@@ -1341,6 +1370,71 @@ function getMaterial(id) {
     return progressForm.materials.find(m => m._id === id);
 }
 
+function findMatchingOntMaterialId(rawName) {
+    if (!props.materials || !props.materials.length) return '';
+    const nameStr = (rawName || '').toLowerCase();
+
+    // 1. Ambil seluruh kandidat material ONT dari katalog
+    const ontCandidates = props.materials.filter(m => 
+        (m.category && m.category.toLowerCase().includes('ont')) ||
+        (m.category && m.category.toLowerCase().includes('modem')) ||
+        m.name.toLowerCase().includes('ont') ||
+        m.name.toLowerCase().includes('modem')
+    );
+
+    if (!ontCandidates.length) return props.materials[0]?.id || '';
+
+    // Bersihkan nama dari SN dan kata umum
+    const cleanName = nameStr
+        .replace(/\(sn:.*?\)/gi, '')
+        .replace(/sn:.*$/gi, '')
+        .replace(/^ont\s*[:\-\s]*/i, '')
+        .trim();
+
+    // a. Cek exact match atau jika material name mengandung kata kunci model/brand
+    const directMatch = ontCandidates.find(m => {
+        const matNameClean = m.name.toLowerCase().replace(/^ont\s*[:\-\s]*/i, '').trim();
+        return matNameClean === cleanName || cleanName.includes(matNameClean) || matNameClean.includes(cleanName);
+    });
+    if (directMatch) return directMatch.id;
+
+    // b. Token model & merk spesifik (cth: "zte", "f452", "f609", "hg8245", "eg8145", "nvb663", "ml212", "c-link")
+    const tokens = cleanName.split(/[\s\-_/]+/).filter(t => t.length >= 2 && !['ont', 'modem', 'unit', 'gpon', 'xpon', 'pcs'].includes(t));
+
+    let bestCandidate = null;
+    let maxScore = 0;
+
+    for (const cand of ontCandidates) {
+        const candNameLower = cand.name.toLowerCase();
+        let score = 0;
+        for (const token of tokens) {
+            if (candNameLower.includes(token)) {
+                score += (token.length > 3 ? 3 : 1);
+            }
+        }
+        if (score > maxScore) {
+            maxScore = score;
+            bestCandidate = cand;
+        }
+    }
+
+    if (bestCandidate && maxScore > 0) {
+        return bestCandidate.id;
+    }
+
+    // c. Brand terkenal (ZTE, Huawei, Fiberhome, Netvibes, MyLink/ML212, VSOL, dll)
+    const knownBrands = ['zte', 'huawei', 'fiberhome', 'netvibes', 'c-link', 'clink', 'vsol', 'hioso', 'totolink', 'ml212'];
+    for (const b of knownBrands) {
+        if (nameStr.includes(b)) {
+            const brandMatch = ontCandidates.find(m => m.name.toLowerCase().includes(b));
+            if (brandMatch) return brandMatch.id;
+        }
+    }
+
+    // Fallback terakhir
+    return ontCandidates[0]?.id || '';
+}
+
 function cabutItem(item) {
     let unit = 'pcs';
     let defaultQty = 1;
@@ -1349,19 +1443,20 @@ function cabutItem(item) {
         defaultQty = 100;
     }
     
-    let matId = '';
-    const nameLower = item.name.toLowerCase();
+    let matId = item.material_id || '';
+    const nameLower = (item.name || '').toLowerCase();
     
-    if (item.type === 'ONT') {
-        const ontMat = props.materials.find(m => m.category === 'ont' || m.name.toLowerCase().includes('ont'));
-        if (ontMat) matId = ontMat.id;
-    } else {
-        const matched = props.materials.find(m => nameLower.includes(m.name.toLowerCase()) || m.name.toLowerCase().includes(nameLower));
-        if (matched) {
-            matId = matched.id;
-        } else if (nameLower.includes('kabel')) {
-            const kabelMat = props.materials.find(m => m.category === 'kabel' || m.name.toLowerCase().includes('kabel'));
-            if (kabelMat) matId = kabelMat.id;
+    if (!matId) {
+        if (item.type === 'ONT' || nameLower.includes('ont') || nameLower.includes('modem')) {
+            matId = findMatchingOntMaterialId(item.name);
+        } else {
+            const matched = props.materials.find(m => nameLower.includes(m.name.toLowerCase()) || m.name.toLowerCase().includes(nameLower));
+            if (matched) {
+                matId = matched.id;
+            } else if (nameLower.includes('kabel')) {
+                const kabelMat = props.materials.find(m => m.category === 'kabel' || m.name.toLowerCase().includes('kabel'));
+                if (kabelMat) matId = kabelMat.id;
+            }
         }
     }
     
@@ -1373,6 +1468,8 @@ function cabutItem(item) {
         type: item.type,
         name: item.name,
         ont_id: item.ont_id || selectedCbp.value?.customer?.ont?.id || null,
+        serial_number: item.sn || null,
+        installed_material_id: item.installed_material_id || null,
         _id: item.id,
         _name: item.name
     });

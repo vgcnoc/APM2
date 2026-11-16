@@ -324,6 +324,7 @@ class CbpRequestController extends Controller
             'customer.package',
             'customer.ont.odp',
             'customer.technicianSchedules',
+            'customer.installedMaterials.material',
             'technicians',
             'creator',
             'auditLogs.user',
@@ -785,10 +786,59 @@ class CbpRequestController extends Controller
                     if ($isOntType) {
                         if ($uninstalledOnt) {
                             $itemName = "ONT {$uninstalledOnt->brand} {$uninstalledOnt->model} (SN: {$uninstalledOnt->serial_number})";
+                            $resolved = \App\Services\MaterialService::resolveOntMaterial($uninstalledOnt);
+                            if ($resolved) {
+                                $material = $resolved;
+                            }
                         }
-                        if (!$material) {
-                            $material = \App\Models\Material::where('category', 'like', '%ont%')->orWhere('name', 'like', '%ont%')->first();
+
+                        // Jika material belum ditemukan atau salah terpetakan ke ML212 (ID 186) padahal nama item menyebut merk lain
+                        $isWrongML212 = ($material && $material->id == 186 && !str_contains(strtolower($itemName), 'ml212'));
+                        if (!$material || $isWrongML212) {
+                            // Cek apakah ada record di customer_installed_materials
+                            $custInstalledOnt = \App\Models\CustomerInstalledMaterial::where('customer_id', $cbp->customer_id)
+                                ->where(function ($q) {
+                                    $q->where('item_name', 'like', '%ont%')
+                                      ->orWhere('item_name', 'like', '%modem%')
+                                      ->orWhere('item_name', 'like', '%zte%')
+                                      ->orWhere('item_name', 'like', '%huawei%');
+                                })
+                                ->where('status', '!=', 'dismantled')
+                                ->first();
+
+                            if ($custInstalledOnt && $custInstalledOnt->material_id) {
+                                $installedMat = \App\Models\Material::find($custInstalledOnt->material_id);
+                                if ($installedMat) {
+                                    $material = $installedMat;
+                                }
+                            }
                         }
+
+                        // Jika masih belum cocok, coba resolusi cerdas berdasarkan nama item
+                        if (!$material || ($material->id == 186 && !str_contains(strtolower($itemName), 'ml212'))) {
+                            $matchedMat = self::resolveOntMaterialByName($itemName);
+                            if ($matchedMat) {
+                                $material = $matchedMat;
+                            }
+                        }
+
+                        // Update CustomerInstalledMaterial untuk ONT pelanggan ke status 'dismantled'
+                        \App\Models\CustomerInstalledMaterial::where('customer_id', $cbp->customer_id)
+                            ->where(function ($q) use ($itemName, $material, $item) {
+                                if (!empty($item['serial_number'])) {
+                                    $q->where('serial_number', $item['serial_number']);
+                                }
+                                if ($material) {
+                                    $q->orWhere('material_id', $material->id);
+                                }
+                                $q->orWhere('item_name', 'like', '%ont%')
+                                  ->orWhere('item_name', 'like', '%modem%');
+                            })
+                            ->where('status', '!=', 'dismantled')
+                            ->update([
+                                'status' => 'dismantled',
+                                'notes' => "Dicabut ({$qty} {$unit}) pada tiket CBP #{$cbp->cbp_number}",
+                            ]);
                     }
 
                     $returnItems[] = [
@@ -1103,5 +1153,75 @@ class CbpRequestController extends Controller
         );
 
         return redirect()->back()->with('success', "Berhasil menghapus {$count} tiket CBP.");
+    }
+
+    /**
+     * Resolusi Material ONT dari teks nama item / merk / model.
+     */
+    public static function resolveOntMaterialByName(?string $name): ?\App\Models\Material
+    {
+        if (empty($name)) return null;
+
+        $nameLower = strtolower($name);
+        $cleanName = preg_replace('/\(sn:.*?\)/i', '', $nameLower);
+        $cleanName = preg_replace('/sn:.*$/i', '', $cleanName);
+        $cleanName = trim(preg_replace('/^ont\s*[:\-\s]*/i', '', $cleanName));
+
+        $materials = \App\Models\Material::where(function ($q) {
+            $q->where('is_active', true)->orWhereNull('is_active');
+        })->where(function ($q) {
+            $q->where('category', 'ONT')
+              ->orWhere('category', 'like', '%ont%')
+              ->orWhere('category', 'like', '%modem%');
+        })->get();
+
+        if ($materials->isEmpty()) {
+            return null;
+        }
+
+        // 1. Direct contains check (e.g. "ONT ZTE F452")
+        foreach ($materials as $m) {
+            $matClean = trim(preg_replace('/^ont\s*[:\-\s]*/i', '', strtolower($m->name)));
+            if (!empty($matClean) && (str_contains($cleanName, $matClean) || str_contains($matClean, $cleanName))) {
+                return $m;
+            }
+        }
+
+        // 2. Token match (zte, f452, f609, hg8245, etc.)
+        $tokens = array_filter(preg_split('/[\s\-_/]+/', $cleanName), function ($t) {
+            return strlen($t) >= 2 && !in_array($t, ['ont', 'modem', 'unit', 'gpon', 'xpon', 'pcs']);
+        });
+
+        $bestMat = null;
+        $maxScore = 0;
+
+        foreach ($materials as $m) {
+            $mLower = strtolower($m->name);
+            $score = 0;
+            foreach ($tokens as $token) {
+                if (str_contains($mLower, $token)) {
+                    $score += (strlen($token) > 3 ? 3 : 1);
+                }
+            }
+            if ($score > $maxScore) {
+                $maxScore = $score;
+                $bestMat = $m;
+            }
+        }
+
+        if ($bestMat && $maxScore > 0) {
+            return $bestMat;
+        }
+
+        // 3. Known brand fallback
+        $knownBrands = ['zte', 'huawei', 'fiberhome', 'netvibes', 'c-link', 'clink', 'vsol', 'hioso', 'totolink', 'ml212'];
+        foreach ($knownBrands as $brand) {
+            if (str_contains($nameLower, $brand)) {
+                $match = $materials->first(fn($m) => str_contains(strtolower($m->name), $brand));
+                if ($match) return $match;
+            }
+        }
+
+        return null;
     }
 }
