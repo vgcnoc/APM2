@@ -127,8 +127,8 @@
                 </div>
             </div>
 
-            <!-- STATS KPI SUMMARY CARDS (7 KOLOM) -->
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+            <!-- STATS KPI SUMMARY CARDS (6 KOLOM) -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 
                 <!-- 1. Gangguan Card -->
                 <div 
@@ -245,33 +245,10 @@
                     </div>
                 </div>
 
-                <!-- 6. ROLLOUT PEMBANGUNAN ODC & ODP CARD (BARU) -->
-                <div 
-                    @click="activeTab = 'rollout'"
-                    class="p-4 rounded-2xl border transition-all cursor-pointer group hover:shadow-md"
-                    :class="activeTab === 'rollout' 
-                        ? 'bg-cyan-50/70 dark:bg-cyan-950/40 border-cyan-400 dark:border-cyan-700 ring-2 ring-cyan-200 dark:ring-cyan-900' 
-                        : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-cyan-300'"
-                >
-                    <div class="flex items-center justify-between text-cyan-600 dark:text-cyan-400">
-                        <span class="text-[11px] font-black uppercase tracking-wider">⚡ Rollout ODC/ODP</span>
-                        <span class="text-xs font-bold px-1.5 py-0.5 rounded-md bg-cyan-100 dark:bg-cyan-900/60">{{ summary.rollout || 0 }}</span>
-                    </div>
-                    <div class="mt-2 text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                        {{ summary.rollout || 0 }}
-                    </div>
-                    <div class="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
-                        <span class="text-emerald-600 font-bold">✓ {{ summary.rollout_done || 0 }} Selesai</span>
-                        <span v-if="summary.rollout_in_progress > 0" class="text-cyan-600 font-bold">· 🛠️ {{ summary.rollout_in_progress }}</span>
-                        <span>·</span>
-                        <span class="text-amber-600 font-bold">⏳ {{ summary.rollout_pending || 0 }} Tunggu</span>
-                    </div>
-                </div>
-
-                <!-- 7. Status Petugas & Shift Card -->
+                <!-- 6. Status Petugas & Shift Card -->
                 <div 
                     @click="activeTab = 'teknisi'"
-                    class="p-4 rounded-2xl border transition-all cursor-pointer group hover:shadow-md col-span-2 sm:col-span-1 xl:col-span-1"
+                    class="p-4 rounded-2xl border transition-all cursor-pointer group hover:shadow-md col-span-2 sm:col-span-1"
                     :class="activeTab === 'teknisi' 
                         ? 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-700 ring-2 ring-emerald-200 dark:ring-emerald-900' 
                         : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-emerald-300'"
@@ -823,228 +800,6 @@
                                         </svg>
                                     </button>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- TAB 6: ROLLOUT PEMBANGUNAN ODC & ODP (BARU) -->
-                    <div v-if="activeTab === 'rollout'" class="space-y-3">
-                        <!-- Sub-filter: Semua Tugas vs Tugas Saya & Aksi Cepat -->
-                        <div class="flex items-center justify-between gap-2 pb-1 flex-wrap">
-                            <div class="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-semibold">
-                                <button
-                                    type="button"
-                                    @click="filterOnlyMyRollout = false"
-                                    class="px-3 py-1.5 rounded-lg transition-all cursor-pointer"
-                                    :class="!filterOnlyMyRollout ? 'bg-white dark:bg-slate-900 text-cyan-700 dark:text-cyan-400 font-bold shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'"
-                                >
-                                    👥 Semua Petugas ({{ rolloutList.length }})
-                                </button>
-                                <button
-                                    type="button"
-                                    @click="filterOnlyMyRollout = true"
-                                    class="px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1"
-                                    :class="filterOnlyMyRollout ? 'bg-cyan-600 text-white font-bold shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'"
-                                >
-                                    <span>👤 Tugas Saya</span>
-                                    <span class="px-1.5 py-0.2 rounded-full text-[10px]" :class="filterOnlyMyRollout ? 'bg-white/20' : 'bg-slate-200 dark:bg-slate-700'">
-                                        {{ myRolloutList.length }}
-                                    </span>
-                                </button>
-                            </div>
-
-                            <a
-                                :href="route('infrastructure.work-orders.index')"
-                                class="px-3.5 py-1.5 text-xs font-bold rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs transition-all cursor-pointer inline-flex items-center gap-1.5"
-                            >
-                                <span>🏗️</span>
-                                <span>Kelola Work Order Rollout ↗</span>
-                            </a>
-                        </div>
-
-                        <!-- Empty State -->
-                        <div v-if="filteredRolloutList.length === 0" class="bg-white dark:bg-slate-900 rounded-3xl p-10 text-center border border-slate-200/80 dark:border-slate-800">
-                            <div class="w-16 h-16 mx-auto rounded-2xl bg-cyan-50 dark:bg-cyan-950/50 text-cyan-600 dark:text-cyan-400 flex items-center justify-center text-3xl mb-3">
-                                ⚡
-                            </div>
-                            <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">
-                                {{ filterOnlyMyRollout ? 'Tidak Ada Penugasan Rollout yang Ditugaskan ke Anda' : 'Nihil Pembangunan Rollout ODC & ODP Hari Ini' }}
-                            </h3>
-                            <p class="text-xs text-slate-400 mt-1 max-w-md mx-auto">
-                                {{ filterOnlyMyRollout ? 'Anda belum memiliki work order penarikan kabel, pembangunan ODC atau ODP pada tanggal ini.' : 'Belum ada tiket work order rollout ODC atau ODP yang dijadwalkan / aktif pada tanggal dan wilayah yang dipilih.' }}
-                            </p>
-                            <div class="mt-4" v-if="!filterOnlyMyRollout">
-                                <a
-                                    :href="route('infrastructure.work-orders.create')"
-                                    class="px-4 py-2 text-xs font-bold rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white shadow-md shadow-cyan-600/20 transition-all cursor-pointer inline-flex items-center gap-1.5"
-                                >
-                                    <span>+</span>
-                                    <span>Buat Work Order Rollout Baru</span>
-                                </a>
-                            </div>
-                        </div>
-
-                        <!-- Card List -->
-                        <div 
-                            v-for="(item, idx) in filteredRolloutList" 
-                            :key="'rollout-' + item.id"
-                            class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 hover:shadow-md transition-all space-y-3"
-                        >
-                            <!-- Card Header -->
-                            <div class="flex items-start justify-between gap-3">
-                                <div class="flex items-center gap-2">
-                                    <span class="w-6 h-6 rounded-lg bg-cyan-100 dark:bg-cyan-950/70 text-cyan-700 dark:text-cyan-300 text-xs font-black flex items-center justify-center shrink-0">
-                                        {{ idx + 1 }}
-                                    </span>
-                                    <div>
-                                        <h4 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
-                                            <span>{{ item.target_name }}</span>
-                                            <span 
-                                                class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border shadow-2xs"
-                                                :class="item.device_type === 'ODC' ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border-purple-300' : 'bg-cyan-100 text-cyan-800 dark:bg-cyan-950/80 dark:text-cyan-300 border-cyan-300'"
-                                            >
-                                                {{ item.device_type === 'ODC' ? '🗄️ ODC Master' : '📦 ODP Distribusi' }}
-                                            </span>
-                                            <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                                                {{ item.type_label }}
-                                            </span>
-                                        </h4>
-                                        <div class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5 flex-wrap">
-                                            <span class="font-mono font-bold text-slate-700 dark:text-slate-300">{{ item.wo_number }}</span>
-                                            <span class="text-slate-300">·</span>
-                                            <span class="font-semibold text-slate-700 dark:text-slate-300">
-                                                👷 {{ item.technicians }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <span 
-                                    class="px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 shrink-0 border"
-                                    :class="getRolloutStatusBadgeClass(item.status)"
-                                >
-                                    {{ item.status_label }}
-                                </span>
-                            </div>
-
-                            <!-- Specs & Detail Grid -->
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl">
-                                <div>
-                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Wilayah & Lokasi Pemasangan</span>
-                                    <span class="text-slate-700 dark:text-slate-300 font-semibold">{{ item.location || '-' }}</span>
-                                    <span v-if="item.area_name && item.area_name !== '-'" class="text-[10px] text-slate-400 block">({{ item.area_name }})</span>
-                                    <div v-if="item.actual_latitude || item.planned_latitude" class="mt-0.5">
-                                        <a 
-                                            :href="'https://www.google.com/maps?q=' + (item.actual_latitude || item.planned_latitude) + ',' + (item.actual_longitude || item.planned_longitude)" 
-                                            target="_blank" 
-                                            class="inline-flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-mono"
-                                        >
-                                            📍 {{ Number(item.actual_latitude || item.planned_latitude).toFixed(5) }}, {{ Number(item.actual_longitude || item.planned_longitude).toFixed(5) }} ↗
-                                        </a>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Uplink & OLT Server</span>
-                                    <div class="space-y-0.5">
-                                        <div v-if="item.olt_name" class="text-slate-700 dark:text-slate-300 font-medium">
-                                            🖥️ OLT: <span class="font-bold">{{ item.olt_name }}</span> (PON: {{ item.pon_port || '-' }})
-                                        </div>
-                                        <div v-if="item.parent_odc" class="text-purple-600 dark:text-purple-400 font-medium">
-                                            🗄️ Parent ODC: <span class="font-bold">{{ item.parent_odc }}</span> (Port Splitter: {{ item.odc_splitter_port || '-' }})
-                                        </div>
-                                        <div v-if="!item.olt_name && !item.parent_odc" class="text-slate-400">-</div>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Kapasitas & Konfigurasi Core</span>
-                                    <span class="text-slate-700 dark:text-slate-300 font-mono font-semibold">
-                                        Port: <strong class="text-cyan-600 dark:text-cyan-400">{{ item.capacity || 0 }} Port</strong>
-                                        <span v-if="item.core_capacity"> · {{ item.core_capacity }} Core</span>
-                                        <span v-if="item.splitter_ratio"> · Ratio {{ item.splitter_ratio }}</span>
-                                    </span>
-                                </div>
-
-                                <div>
-                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Penarikan Kabel Fiber Optik</span>
-                                    <div v-if="item.cable_length_used || item.cable_pull" class="text-slate-700 dark:text-slate-300 font-medium">
-                                        <span class="font-bold text-emerald-600 dark:text-emerald-400">📏 {{ item.cable_length_used || item.cable_pull }} Meter</span>
-                                        <span v-if="item.cable_meter_start || item.cable_meter_end" class="text-[10px] text-slate-400 block font-mono">
-                                            (Start: {{ item.cable_meter_start || 0 }}m - End: {{ item.cable_meter_end || 0 }}m)
-                                        </span>
-                                    </div>
-                                    <div v-else class="text-slate-400">-</div>
-                                    <div v-if="item.start_point || item.end_point" class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                                        Rute: {{ item.start_point || '-' }} ➔ {{ item.end_point || '-' }}
-                                    </div>
-                                </div>
-
-                                <!-- Pengukuran Redaman OPM -->
-                                <div v-if="item.optical_checks && item.optical_checks.length > 0" class="sm:col-span-2 bg-emerald-50/60 dark:bg-emerald-950/30 p-2.5 rounded-xl border border-emerald-200/80 dark:border-emerald-900/50 space-y-1.5">
-                                    <span class="text-emerald-800 dark:text-emerald-300 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
-                                        <span>⚡</span>
-                                        <span>Hasil Pengukuran Redaman OPM ({{ item.optical_checks.length }} Port)</span>
-                                    </span>
-                                    <div class="flex flex-wrap gap-1.5">
-                                        <span 
-                                            v-for="oc in item.optical_checks" 
-                                            :key="'oc-' + oc.id"
-                                            class="px-2 py-0.5 rounded text-[10px] font-mono font-bold border"
-                                            :class="oc.passed ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/60 dark:text-emerald-300' : 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-900/60 dark:text-rose-300'"
-                                        >
-                                            Port {{ oc.port_number }}: {{ oc.measured_loss ? oc.measured_loss + ' dBm' : '-' }} {{ oc.passed ? '✓' : '✗' }}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <!-- Material Rollout yang Digunakan -->
-                                <div v-if="item.materials && item.materials.length > 0" class="sm:col-span-2 bg-blue-50/50 dark:bg-blue-950/30 p-2.5 rounded-xl border border-blue-200/80 dark:border-blue-900/50 space-y-1.5">
-                                    <span class="text-blue-800 dark:text-blue-300 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
-                                        <span>📦</span>
-                                        <span>Material Rollout Terpakai</span>
-                                    </span>
-                                    <div class="flex flex-wrap gap-1.5">
-                                        <span 
-                                            v-for="mat in item.materials" 
-                                            :key="'mat-' + mat.id"
-                                            class="px-2 py-0.5 rounded text-[10px] bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800 text-slate-700 dark:text-slate-300 font-medium"
-                                        >
-                                            <strong>{{ mat.quantity_used || mat.quantity_approved || mat.quantity_requested }} {{ mat.unit }}</strong> {{ mat.name }}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <!-- Catatan / Instruksi Lapangan -->
-                                <div v-if="item.notes" class="sm:col-span-2">
-                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Catatan / Instruksi Kerja</span>
-                                    <span class="text-slate-700 dark:text-slate-300 italic">{{ item.notes }}</span>
-                                </div>
-                            </div>
-
-                            <!-- Footer Actions: Foto & Direct Link WO -->
-                            <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex-wrap">
-                                <div class="flex items-center gap-2">
-                                    <button
-                                        v-if="item.photo_pole || item.photo_splicing || item.photo_opm || item.photo_odp"
-                                        type="button"
-                                        @click="viewRolloutPhotos(item)"
-                                        class="px-2.5 py-1 text-[11px] font-bold text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/50 hover:bg-cyan-100 dark:hover:bg-cyan-900/60 rounded-lg transition-colors flex items-center gap-1 cursor-pointer border border-cyan-200 dark:border-cyan-800"
-                                    >
-                                        <span>📷</span>
-                                        <span>Lihat Foto Dokumentasi</span>
-                                    </button>
-                                    <span v-else class="text-[11px] text-slate-400 italic">
-                                        Belum ada foto dokumentasi diunggah
-                                    </span>
-                                </div>
-
-                                <a
-                                    :href="route('infrastructure.work-orders.index', { search: item.wo_number })"
-                                    class="px-3 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
-                                    title="Buka rincian lengkap work order pembangunan"
-                                >
-                                    <span>Buka Rincian Work Order ↗</span>
-                                </a>
                             </div>
                         </div>
                     </div>
@@ -2241,7 +1996,7 @@
                 </div>
 
                 <!-- Regular Before / After Photos -->
-                <div v-if="!selectedPhotoItem.rollout_photos && (selectedPhotoItem.photo_before || selectedPhotoItem.photo_after)" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div v-if="(selectedPhotoItem.photo_before || selectedPhotoItem.photo_after)" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div v-if="selectedPhotoItem.photo_before" class="space-y-1 text-center">
                         <span class="text-xs font-bold text-slate-500 uppercase">Foto Sebelum / Kondisi Awal</span>
                         <img :src="selectedPhotoItem.photo_before" alt="Foto Sebelum" class="w-full h-56 object-cover rounded-2xl border border-slate-200 shadow-sm" />
@@ -2249,19 +2004,6 @@
                     <div v-if="selectedPhotoItem.photo_after" class="space-y-1 text-center">
                         <span class="text-xs font-bold text-emerald-600 uppercase">Foto Sesudah / Hasil Rapih</span>
                         <img :src="selectedPhotoItem.photo_after" alt="Foto Sesudah" class="w-full h-56 object-cover rounded-2xl border border-slate-200 shadow-sm" />
-                    </div>
-                </div>
-
-                <!-- Rollout Photos Grid (Tiang, Splicing, OPM, ODP) -->
-                <div v-if="selectedPhotoItem.rollout_photos && selectedPhotoItem.rollout_photos.length > 0" class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[70vh] overflow-y-auto pr-1">
-                    <div v-for="(p, pIdx) in selectedPhotoItem.rollout_photos" :key="'rp-' + pIdx" class="space-y-1.5 text-center">
-                        <span class="text-xs font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider block">{{ p.title }}</span>
-                        <a :href="p.url" target="_blank" class="block group relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm bg-slate-100 dark:bg-slate-800">
-                            <img :src="p.url" :alt="p.title" class="w-full h-48 object-cover group-hover:scale-105 transition-all duration-200" />
-                            <div class="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition-opacity">
-                                🔍 Lihat Ukuran Penuh ↗
-                            </div>
-                        </a>
                     </div>
                 </div>
 
@@ -2394,7 +2136,6 @@ const props = defineProps({
     surveyList: { type: Array, default: () => [] },
     cbpList: { type: Array, default: () => [] },
     maintenanceList: { type: Array, default: () => [] },
-    rolloutList: { type: Array, default: () => [] },
     technicianStatus: { type: Object, default: () => ({}) },
     maintenanceStatus: { type: Object, default: () => ({}) },
     availableTechnicians: { type: Array, default: () => [] },
@@ -2480,28 +2221,6 @@ const filteredMaintenanceList = computed(() => {
     return props.maintenanceList || [];
 });
 
-// Filter Tugas Rollout Saya vs Semua Petugas
-const filterOnlyMyRollout = ref(false);
-
-const myRolloutList = computed(() => {
-    return (props.rolloutList || []).filter(item => {
-        if (item.technician_ids && Array.isArray(item.technician_ids) && item.technician_ids.includes(currentUserId.value)) {
-            return true;
-        }
-        if (item.technicians && currentUserName.value && item.technicians.toLowerCase().includes(currentUserName.value)) {
-            return true;
-        }
-        return false;
-    });
-});
-
-const filteredRolloutList = computed(() => {
-    if (filterOnlyMyRollout.value) {
-        return myRolloutList.value;
-    }
-    return props.rolloutList || [];
-});
-
 // Active Tab
 const activeTab = ref(
     (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab')) ||
@@ -2512,7 +2231,7 @@ onMounted(() => {
     if (typeof window !== 'undefined') {
         const urlParams = new URLSearchParams(window.location.search);
         const tabParam = urlParams.get('tab');
-        if (tabParam && ['gangguan', 'pemasangan', 'survey', 'cbp', 'maintenance', 'rollout', 'teknisi'].includes(tabParam)) {
+        if (tabParam && ['gangguan', 'pemasangan', 'survey', 'cbp', 'maintenance', 'teknisi'].includes(tabParam)) {
             activeTab.value = tabParam;
         } else if (window.location.pathname.includes('network-maintenance')) {
             activeTab.value = 'maintenance';
@@ -2528,7 +2247,6 @@ const tabs = computed(() => [
     { key: 'survey', label: 'Survey PSB', icon: '🔎', count: props.summary?.survey || 0 },
     { key: 'cbp', label: 'Cabut Perangkat', icon: '🔌', count: props.summary?.cbp || 0 },
     { key: 'maintenance', label: 'Perapihan & Jalur', icon: '🛠️', count: props.summary?.maintenance || 0 },
-    { key: 'rollout', label: 'Rollout ODC & ODP', icon: '⚡', count: props.summary?.rollout || 0 },
     { key: 'teknisi', label: 'Status Shift', icon: '👷', count: totalStaffDutyCount.value },
 ]);
 
@@ -3163,41 +2881,6 @@ const selectedPhotoItem = ref(null);
 function viewPhotos(item) {
     selectedPhotoItem.value = item;
     showPhotoModal.value = true;
-}
-
-function viewRolloutPhotos(item) {
-    const photos = [];
-    if (item.photo_pole) photos.push({ title: 'Foto Tiang & Penarikan Kabel', url: item.photo_pole });
-    if (item.photo_splicing) photos.push({ title: 'Foto Splicing Core Tray', url: item.photo_splicing });
-    if (item.photo_opm) photos.push({ title: 'Foto Pengukuran OPM / Redaman', url: item.photo_opm });
-    if (item.photo_odp) photos.push({ title: `Foto Box & Label ${item.device_type || 'ODP'}`, url: item.photo_odp });
-
-    selectedPhotoItem.value = {
-        title: `Dokumentasi ${item.device_type || 'ODP'} - ${item.target_name} (${item.wo_number})`,
-        rollout_photos: photos,
-    };
-    showPhotoModal.value = true;
-}
-
-function getRolloutStatusBadgeClass(status) {
-    switch (status) {
-        case 'completed':
-        case 'approved':
-        case 'commissioned':
-            return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
-        case 'in_progress':
-            return 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 animate-pulse';
-        case 'under_review':
-            return 'bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800 font-bold';
-        case 'material_ready':
-            return 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800';
-        case 'pending_material':
-            return 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800';
-        case 'rejected':
-            return 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800';
-        default:
-            return 'bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700';
-    }
 }
 
 // ══════════════════════════════════════════════════════════════════

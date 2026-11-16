@@ -104,16 +104,13 @@ class OperationalDailyProgressController extends Controller
         // 5. DATA PEMELIHARAAN & PERAPIHAN JALUR (ODP, ODC, JALUR UTAMA - MANDIRI TANPA PGS/PGK/PGJ)
         $maintenanceList = $this->getMaintenanceData($date, $targetAreaIds);
 
-        // 6. DATA ROLLOUT PEMBANGUNAN ODC & ODP
-        $rolloutList = $this->getRolloutData($date, $targetAreaIds);
-
         // Kumpulkan teknisi aktif dari seluruh penugasan operasional hari ini
         $activeJobTechNames = [];
-        foreach (array_merge($gangguanList, $pemasanganList, $surveyList, $cbpList, $maintenanceList, $rolloutList) as $taskItem) {
+        foreach (array_merge($gangguanList, $pemasanganList, $surveyList, $cbpList, $maintenanceList) as $taskItem) {
             if (!empty($taskItem['technicians'])) {
                 foreach (explode(',', $taskItem['technicians']) as $tName) {
                     $trimmed = trim($tName);
-                    if ($trimmed && !in_array($trimmed, ['Belum Ditugaskan', 'Tim Maintenance Jalur', 'Tim Rollout Lapangan', 'Petugas Survey', 'Petugas CBP', 'Teknisi Instalasi', '-'])) {
+                    if ($trimmed && !in_array($trimmed, ['Belum Ditugaskan', 'Tim Maintenance Jalur', 'Petugas Survey', 'Petugas CBP', 'Teknisi Instalasi', '-'])) {
                         $activeJobTechNames[] = $trimmed;
                     }
                 }
@@ -121,10 +118,10 @@ class OperationalDailyProgressController extends Controller
         }
         $activeJobTechNames = array_unique($activeJobTechNames);
 
-        // 7. STATUS TEKNISI (On Duty, Libur, Masuk Malam)
+        // 6. STATUS TEKNISI (On Duty, Libur, Masuk Malam)
         $technicianStatus = $this->getTechnicianStatus($date, $targetAreaIds, $activeJobTechNames);
 
-        // 8. RINGKASAN DATA CERDAS & AUTO
+        // 7. RINGKASAN DATA CERDAS & AUTO
         $summary = [
             'gangguan' => count($gangguanList),
             'gangguan_done' => collect($gangguanList)->where('is_done', true)->count(),
@@ -153,14 +150,9 @@ class OperationalDailyProgressController extends Controller
             'maintenance_in_progress' => collect($maintenanceList)->where('is_in_progress', true)->count(),
             'maintenance_rescheduled' => collect($maintenanceList)->where('is_rescheduled', true)->count(),
             'maintenance_pending' => collect($maintenanceList)->where('is_done', false)->where('is_in_progress', false)->count(),
-
-            'rollout' => count($rolloutList),
-            'rollout_done' => collect($rolloutList)->where('is_done', true)->count(),
-            'rollout_in_progress' => collect($rolloutList)->where('is_in_progress', true)->count(),
-            'rollout_pending' => collect($rolloutList)->where('is_done', false)->where('is_in_progress', false)->count(),
         ];
 
-        // 9. HASILKAN FORMAT TEKS WHATSAPP SESUAI TEMPLATE
+        // 8. HASILKAN FORMAT TEKS WHATSAPP SESUAI TEMPLATE
         $waText = $this->buildWhatsAppTemplate(
             $areaLabel,
             $indonesianDayDate,
@@ -170,7 +162,6 @@ class OperationalDailyProgressController extends Controller
             $surveyList,
             $cbpList,
             $maintenanceList,
-            $rolloutList,
             $summary,
             $customNote
         );
@@ -270,7 +261,6 @@ class OperationalDailyProgressController extends Controller
             'surveyList' => $surveyList,
             'cbpList' => $cbpList,
             'maintenanceList' => $maintenanceList,
-            'rolloutList' => $rolloutList,
             'technicianStatus' => $technicianStatus,
             'maintenanceStatus' => $technicianStatus['maintenance'] ?? [],
             'availableTechnicians' => $availableTechnicians,
@@ -1174,189 +1164,6 @@ class OperationalDailyProgressController extends Controller
     }
 
     /**
-     * Ambil Data Progress Rollout Pembangunan ODC & ODP
-     */
-    private function getRolloutData(string $date, string|array|null $areaId): array
-    {
-        $items = [];
-        $areaIds = is_array($areaId) ? $areaId : ($areaId ? [$areaId] : []);
-        if (in_array(-1, $areaIds, true)) {
-            return [];
-        }
-        $isToday = ($date === Carbon::today()->toDateString());
-
-        $query = InfrastructureWorkOrder::with([
-            'area', 
-            'olt', 
-            'parentOdc', 
-            'technicians', 
-            'technician', 
-            'creator', 
-            'materials.material', 
-            'opticalChecks'
-        ])
-        ->where(function ($q) use ($date, $isToday) {
-            $q->whereDate('scheduled_date', $date)
-              ->orWhereDate('updated_at', $date)
-              ->orWhereDate('approved_at', $date);
-
-            if ($isToday) {
-                $q->orWhere(function ($sq) use ($date) {
-                    $sq->whereIn('status', ['in_progress', 'material_ready', 'pending_material', 'under_review'])
-                       ->where(function ($ssq) use ($date) {
-                           $ssq->whereNull('scheduled_date')
-                               ->orWhereDate('scheduled_date', '<=', $date);
-                       });
-                });
-            }
-        });
-
-        if (!empty($areaIds)) {
-            $query->whereIn('area_id', $areaIds);
-        }
-
-        foreach ($query->orderBy('id', 'desc')->get() as $wo) {
-            $techNames = [];
-            if ($wo->technician) {
-                $techNames[] = $wo->technician->name;
-            }
-            if ($wo->technicians && $wo->technicians->isNotEmpty()) {
-                foreach ($wo->technicians as $t) {
-                    $techNames[] = $t->name;
-                }
-            }
-            $techNames = array_values(array_unique(array_filter($techNames)));
-            $techniciansStr = !empty($techNames) ? implode(', ', $techNames) : 'Tim Rollout Lapangan';
-
-            $isDone = in_array($wo->status, ['completed', 'approved', 'commissioned'], true);
-            $isInProgress = in_array($wo->status, ['in_progress', 'under_review'], true);
-            $isPending = in_array($wo->status, ['pending_material', 'material_ready', 'draft'], true);
-
-            switch ($wo->status) {
-                case 'completed':
-                case 'approved':
-                case 'commissioned':
-                    $statusLabel = '✅ Selesai & Aktif di GIS';
-                    $statusClass = 'completed';
-                    break;
-                case 'under_review':
-                    $statusLabel = '🔍 Review QC NOC';
-                    $statusClass = 'under_review';
-                    break;
-                case 'in_progress':
-                    $statusLabel = '🛠️ Sedang Dikerjakan';
-                    $statusClass = 'in_progress';
-                    break;
-                case 'material_ready':
-                    $statusLabel = '📦 Material Siap';
-                    $statusClass = 'material_ready';
-                    break;
-                case 'pending_material':
-                    $statusLabel = '⏳ Menunggu Material';
-                    $statusClass = 'pending_material';
-                    break;
-                case 'rejected':
-                    $statusLabel = '❌ Revisi / Ditolak';
-                    $statusClass = 'rejected';
-                    break;
-                default:
-                    $statusLabel = '⏳ ' . ucfirst((string) $wo->status);
-                    $statusClass = 'pending';
-                    break;
-            }
-
-            $schedDateStr = $wo->scheduled_date ? Carbon::parse($wo->scheduled_date)->toDateString() : null;
-
-            $opmChecks = $wo->opticalChecks->map(function ($oc) {
-                return [
-                    'id' => $oc->id,
-                    'port_number' => $oc->port_number,
-                    'core_number' => $oc->core_number,
-                    'measured_loss' => $oc->measured_loss,
-                    'status' => $oc->status,
-                    'passed' => (bool) $oc->passed,
-                ];
-            })->values();
-
-            $materialsList = $wo->materials->map(function ($m) {
-                return [
-                    'id' => $m->id,
-                    'material_id' => $m->material_id,
-                    'name' => $m->material?->name ?? 'Material Rollout',
-                    'quantity_requested' => (float) $m->quantity_requested,
-                    'quantity_approved' => (float) $m->quantity_approved,
-                    'quantity_used' => (float) $m->quantity_used,
-                    'unit' => $m->unit ?: ($m->material?->unit ?? 'pcs'),
-                ];
-            })->values();
-
-            $techIds = [];
-            if ($wo->technician_id) {
-                $techIds[] = (int) $wo->technician_id;
-            }
-            if ($wo->technicians) {
-                foreach ($wo->technicians as $t) {
-                    $techIds[] = (int) $t->id;
-                }
-            }
-            $techIds = array_values(array_unique($techIds));
-
-            $typeLabel = match ($wo->type) {
-                'build' => 'Pembangunan Baru',
-                'expand' => 'Ekspansi Kapasitas',
-                'repair' => 'Perbaikan Fisik',
-                default => ucfirst((string) $wo->type),
-            };
-
-            $items[] = [
-                'id' => $wo->id,
-                'wo_number' => $wo->wo_number,
-                'type' => $wo->type,
-                'type_label' => $typeLabel,
-                'device_type' => strtoupper((string) ($wo->device_type ?: 'ODP')),
-                'target_name' => $wo->target_name,
-                'area_name' => $wo->area?->name ?? '-',
-                'olt_name' => $wo->olt?->name ?? null,
-                'pon_port' => $wo->pon_port,
-                'parent_odc' => $wo->parentOdc?->name ?? null,
-                'odc_splitter_port' => $wo->odc_splitter_port,
-                'capacity' => $wo->capacity,
-                'core_capacity' => $wo->core_capacity,
-                'splitter_ratio' => $wo->splitter_ratio,
-                'location' => $wo->location,
-                'actual_latitude' => $wo->actual_latitude ? (float) $wo->actual_latitude : null,
-                'actual_longitude' => $wo->actual_longitude ? (float) $wo->actual_longitude : null,
-                'planned_latitude' => $wo->planned_latitude ? (float) $wo->planned_latitude : null,
-                'planned_longitude' => $wo->planned_longitude ? (float) $wo->planned_longitude : null,
-                'technicians' => $techniciansStr,
-                'technician_ids' => $techIds,
-                'scheduled_date' => $schedDateStr,
-                'status' => $wo->status,
-                'status_label' => $statusLabel,
-                'status_class' => $statusClass,
-                'is_done' => $isDone,
-                'is_in_progress' => $isInProgress,
-                'is_pending' => $isPending,
-                'start_point' => $wo->start_point,
-                'end_point' => $wo->end_point,
-                'cable_pull' => $wo->cable_pull,
-                'cable_meter_start' => $wo->cable_meter_start,
-                'cable_meter_end' => $wo->cable_meter_end,
-                'cable_length_used' => $wo->cable_length_used,
-                'photo_pole' => $wo->photo_pole ? Storage::url($wo->photo_pole) : null,
-                'photo_splicing' => $wo->photo_splicing ? Storage::url($wo->photo_splicing) : null,
-                'photo_opm' => $wo->photo_opm ? Storage::url($wo->photo_opm) : null,
-                'photo_odp' => $wo->photo_odp ? Storage::url($wo->photo_odp) : null,
-                'notes' => $wo->notes,
-                'optical_checks' => $opmChecks,
-                'materials' => $materialsList,
-            ];
-        }
-
-        return $items;
-    }
-
-    /**
      * Ambil Status Teknisi (On Duty, Libur, Masuk Malam) secara Cerdas & Sesuai Area
      */
     private function getTechnicianStatus(string $date, string|array|null $areaId, array $activeJobTechNames = []): array
@@ -1748,7 +1555,6 @@ class OperationalDailyProgressController extends Controller
         array $surveyList,
         array $cbpList,
         array $maintenanceList,
-        array $rolloutList,
         array $summary,
         string $customNote
     ): string {
@@ -1901,35 +1707,7 @@ class OperationalDailyProgressController extends Controller
             }
         }
 
-        // 6. ROLLOUT PEMBANGUNAN ODC & ODP
-        if (!empty($rolloutList)) {
-            $lines[] = "";
-            $lines[] = "⚡ *ROLLOUT PEMBANGUNAN ODC & ODP*";
-            $groupedRollout = collect($rolloutList)->groupBy('technicians');
-            foreach ($groupedRollout as $techName => $rItems) {
-                $lines[] = "";
-                $lines[] = "⚡ *Petugas Rollout / Teknisi :* {$techName}";
-                $idx = 1;
-                foreach ($rItems as $r) {
-                    $lines[] = "{$idx}. WO: {$r['wo_number']} - {$r['device_type']} {$r['target_name']}";
-                    $lines[] = "   Lokasi : " . ($r['location'] ?: $r['area_name']);
-                    if (!empty($r['olt_name']) || !empty($r['parent_odc'])) {
-                        $uplink = [];
-                        if ($r['olt_name']) $uplink[] = "OLT: {$r['olt_name']}" . ($r['pon_port'] ? " (PON {$r['pon_port']})" : '');
-                        if ($r['parent_odc']) $uplink[] = "ODC: {$r['parent_odc']}" . ($r['odc_splitter_port'] ? " (Port {$r['odc_splitter_port']})" : '');
-                        $lines[] = "   Uplink : " . implode(' | ', $uplink);
-                    }
-                    if ($r['cable_length_used'] || $r['cable_pull']) {
-                        $lines[] = "   Tarik Kabel: " . ($r['cable_length_used'] ? "{$r['cable_length_used']} m" : ($r['cable_pull'] ?: '-'));
-                    }
-                    $lines[] = "   Status : {$r['status_label']}";
-                    $idx++;
-                }
-            }
-        }
-        $lines[] = "";
-
-        // 7. RINGKASAN HARI INI
+        // 6. RINGKASAN HARI INI
         $lines[] = "📊 *RINGKASAN HARI INI*";
         $lines[] = "* Gangguan: {$summary['gangguan']} ({$summary['gangguan_done']} Selesai, {$summary['gangguan_pending']} Pending)";
         $lines[] = "* Pemasangan: {$summary['pemasangan']} ({$summary['pemasangan_done']} Selesai, {$summary['pemasangan_pending']} Pending)";
@@ -1939,10 +1717,9 @@ class OperationalDailyProgressController extends Controller
             : "{$summary['cbp_done']} Selesai, {$summary['cbp_pending']} Pending";
         $lines[] = "* Pencabutan: {$summary['cbp']} ({$cbpPendingStr})";
         $lines[] = "* Perapihan/Cek Jalur: {$summary['maintenance']} ({$summary['maintenance_done']} Selesai, {$summary['maintenance_pending']} Pending)";
-        $lines[] = "* Rollout ODC/ODP: {$summary['rollout']} ({$summary['rollout_done']} Selesai, {$summary['rollout_pending']} Pending)";
         $lines[] = "";
 
-        // 8. STATUS TEKNISI
+        // 7. STATUS TEKNISI
         $lines[] = "👷 *STATUS TEKNISI*";
         $tekLiburStr = !empty($tekStatus['off']) ? implode(', ', $tekStatus['off']) : '-';
         $tekMalamStr = !empty($tekStatus['night']) ? implode(', ', $tekStatus['night']) : '-';
@@ -1950,7 +1727,7 @@ class OperationalDailyProgressController extends Controller
         $lines[] = "Teknisi Masuk Malam: {$tekMalamStr}";
         $lines[] = "";
 
-        // 9. STATUS MAINTENANCE
+        // 8. STATUS MAINTENANCE
         $lines[] = "🛠️ *STATUS MAINTENANCE*";
         $maintLiburStr = !empty($maintStatus['off']) ? implode(', ', $maintStatus['off']) : '-';
         $lines[] = "Maintenance Bertugas: {$maintDutyStr}";
@@ -1961,7 +1738,7 @@ class OperationalDailyProgressController extends Controller
         }
         $lines[] = "";
 
-        // 10. NOTE
+        // 9. NOTE
         $lines[] = "📝 *NOTE*";
         $lines[] = $customNote ?: "Tetap semangat dan jaga keselamatan kerja! 💪";
 

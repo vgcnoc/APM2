@@ -307,6 +307,14 @@ Route::middleware(['auth'])->group(function () {
             Route::delete('/{workOrder}', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'destroy'])->name('destroy');
         });
 
+        // Progress Terpadu Rollout Pembangunan ODC & ODP
+        Route::middleware(['permission:menu_infrastructure_work_orders|menu_network_odc|menu_network_odp|menu_operational_progress'])->group(function () {
+            Route::get('/infrastructure/rollout-progress', [\App\Http\Controllers\RolloutProgressController::class, 'index'])->name('infrastructure.rollout-progress.index');
+            Route::post('/infrastructure/rollout-progress/send-wa', [\App\Http\Controllers\RolloutProgressController::class, 'sendWa'])->name('infrastructure.rollout-progress.send-wa');
+            Route::get('/operational/rollout-progress', [\App\Http\Controllers\RolloutProgressController::class, 'index'])->name('operational.rollout-progress.index');
+            Route::post('/operational/rollout-progress/send-wa', [\App\Http\Controllers\RolloutProgressController::class, 'sendWa'])->name('operational.rollout-progress.send-wa');
+        });
+
         Route::get('onts/generate-pppoe', [OntController::class, 'generatePppoe'])->name('onts.generate-pppoe');
         Route::get('onts/check-pppoe-user', [OntController::class, 'checkPppoeUser'])->name('onts.check-pppoe-user');
         Route::post('onts/update-pppoe-settings', [OntController::class, 'updatePppoeSettings'])->name('onts.update-pppoe-settings');
