@@ -238,14 +238,27 @@ class RolloutProgressController extends Controller
                 ];
             })->values();
 
+            $isOdc = (str_contains($wo->wo_number, 'WO-ODC') || $wo->type === 'odc_deployment' || stripos($wo->target_name, 'ODC') !== false);
+            $deviceCategory = $isOdc ? 'ODC' : 'ODP';
+            $topology = $wo->device_type ?: 'Normal';
+
             $materialsList = $wo->materials->map(function ($m) {
+                $requested = (float) ($m->requested_qty ?? 0);
+                $used = (float) ($m->used_qty ?? 0);
+                $returned = (float) ($m->returned_qty ?? 0);
+                $qty = ($used > 0) ? $used : $requested;
+
                 return [
                     'id' => $m->id,
                     'material_id' => $m->material_id,
                     'name' => $m->material?->name ?? 'Material Rollout',
-                    'quantity_requested' => (float) $m->quantity_requested,
-                    'quantity_approved' => (float) $m->quantity_approved,
-                    'quantity_used' => (float) $m->quantity_used,
+                    'requested_qty' => $requested,
+                    'used_qty' => $used,
+                    'returned_qty' => $returned,
+                    'quantity_requested' => $requested,
+                    'quantity_approved' => $requested,
+                    'quantity_used' => $used,
+                    'quantity' => $qty,
                     'unit' => $m->unit ?: ($m->material?->unit ?? 'pcs'),
                 ];
             })->values();
@@ -262,10 +275,12 @@ class RolloutProgressController extends Controller
             $techIds = array_values(array_unique($techIds));
 
             $typeLabel = match ($wo->type) {
+                'odp_deployment' => 'Pembangunan ODP Baru',
+                'odc_deployment' => 'Pembangunan ODC Baru',
                 'build' => 'Pembangunan Baru',
                 'expand' => 'Ekspansi Kapasitas',
                 'repair' => 'Perbaikan Fisik',
-                default => ucfirst((string) $wo->type),
+                default => ($wo->type ? ucwords(str_replace('_', ' ', (string) $wo->type)) : ($isOdc ? 'Pembangunan ODC' : 'Pembangunan ODP')),
             };
 
             $items[] = [
@@ -273,7 +288,9 @@ class RolloutProgressController extends Controller
                 'wo_number' => $wo->wo_number,
                 'type' => $wo->type,
                 'type_label' => $typeLabel,
-                'device_type' => strtoupper((string) ($wo->device_type ?: 'ODP')),
+                'device_category' => $deviceCategory,
+                'device_type' => $deviceCategory,
+                'device_topology' => $topology,
                 'target_name' => $wo->target_name,
                 'area_name' => $wo->area?->name ?? '-',
                 'olt_name' => $wo->olt?->name ?? null,
@@ -347,7 +364,9 @@ class RolloutProgressController extends Controller
             $idx = 1;
             foreach ($rolloutList as $r) {
                 $lines[] = "";
-                $lines[] = "{$idx}. WO: *{$r['wo_number']}* ({$r['device_type']} {$r['target_name']})";
+                $targetDisplay = trim($r['target_name'] ?: ($r['device_type'] . ' ' . $r['wo_number']));
+                $topologySuffix = (!empty($r['device_topology']) && strtolower($r['device_topology']) !== 'normal') ? " - {$r['device_topology']}" : '';
+                $lines[] = "{$idx}. WO: *{$r['wo_number']}* ({$targetDisplay}{$topologySuffix})";
                 $lines[] = "   Tipe    : {$r['type_label']}";
                 $lines[] = "   Lokasi  : " . ($r['location'] ?: $r['area_name']);
                 
@@ -361,7 +380,14 @@ class RolloutProgressController extends Controller
                 $lines[] = "   Kapasitas: {$r['capacity']} Port" . ($r['core_capacity'] ? " ({$r['core_capacity']} Core / Rasio {$r['splitter_ratio']})" : '');
 
                 if ($r['cable_length_used'] || $r['cable_pull']) {
-                    $lines[] = "   Tarik Kabel: " . ($r['cable_length_used'] ? "{$r['cable_length_used']} Meter" : ($r['cable_pull'] ?: '-'));
+                    $cableParts = [];
+                    if ($r['cable_length_used']) {
+                        $cableParts[] = "{$r['cable_length_used']} Meter";
+                    }
+                    if ($r['cable_pull']) {
+                        $cableParts[] = ($r['cable_pull'] === 'Individu' ? 'Individu' : "Tipe {$r['cable_pull']}");
+                    }
+                    $lines[] = "   Tarik Kabel: " . implode(' / ', $cableParts);
                 }
 
                 if (!empty($r['optical_checks']) && count($r['optical_checks']) > 0) {
@@ -379,8 +405,12 @@ class RolloutProgressController extends Controller
                 if (!empty($r['materials']) && count($r['materials']) > 0) {
                     $matParts = [];
                     foreach ($r['materials'] as $m) {
-                        $q = ($m['quantity_used'] > 0) ? $m['quantity_used'] : ($m['quantity_approved'] ?: $m['quantity_requested']);
-                        $matParts[] = "{$q} {$m['unit']} {$m['name']}";
+                        $q = ($m['used_qty'] > 0) ? $m['used_qty'] : (($m['requested_qty'] > 0) ? $m['requested_qty'] : ($m['quantity'] ?? 0));
+                        if ($q <= 0 && isset($m['quantity_requested']) && $m['quantity_requested'] > 0) {
+                            $q = $m['quantity_requested'];
+                        }
+                        $qFormatted = (fmod($q, 1) == 0.0) ? (int)$q : rtrim(rtrim(number_format($q, 2, '.', ''), '0'), '.');
+                        $matParts[] = "{$qFormatted} {$m['unit']} {$m['name']}";
                     }
                     if (!empty($matParts)) {
                         $lines[] = "   Material: " . implode(', ', $matParts);

@@ -366,7 +366,7 @@
                                         :key="'mat-' + mat.id"
                                         class="px-2 py-0.5 rounded text-[10px] bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800 text-slate-700 dark:text-slate-300 font-medium"
                                     >
-                                        <strong>{{ mat.quantity_used || mat.quantity_approved || mat.quantity_requested }} {{ mat.unit }}</strong> {{ mat.name }}
+                                        <strong>{{ formatMatQty(mat) }} {{ mat.unit }}</strong> {{ mat.name }}
                                     </span>
                                 </div>
                             </div>
@@ -783,6 +783,14 @@ function getRolloutStatusBadgeClass(status) {
         default:
             return 'bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700';
     }
+}
+
+function formatMatQty(mat) {
+    if (!mat) return '0';
+    const val = (mat.used_qty > 0) ? mat.used_qty : ((mat.requested_qty > 0) ? mat.requested_qty : (mat.quantity || mat.quantity_used || mat.quantity_requested || 0));
+    const num = Number(val);
+    if (isNaN(num)) return val;
+    return Number.isInteger(num) ? num : parseFloat(num.toFixed(2));
 }
 
 // MODAL WHATSAPP GATEWAY
