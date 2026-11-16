@@ -8,6 +8,7 @@ conn.on('ready', () => {
         'git fetch origin main',
         'git reset --hard origin/main',
         'php artisan migrate --force',
+        'php artisan cbp:sync-ports',
         'php artisan optimize:clear',
         'php artisan config:cache',
         'php artisan route:cache',

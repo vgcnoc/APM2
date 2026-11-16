@@ -619,79 +619,158 @@ class CbpRequestController extends Controller
         if ($cbp->status !== 'completed') {
             $validated['completed_at'] = now();
             $customer = $cbp->customer;
+            $customer?->loadMissing('ont');
 
-            // 1. Tangani Pelepasan ONT & ODP Port jika ada perangkat ONT yang dicabut
-            $ontItems = collect($validated['materials'] ?? [])->filter(function ($m) {
+            // 1. Cari semua ONT milik pelanggan ini (bisa dari relasi, customer_id, atau item form)
+            $customerOnts = collect();
+            if ($customer && $customer->ont) {
+                $customerOnts->push($customer->ont);
+            }
+            if ($cbp->customer_id) {
+                $otherOnts = \App\Models\Ont::where('customer_id', $cbp->customer_id)->get();
+                foreach ($otherOnts as $o) {
+                    if (!$customerOnts->contains('id', $o->id)) {
+                        $customerOnts->push($o);
+                    }
+                }
+            }
+
+            // Periksa juga jika ada ont_id di tabel materials form
+            $formMaterials = collect($validated['materials'] ?? []);
+            foreach ($formMaterials as $m) {
+                if (!empty($m['ont_id'])) {
+                    $formOnt = \App\Models\Ont::find($m['ont_id']);
+                    if ($formOnt && !$customerOnts->contains('id', $formOnt->id)) {
+                        $customerOnts->push($formOnt);
+                    }
+                }
+            }
+
+            $affectedOdpIds = collect();
+
+            // Lepas seluruh ONT pelanggan & bebaskan port ODP
+            foreach ($customerOnts as $cOnt) {
+                if (!$uninstalledOnt) {
+                    $uninstalledOnt = $cOnt;
+                }
+
+                // Tentukan kondisi ONT dari form jika ada
+                $matchingMaterial = $formMaterials->first(function ($m) use ($cOnt) {
+                    $isOntType = strtolower($m['type'] ?? '') === 'ont' || str_contains(strtolower($m['name'] ?? ''), 'ont') || str_contains(strtolower($m['name'] ?? ''), 'modem');
+                    if (!empty($m['ont_id']) && (int) $m['ont_id'] === (int) $cOnt->id) return true;
+                    if (!empty($m['serial_number']) && $m['serial_number'] === $cOnt->serial_number) return true;
+                    return $isOntType;
+                });
+
+                $ontCond = $matchingMaterial['condition'] ?? 'Layak Pakai';
+                $isRusak = in_array(strtolower($ontCond), ['rusak', 'tidak layak', 'damaged']);
+                $newOntStatus = $isRusak ? 'rusak' : 'Belum Set/Baru Input';
+
+                $oldOdpId = $cOnt->odp_id;
+                $oldPortNum = $cOnt->port_number;
+                $oldOdpPortId = $cOnt->odp_port_id;
+
+                if ($oldOdpId) {
+                    $affectedOdpIds->push($oldOdpId);
+                }
+
+                // Bebaskan port ODP di tabel odp_ports
+                if ($oldOdpPortId) {
+                    \App\Models\OdpPort::where('id', $oldOdpPortId)->update([
+                        'status' => 'available',
+                        'description' => null,
+                    ]);
+                }
+                if ($oldOdpId && $oldPortNum) {
+                    \App\Models\OdpPort::where('odp_id', $oldOdpId)
+                        ->where('port_number', $oldPortNum)
+                        ->update([
+                            'status' => 'available',
+                            'description' => null,
+                        ]);
+                }
+
+                // Lepas ONT dari pelanggan dan alokasikan ke gudang
+                $cOnt->update([
+                    'customer_id' => null,
+                    'odp_id' => null,
+                    'odp_port_id' => null,
+                    'port_number' => null,
+                    'rx_power' => null,
+                    'status' => $newOntStatus,
+                    'description' => "Dicabut dari pelanggan " . ($customer?->name ?? "ID #{$cbp->customer_id}") . " via CBP #{$cbp->cbp_number} tgl " . now()->format('d/m/Y H:i') . " [Kondisi: {$ontCond}]. Menunggu serah terima gudang.",
+                ]);
+
+                // Update CustomerInstalledMaterial untuk ONT jika ada
+                \App\Models\CustomerInstalledMaterial::where('customer_id', $cbp->customer_id)
+                    ->where(function ($q) use ($cOnt) {
+                        $q->where('item_name', 'like', '%ont%')
+                          ->orWhere('item_name', 'like', '%modem%')
+                          ->orWhere('serial_number', $cOnt->serial_number);
+                    })
+                    ->update([
+                        'status' => 'dismantled',
+                        'notes' => "Dicabut pada tiket CBP #{$cbp->cbp_number}",
+                    ]);
+
+                $ontLog .= " Perangkat ONT {$cOnt->brand} {$cOnt->model} (SN: {$cOnt->serial_number}) dicabut [Kondisi: {$ontCond}] & port ODP dibebaskan.";
+            }
+
+            // Periksa juga jika ada reservasi survey ODP yang belum terlepas
+            if ($cbp->customer_id) {
+                $surveys = \App\Models\Survey::where('customer_id', $cbp->customer_id)->whereNotNull('odp_id')->get();
+                foreach ($surveys as $survey) {
+                    if ($survey->odp_id) {
+                        $affectedOdpIds->push($survey->odp_id);
+                        if (!empty($survey->port_number)) {
+                            \App\Models\OdpPort::where('odp_id', $survey->odp_id)
+                                ->where('port_number', $survey->port_number)
+                                ->update(['status' => 'available', 'description' => null]);
+                        }
+                    }
+                }
+            }
+
+            // Sinkronkan total used_ports & status ODP untuk seluruh ODP yang terpengaruh
+            foreach ($affectedOdpIds->unique()->filter() as $odpId) {
+                $odp = \App\Models\Odp::find($odpId);
+                if ($odp) {
+                    $usedCount = \App\Models\Ont::where('odp_id', $odp->id)
+                        ->whereNotIn('status', ['in_stock', 'damaged', 'maintenance', 'returned'])
+                        ->count();
+                    $newStatus = ($odp->total_ports > 0 && $usedCount >= $odp->total_ports) ? 'full' : 'active';
+                    $odp->update([
+                        'used_ports' => $usedCount,
+                        'status' => $newStatus,
+                    ]);
+                }
+            }
+
+            // 2. Handle Returned Materials via Serah Terima Gudang (MaterialHandoverService)
+            // Pastikan jika ada ONT yang dicabut tapi belum dimasukkan teknisi ke tabel materials, otomatis ditambahkan
+            $hasOntInMaterials = $formMaterials->contains(function ($m) {
                 $type = strtolower($m['type'] ?? '');
                 $name = strtolower($m['name'] ?? '');
                 return $type === 'ont' || str_contains($name, 'ont') || str_contains($name, 'modem');
             });
 
-            if ($ontItems->isNotEmpty()) {
-                $customer?->loadMissing('ont');
-                $uninstalledOnt = $customer?->ont;
-                if (!$uninstalledOnt && !empty($ontItems->first()['ont_id'])) {
-                    $uninstalledOnt = \App\Models\Ont::find($ontItems->first()['ont_id']);
-                }
-                if (!$uninstalledOnt && $cbp->customer_id) {
-                    $uninstalledOnt = \App\Models\Ont::where('customer_id', $cbp->customer_id)->first();
-                }
-
-                if ($uninstalledOnt) {
-                    $firstOntItem = $ontItems->first();
-                    $ontCond = $firstOntItem['condition'] ?? 'Layak Pakai';
-                    $isRusak = in_array(strtolower($ontCond), ['rusak', 'tidak layak']);
-                    $newOntStatus = $isRusak ? 'rusak' : 'Belum Set/Baru Input';
-
-                    $oldOdpId = $uninstalledOnt->odp_id;
-                    $oldPortNum = $uninstalledOnt->port_number;
-
-                    // Bebaskan port ODP
-                    if ($oldOdpId && $oldPortNum) {
-                        \App\Models\OdpPort::where('odp_id', $oldOdpId)
-                            ->where('port_number', $oldPortNum)
-                            ->update(['status' => 'available', 'description' => null]);
-
-                        $odp = \App\Models\Odp::find($oldOdpId);
-                        if ($odp) {
-                            $used = \App\Models\Ont::where('odp_id', $oldOdpId)->where('id', '!=', $uninstalledOnt->id)->count();
-                            $odp->update([
-                                'used_ports' => $used,
-                                'status' => ($used >= $odp->total_ports) ? 'full' : 'active',
-                            ]);
-                        }
-                    }
-
-                    // Lepas dari pelanggan dan alokasikan ke gudang
-                    $uninstalledOnt->update([
-                        'customer_id' => null,
-                        'odp_id' => null,
-                        'odp_port_id' => null,
-                        'port_number' => null,
-                        'rx_power' => null,
-                        'status' => $newOntStatus,
-                        'description' => "Dicabut dari pelanggan " . ($customer?->name ?? "ID #{$cbp->customer_id}") . " via CBP #{$cbp->cbp_number} tgl " . now()->format('d/m/Y H:i') . " [Kondisi: {$ontCond}]. Menunggu serah terima gudang.",
+            if (!$hasOntInMaterials && $customerOnts->isNotEmpty()) {
+                foreach ($customerOnts as $cOnt) {
+                    $formMaterials->push([
+                        'material_id' => null,
+                        'name' => "ONT {$cOnt->brand} {$cOnt->model} (SN: {$cOnt->serial_number})",
+                        'quantity' => 1,
+                        'unit' => 'unit',
+                        'condition' => 'Layak Pakai',
+                        'type' => 'ont',
+                        'ont_id' => $cOnt->id,
+                        'serial_number' => $cOnt->serial_number,
                     ]);
-
-                    // Update CustomerInstalledMaterial untuk ONT jika ada
-                    \App\Models\CustomerInstalledMaterial::where('customer_id', $cbp->customer_id)
-                        ->where(function ($q) use ($uninstalledOnt) {
-                            $q->where('item_name', 'like', '%ont%')
-                              ->orWhere('item_name', 'like', '%modem%')
-                              ->orWhere('serial_number', $uninstalledOnt->serial_number);
-                        })
-                        ->update([
-                            'status' => 'dismantled',
-                            'notes' => "Dicabut pada tiket CBP #{$cbp->cbp_number}",
-                        ]);
-
-                    $ontLog = " Perangkat ONT {$uninstalledOnt->brand} {$uninstalledOnt->model} (SN: {$uninstalledOnt->serial_number}) dicabut [Kondisi: {$ontCond}] & port ODP dibebaskan.";
                 }
             }
 
-            // 2. Handle Returned Materials via Serah Terima Gudang (MaterialHandoverService)
-            if (!empty($validated['materials'])) {
-                foreach ($validated['materials'] as $item) {
+            if ($formMaterials->isNotEmpty()) {
+                foreach ($formMaterials as $item) {
                     $materialId = $item['material_id'] ?? null;
                     $material = $materialId ? \App\Models\Material::find($materialId) : null;
                     $itemName = $item['name'] ?? ($material?->name ?? 'Material Cabutan');
