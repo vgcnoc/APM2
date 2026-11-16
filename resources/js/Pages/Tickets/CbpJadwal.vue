@@ -1043,7 +1043,7 @@
                         <button 
                             v-if="activeActionRow.status === 'pending' && can('cbp_btn_assign')" 
                             type="button" 
-                            @click="runAction(() => openAssignModal(activeActionRow))"
+                            @click="runAction((row) => openAssignModal(row || activeActionRow))"
                             class="w-full text-left px-3 py-2 hover:bg-blue-50/80 text-slate-700 flex items-center gap-2.5 transition-colors font-medium group cursor-pointer"
                         >
                             <div class="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 group-hover:bg-blue-100 flex items-center justify-center shrink-0 border border-blue-100 transition-colors">
@@ -1059,7 +1059,7 @@
                         <button 
                             v-if="activeActionRow.status === 'assigned' && can('cbp_btn_assign')" 
                             type="button" 
-                            @click="runAction(() => openAssignModal(activeActionRow))"
+                            @click="runAction((row) => openAssignModal(row || activeActionRow))"
                             class="w-full text-left px-3 py-2 hover:bg-orange-50/80 text-slate-700 flex items-center gap-2.5 transition-colors font-medium group cursor-pointer"
                         >
                             <div class="w-7 h-7 rounded-lg bg-orange-50 text-orange-600 group-hover:bg-orange-100 flex items-center justify-center shrink-0 border border-orange-100 transition-colors">
@@ -1075,7 +1075,7 @@
                         <button 
                             v-if="can(['cbp_btn_reschedule', 'cbp_btn_assign', 'cbp_manage'])" 
                             type="button" 
-                            @click="runAction(() => openRescheduleModal(activeActionRow))"
+                            @click="runAction((row) => openRescheduleModal(row || activeActionRow))"
                             class="w-full text-left px-3 py-2 hover:bg-amber-50/80 text-slate-700 flex items-center gap-2.5 transition-colors font-medium group cursor-pointer"
                         >
                             <div class="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 group-hover:bg-amber-100 flex items-center justify-center shrink-0 border border-amber-100 transition-colors">
@@ -1128,7 +1128,7 @@
                         <!-- WhatsApp Share -->
                         <button 
                             type="button" 
-                            @click="runAction(() => shareWhatsApp(activeActionRow))"
+                            @click="runAction((row) => shareWhatsApp(row || activeActionRow))"
                             class="w-full text-left px-3 py-2 hover:bg-emerald-50/80 text-slate-700 flex items-center gap-2.5 transition-colors font-medium group cursor-pointer"
                         >
                             <div class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100 flex items-center justify-center shrink-0 border border-emerald-100 transition-colors">
@@ -1146,7 +1146,7 @@
                         <!-- Riwayat CBP -->
                         <button 
                             type="button" 
-                            @click="runAction(() => openHistoryModal(activeActionRow))"
+                            @click="runAction((row) => openHistoryModal(row || activeActionRow))"
                             class="w-full text-left px-3 py-2 hover:bg-indigo-50/80 text-slate-700 flex items-center gap-2.5 transition-colors font-medium group cursor-pointer"
                         >
                             <div class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100 flex items-center justify-center shrink-0 border border-indigo-100 transition-colors">
@@ -1162,7 +1162,7 @@
                         <button 
                             v-if="activeActionRow.status === 'pending'" 
                             type="button" 
-                            @click="runAction(() => cancelCbp(activeActionRow))"
+                            @click="runAction((row) => cancelCbp(row || activeActionRow))"
                             class="w-full text-left px-3 py-2 hover:bg-rose-50/80 text-slate-700 flex items-center gap-2.5 transition-colors font-medium group cursor-pointer"
                         >
                             <div class="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 group-hover:bg-rose-100 flex items-center justify-center shrink-0 border border-rose-100 transition-colors">
@@ -1378,16 +1378,18 @@ const filteredTechnicians = computed(() => {
 });
 
 function openAssignModal(req) {
-    selectedCbp.value = req;
+    const target = req || activeActionRow.value || selectedCbp.value;
+    if (!target) return;
+    selectedCbp.value = target;
     // Tiket yang baru masuk / pending (belum pernah di-assign secara resmi) HARUS selalu mulai dalam keadaan kosong (0 Terpilih),
     // sehingga Kepala Teknisi / Admin bebas memilih teknisi lapangan tanpa ada yang terpilih otomatis secara prematur.
-    if (req.status === 'assigned' && req.technicians && req.technicians.length) {
-        assignForm.technicians = req.technicians.map(t => Number(t.id));
+    if (target.status === 'assigned' && target.technicians && target.technicians.length) {
+        assignForm.technicians = target.technicians.map(t => Number(t.id));
     } else {
         assignForm.technicians = [];
     }
-    assignForm.notes = req.notes || '';
-    assignForm.scheduled_date = req.scheduled_date ? String(req.scheduled_date).substring(0, 10) : getIsoDate(0);
+    assignForm.notes = target.notes || '';
+    assignForm.scheduled_date = target.scheduled_date ? String(target.scheduled_date).substring(0, 10) : getIsoDate(0);
     techSearch.value = '';
     copiedSn.value = false;
     showAssignModal.value = true;
@@ -1474,7 +1476,9 @@ const showHistoryModal = ref(false);
 const selectedHistoryCbp = ref(null);
 
 function openHistoryModal(cbp) {
-    selectedHistoryCbp.value = cbp;
+    const target = cbp || activeActionRow.value || selectedHistoryCbp.value;
+    if (!target) return;
+    selectedHistoryCbp.value = target;
     showHistoryModal.value = true;
 }
 
@@ -1485,8 +1489,10 @@ function closeHistoryModal() {
 
 // Cancel
 function cancelCbp(cbp) {
+    const target = cbp || activeActionRow.value;
+    if (!target) return;
     if (confirm('Yakin ingin membatalkan request CBP ini?')) {
-        router.post(`/cbp/${cbp.id}/cancel`, {}, {
+        router.post(`/cbp/${target.id}/cancel`, {}, {
             preserveScroll: true
         });
     }
@@ -1494,7 +1500,9 @@ function cancelCbp(cbp) {
 
 // WhatsApp Dispatch to Lead Technician
 function shareWhatsApp(req) {
-    const cust = req.customer || {};
+    const target = req || activeActionRow.value;
+    if (!target) return;
+    const cust = target.customer || {};
     const ont = cust.ont || {};
     let ontInfo = '';
     if (ont.brand || ont.serial_number) {
@@ -1503,16 +1511,16 @@ function shareWhatsApp(req) {
 
     const text = `*DISPOSISI CABUT PERANGKAT (CBP)*\n` +
         `--------------------------------------\n` +
-        `📌 *No. Tiket:* ${req.cbp_number}\n` +
-        (req.scheduled_date ? `📅 *Tgl Rencana Cabut:* ${formatFullIndonesianDate(req.scheduled_date)}\n` : '') +
+        `📌 *No. Tiket:* ${target.cbp_number}\n` +
+        (target.scheduled_date ? `📅 *Tgl Rencana Cabut:* ${formatFullIndonesianDate(target.scheduled_date)}\n` : '') +
         `👤 *Pelanggan:* ${cust.name || '-'} (${cust.customer_code || '-'})\n` +
         `📞 *No. HP:* ${cust.phone || '-'}\n` +
         `📍 *Alamat:* ${cust.address || '-'}\n` +
         ontInfo +
-        `⚠️ *Alasan:* ${req.reason || '-'}\n` +
-        (req.technicians?.length ? `🔧 *Teknisi Ditugaskan:* ${req.technicians.map(t => t.name).join(', ')}\n` : '') +
-        (req.dispatch_notes ? `📋 *Catatan Disposisi:* ${req.dispatch_notes}\n` : '') +
-        (req.notes ? `📝 *Catatan Lain:* ${req.notes}\n` : '') +
+        `⚠️ *Alasan:* ${target.reason || '-'}\n` +
+        (target.technicians?.length ? `🔧 *Teknisi Ditugaskan:* ${target.technicians.map(t => t.name).join(', ')}\n` : '') +
+        (target.dispatch_notes ? `📋 *Catatan Disposisi:* ${target.dispatch_notes}\n` : '') +
+        (target.notes ? `📝 *Catatan Lain:* ${target.notes}\n` : '') +
         `--------------------------------------\n` +
         `Kepada: *Kepala Teknisi / Tim Maintenance*\n` +
         `Mohon laksanakan penarikan/pencabutan perangkat ONT sesuai jadwal yang telah ditentukan.\n` +
@@ -1537,16 +1545,18 @@ const rescheduleForm = useForm({
 });
 
 function openRescheduleModal(req) {
-    selectedRescheduleCbp.value = req;
-    rescheduleForm.scheduled_date = req.scheduled_date ? String(req.scheduled_date).substring(0, 10) : getIsoDate(1);
-    rescheduleForm.reschedule_reason = req.reschedule_reason || '';
-    rescheduleForm.notes = req.notes || '';
+    const target = req || activeActionRow.value || selectedRescheduleCbp.value;
+    if (!target) return;
+    selectedRescheduleCbp.value = target;
+    rescheduleForm.scheduled_date = target.scheduled_date ? String(target.scheduled_date).substring(0, 10) : getIsoDate(1);
+    rescheduleForm.reschedule_reason = target.reschedule_reason || '';
+    rescheduleForm.notes = target.notes || '';
     rescheduleTechSearch.value = '';
     showRescheduleTechDropdown.value = false;
 
-    if (req.technicians && req.technicians.length) {
+    if (target.technicians && target.technicians.length) {
         rescheduleForm.technician_mode = 'keep';
-        rescheduleForm.technicians = req.technicians.map(t => Number(t.id));
+        rescheduleForm.technicians = target.technicians.map(t => Number(t.id));
     } else {
         rescheduleForm.technician_mode = 'reset';
         rescheduleForm.technicians = [];
@@ -1685,8 +1695,11 @@ function closeActionMenu() {
 }
 
 function runAction(actionFn) {
+    const row = activeActionRow.value;
+    if (typeof actionFn === 'function') {
+        actionFn(row);
+    }
     closeActionMenu();
-    actionFn();
 }
 
 function handleWindowChange() {
