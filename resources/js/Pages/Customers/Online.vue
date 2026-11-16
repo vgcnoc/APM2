@@ -515,12 +515,12 @@
                             <svg class="w-3.5 h-3.5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
                             </svg>
-                            {{ row.package }}
+                            {{ typeof row.package === 'object' ? (row.package?.name || '-') : (row.package || '-') }}
                         </span>
                         <span v-else class="text-xs text-gray-400 font-medium">-</span>
 
                         <span v-if="row.area" class="inline-flex px-2 py-0.5 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded text-[9px] font-bold uppercase tracking-wider">
-                            {{ row.area }}
+                            {{ typeof row.area === 'object' ? (row.area?.name || '-') : (row.area || '-') }}
                         </span>
                         <span v-else class="text-[10px] text-gray-400">-</span>
                     </div>

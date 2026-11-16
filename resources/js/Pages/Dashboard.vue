@@ -402,7 +402,7 @@
                             <div class="min-w-0">
                                 <p class="text-sm font-semibold text-gray-900 truncate">{{ cust.name }}</p>
                                 <p class="text-[11px] text-gray-400 truncate flex items-center gap-1.5">
-                                    <span>{{ cust.package }}</span>
+                                    <span>{{ typeof cust.package === 'object' ? (cust.package?.name || '-') : (cust.package || '-') }}</span>
                                     <span v-if="cust.area_name && cust.area_name !== '-'" class="inline-flex items-center text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.2 rounded">
                                         📍 {{ cust.area_name }}
                                     </span>

@@ -383,7 +383,7 @@
                 <td><span class="text-xs text-gray-600 truncate max-w-[150px] inline-block">{{ row.customer?.address || '-' }}</span></td>
                 <td>
                     <div class="flex flex-col gap-1 items-start">
-                        <span class="text-[11px] font-bold text-gray-700 uppercase">{{ row.customer?.package || '-' }}</span>
+                        <span class="text-[11px] font-bold text-gray-700 uppercase">{{ (typeof row.customer?.package === 'object' ? row.customer?.package?.name : row.customer?.package) || row.package_name || '-' }}</span>
                         <span v-if="row.is_prorata || row.billing_type === 'prorata'" class="text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase border bg-blue-50 text-blue-700 border-blue-200">
                             Prorata
                         </span>

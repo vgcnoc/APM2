@@ -898,8 +898,8 @@
                                     <div class="text-xs font-semibold text-gray-800">{{ item.title || item.customer_name }}</div>
                                     <div class="text-[11px] text-gray-500 flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
                                         <span>👤 Pelanggan: <span class="font-bold text-gray-700">{{ item.customer_name }}</span></span>
-                                        <span v-if="item.package">📦 {{ item.package }}</span>
-                                        <span v-if="item.area">📍 {{ item.area }}</span>
+                                        <span v-if="item.package">📦 {{ typeof item.package === 'object' ? (item.package?.name || '-') : item.package }}</span>
+                                        <span v-if="item.area">📍 {{ typeof item.area === 'object' ? (item.area?.name || '-') : item.area }}</span>
                                         <span v-if="item.address" class="truncate max-w-xs">🏠 {{ item.address }}</span>
                                     </div>
                                 </div>

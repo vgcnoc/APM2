@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, watch, nextTick } from 'vue';
+import { ref, reactive, watch, computed, nextTick } from 'vue';
 import axios from 'axios';
 
 const props = defineProps({
@@ -97,6 +97,68 @@ function initForm() {
 }
 
 // ── Formatters & Helpers ──
+const customerPackageName = computed(() => {
+    if (!currentCustomer.value) return '';
+    const pkg = currentCustomer.value.package || currentCustomer.value.internet_package || currentCustomer.value.package_name;
+    if (!pkg) return '';
+    if (typeof pkg === 'string') {
+        const trimmed = pkg.trim();
+        if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+            try {
+                const parsed = JSON.parse(trimmed);
+                return parsed.name || parsed.package_name || '';
+            } catch (e) {
+                return trimmed;
+            }
+        }
+        return trimmed;
+    }
+    if (typeof pkg === 'object') {
+        return pkg.name || pkg.package_name || '';
+    }
+    return String(pkg);
+});
+
+const customerPackageSpeed = computed(() => {
+    if (!currentCustomer.value) return null;
+    const pkg = currentCustomer.value.package || currentCustomer.value.internet_package;
+    if (typeof pkg === 'object' && pkg !== null) {
+        return pkg.speed_mbps || currentCustomer.value.package_speed || null;
+    }
+    if (typeof pkg === 'string') {
+        const trimmed = pkg.trim();
+        if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+            try {
+                const parsed = JSON.parse(trimmed);
+                return parsed.speed_mbps || null;
+            } catch (e) {}
+        }
+    }
+    return currentCustomer.value.package_speed || null;
+});
+
+const customerAreaName = computed(() => {
+    if (!currentCustomer.value) return '';
+    const area = currentCustomer.value.area || currentCustomer.value.area_name || currentCustomer.value.areaModel;
+    if (!area) return '';
+    if (typeof area === 'string') {
+        const trimmed = area.trim();
+        if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+            try {
+                const parsed = JSON.parse(trimmed);
+                return parsed.name || parsed.area_name || '';
+            } catch (e) {
+                return trimmed;
+            }
+        }
+        return trimmed;
+    }
+    if (typeof area === 'object') {
+        return area.name || area.area_name || '';
+    }
+    return String(area);
+});
+
 function cleanPhone(phone) {
     if (!phone) return '';
     let p = String(phone).replace(/[^0-9]/g, '');
@@ -341,14 +403,14 @@ function handleClose() {
                             </div>
                             <div>
                                 <div class="flex items-center gap-2 flex-wrap">
-                                    <h3 class="text-lg font-bold text-white tracking-tight">{{ currentCustomer.name }}</h3>
-                                    <span v-if="currentCustomer.customer_code" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">
+                                    <h3 class="text-lg font-bold text-white tracking-tight" style="color: #ffffff;">{{ currentCustomer.name }}</h3>
+                                    <span v-if="currentCustomer.customer_code" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 font-mono">
                                         {{ currentCustomer.customer_code }}
                                     </span>
                                 </div>
                                 <p class="text-xs text-indigo-200/80 mt-0.5 flex items-center gap-2 flex-wrap">
-                                    <span v-if="currentCustomer.area">📍 {{ currentCustomer.area }}</span>
-                                    <span v-if="currentCustomer.package">• Paket: {{ currentCustomer.package }}</span>
+                                    <span v-if="customerAreaName">📍 {{ customerAreaName }}</span>
+                                    <span v-if="customerPackageName">• Paket: <strong class="text-white font-semibold">{{ customerPackageName }}</strong><span v-if="customerPackageSpeed" class="opacity-80"> ({{ customerPackageSpeed }} Mbps)</span></span>
                                 </p>
                             </div>
                         </div>
