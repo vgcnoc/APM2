@@ -73,9 +73,51 @@ class NetworkDataController extends Controller
         $areaId = $request->input('area_id');
         $status = $request->input('status');
         $search = $request->input('search');
+        $split = $request->input('split');
         if (is_string($search)) {
             $search = trim($search);
         }
+        if (is_string($split)) {
+            $split = trim($split);
+        }
+
+        // Helper closures untuk klasifikasi Split
+        $isOdcSplit = function ($query) {
+            $query->where(function ($q) {
+                $q->where('is_split', true)
+                  ->orWhere('type', 'Split')
+                  ->orWhereNotNull('parent_odc_id')
+                  ->orWhereHas('children');
+            });
+        };
+
+        $isOdcNonSplit = function ($query) {
+            $query->where(function ($q) {
+                $q->where('is_split', false)->orWhereNull('is_split');
+            })->where(function ($q) {
+                $q->where('type', '!=', 'Split')->orWhereNull('type');
+            })->whereNull('parent_odc_id')
+              ->doesntHave('children');
+        };
+
+        $isOdpSplit = function ($query) {
+            $query->where(function ($q) {
+                $q->where('is_split', true)
+                  ->orWhere('type', 'Split 2')
+                  ->orWhere('type', 'Split')
+                  ->orWhereNotNull('parent_odp_id')
+                  ->orWhereHas('children');
+            });
+        };
+
+        $isOdpNonSplit = function ($query) {
+            $query->where(function ($q) {
+                $q->where('is_split', false)->orWhereNull('is_split');
+            })->where(function ($q) {
+                $q->whereNotIn('type', ['Split 2', 'Split'])->orWhereNull('type');
+            })->whereNull('parent_odp_id')
+              ->doesntHave('children');
+        };
 
         // Prepare phone and SN/MAC search variants
         $phoneVariants = [];
@@ -175,6 +217,26 @@ class NetworkDataController extends Controller
         if ($status) {
             $odpQuery->where('status', $status);
         }
+        if ($split) {
+            if ($split === 'all_split' || $split === 'split' || $split === 'true' || $split === '1') {
+                $odpQuery->where(function ($q) use ($isOdpSplit, $isOdcSplit) {
+                    $q->where($isOdpSplit)
+                      ->orWhereHas('odc', $isOdcSplit);
+                });
+            } elseif ($split === 'odc_split') {
+                $odpQuery->whereHas('odc', $isOdcSplit);
+            } elseif ($split === 'odp_split') {
+                $odpQuery->where($isOdpSplit);
+            } elseif ($split === 'non_split' || $split === 'normal') {
+                $odpQuery->where($isOdpNonSplit)
+                         ->whereHas('odc', $isOdcNonSplit);
+            } elseif (str_starts_with($split, 'ratio:') || preg_match('/^1:\d+/', $split)) {
+                $ratioVal = str_starts_with($split, 'ratio:') ? substr($split, 6) : $split;
+                $odpQuery->whereHas('odc', function ($odcq) use ($ratioVal) {
+                    $odcq->where('splitter_ratio', 'like', "%{$ratioVal}%");
+                });
+            }
+        }
         if ($search) {
             $odpQuery->where(function ($q) use ($search, $cleanAlnum, $phoneVariants, $lowerSearch, $statusMatches) {
                 // ODP basic info
@@ -266,7 +328,7 @@ class NetworkDataController extends Controller
 
         // Jika hasil pencarian Pelanggan/ONT mengenai salah satu unit dari pasangan ODP Split 2,
         // sertakan juga unit pasangannya (Induk / Lanjutan) agar keduanya tetap tampil berdampingan utuh!
-        if ($odps->isNotEmpty() && !$status) {
+        if ($odps->isNotEmpty() && !$status && $split !== 'non_split' && !str_starts_with((string)$split, 'ratio:')) {
             $currentOdpIds = $odps->pluck('id')->map(fn ($v) => (int) $v)->all();
             $allSplitPartnerOdpIds = $this->expandSplitOdpIds($currentOdpIds);
             $missingPartnerOdpIds = array_values(array_diff($allSplitPartnerOdpIds, $currentOdpIds));
@@ -284,7 +346,7 @@ class NetworkDataController extends Controller
         // Kumpulkan seluruh ODC yang relevan agar pasangan ODC Split (termasuk unit yang belum punya ODP) selalu tampil berdampingan!
         $candidateOdcIds = $odps->pluck('odc_id')->filter()->map(fn ($v) => (int) $v)->unique()->values()->all();
 
-        if (!$odpId && !$status) {
+        if (!$odpId && !$status && $split !== 'odp_split') {
             $extraOdcQuery = Odc::query();
             DataScopeService::applyOdcScope($extraOdcQuery, $user);
 
@@ -314,26 +376,45 @@ class NetworkDataController extends Controller
                       ->orWhereHas('olt', fn ($oq) => $oq->where('name', 'like', "%{$search}%")->orWhere('ip_address', 'like', "%{$search}%"));
                 });
             } else {
-                // Tanpa filter ODP/Status/Search: sertakan seluruh ODC bertipe Split agar pasangan Induk & Lanjutan tidak pernah hilang meskipun 0 ODP
-                $extraOdcQuery->where(function ($q) {
-                    $q->where('is_split', true)
-                      ->orWhere('type', 'Split')
-                      ->orWhereNotNull('parent_odc_id')
-                      ->orWhereHas('children');
-                });
+                if ($split === 'all_split' || $split === 'odc_split' || $split === 'split') {
+                    $extraOdcQuery->where($isOdcSplit);
+                } elseif ($split === 'non_split') {
+                    $extraOdcQuery->where($isOdcNonSplit);
+                } elseif (str_starts_with((string)$split, 'ratio:') || preg_match('/^1:\d+/', (string)$split)) {
+                    $ratioVal = str_starts_with($split, 'ratio:') ? substr($split, 6) : $split;
+                    $extraOdcQuery->where('splitter_ratio', 'like', "%{$ratioVal}%");
+                } else {
+                    // Tanpa filter ODP/Status/Search: sertakan seluruh ODC bertipe Split agar pasangan Induk & Lanjutan tidak pernah hilang meskipun 0 ODP
+                    $extraOdcQuery->where(function ($q) {
+                        $q->where('is_split', true)
+                          ->orWhere('type', 'Split')
+                          ->orWhereNotNull('parent_odc_id')
+                          ->orWhereHas('children');
+                    });
+                }
             }
 
             $extraIds = $extraOdcQuery->pluck('id')->map(fn ($v) => (int) $v)->all();
             $candidateOdcIds = array_values(array_unique(array_merge($candidateOdcIds, $extraIds)));
         }
 
-        $finalDisplayOdcIds = $this->expandSplitOdcIds($candidateOdcIds);
+        $finalDisplayOdcIds = ($split === 'non_split') ? $candidateOdcIds : $this->expandSplitOdcIds($candidateOdcIds);
         $displayOdcs = collect();
         if (!empty($finalDisplayOdcIds)) {
             $displayOdcQuery = Odc::with($odcRelations)
                 ->whereIn('id', $finalDisplayOdcIds)
                 ->orderByRaw('COALESCE(parent_odc_id, id) ASC, CASE WHEN parent_odc_id IS NULL THEN 0 ELSE 1 END ASC, id ASC');
             DataScopeService::applyOdcScope($displayOdcQuery, $user);
+
+            if ($split === 'odc_split') {
+                $displayOdcQuery->where($isOdcSplit);
+            } elseif ($split === 'non_split') {
+                $displayOdcQuery->where($isOdcNonSplit);
+            } elseif (str_starts_with((string)$split, 'ratio:') || preg_match('/^1:\d+/', (string)$split)) {
+                $ratioVal = str_starts_with($split, 'ratio:') ? substr($split, 6) : $split;
+                $displayOdcQuery->where('splitter_ratio', 'like', "%{$ratioVal}%");
+            }
+
             $displayOdcs = $displayOdcQuery->get();
         }
 
@@ -348,6 +429,18 @@ class NetworkDataController extends Controller
                 if (is_numeric($areaId)) $q->where('area_id', $areaId);
                 else $q->whereHas('area', fn($aq) => $aq->where('name', $areaId));
             });
+        }
+        if ($split) {
+            if ($split === 'all_split' || $split === 'split' || $split === 'odc_split') {
+                $baseOdcQuery->where($isOdcSplit);
+            } elseif ($split === 'odp_split') {
+                $baseOdcQuery->whereHas('odps', $isOdpSplit);
+            } elseif ($split === 'non_split') {
+                $baseOdcQuery->where($isOdcNonSplit);
+            } elseif (str_starts_with($split, 'ratio:') || preg_match('/^1:\d+/', $split)) {
+                $ratioVal = str_starts_with($split, 'ratio:') ? substr($split, 6) : $split;
+                $baseOdcQuery->where('splitter_ratio', 'like', "%{$ratioVal}%");
+            }
         }
         $totalOdc = $baseOdcQuery->count();
 
@@ -375,6 +468,27 @@ class NetworkDataController extends Controller
                       });
                 }
             });
+        }
+        if ($status) {
+            $baseOdpQuery->where('status', $status);
+        }
+        if ($split) {
+            if ($split === 'all_split' || $split === 'split') {
+                $baseOdpQuery->where(function ($q) use ($isOdpSplit, $isOdcSplit) {
+                    $q->where($isOdpSplit)->orWhereHas('odc', $isOdcSplit);
+                });
+            } elseif ($split === 'odc_split') {
+                $baseOdpQuery->whereHas('odc', $isOdcSplit);
+            } elseif ($split === 'odp_split') {
+                $baseOdpQuery->where($isOdpSplit);
+            } elseif ($split === 'non_split') {
+                $baseOdpQuery->where($isOdpNonSplit)->whereHas('odc', $isOdcNonSplit);
+            } elseif (str_starts_with($split, 'ratio:') || preg_match('/^1:\d+/', $split)) {
+                $ratioVal = str_starts_with($split, 'ratio:') ? substr($split, 6) : $split;
+                $baseOdpQuery->whereHas('odc', function ($odcq) use ($ratioVal) {
+                    $odcq->where('splitter_ratio', 'like', "%{$ratioVal}%");
+                });
+            }
         }
         $totalOdp = (clone $baseOdpQuery)->count();
         $totalPort = (clone $baseOdpQuery)->sum('total_ports');
@@ -441,6 +555,15 @@ class NetworkDataController extends Controller
             'odps_filter' => $odpFilterQuery->get(),
             'areas' => DataScopeService::getScopedAreas($user, 'network_data'),
             'odps' => $odps,
+            'splitter_ratios' => Odc::query()
+                ->whereNotNull('splitter_ratio')
+                ->where('splitter_ratio', '!=', '')
+                ->distinct()
+                ->pluck('splitter_ratio')
+                ->map(fn ($r) => trim($r))
+                ->filter()
+                ->unique()
+                ->values(),
             'stats' => [
                 'total_odc' => $totalOdc,
                 'total_odp' => $totalOdp,
@@ -455,7 +578,7 @@ class NetworkDataController extends Controller
             ],
             'terminated_customers' => $terminatedCustomers,
             'cbp_requests' => $cbpRequests,
-            'filters' => $request->only(['olt_id', 'odc_id', 'odp_id', 'area_id', 'status', 'search']),
+            'filters' => $request->only(['olt_id', 'odc_id', 'odp_id', 'area_id', 'status', 'search', 'split']),
         ]);
     }
 

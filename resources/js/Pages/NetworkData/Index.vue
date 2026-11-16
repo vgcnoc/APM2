@@ -129,7 +129,7 @@
                     <div class="w-full h-px lg:h-8 lg:w-px bg-slate-200 hidden lg:block"></div>
 
                     <!-- Filter Selects -->
-                    <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2.5 w-full">
+                    <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5 w-full">
                         <select v-model="form.olt_id" @change="applyFilters" class="w-full bg-slate-50 border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 py-2.5 px-3 focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
                             <option value="">Semua Server</option>
                             <option v-for="olt in olts" :key="olt.id" :value="olt.id">{{ olt.name }}</option>
@@ -141,6 +141,20 @@
                         <select v-model="form.odp_id" @change="applyFilters" class="w-full bg-slate-50 border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 py-2.5 px-3 focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
                             <option value="">Semua ODP</option>
                             <option v-for="odp in filteredOdpsDropdown" :key="odp.id" :value="odp.id">{{ formatOdpDropdownLabel(odp) }}</option>
+                        </select>
+                        <select v-model="form.split" @change="applyFilters" class="w-full bg-slate-50 border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 py-2.5 px-3 focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all" title="Filter tipe jaringan Split & Rasio Splitter">
+                            <option value="">Semua Split</option>
+                            <optgroup label="Tipe Arsitektur Split">
+                                <option value="all_split">⚡ Semua Split (ODC & ODP)</option>
+                                <option value="odc_split">🟢 ODC Split (Induk & Lanjutan)</option>
+                                <option value="odp_split">🟣 ODP Split 2 (Induk & Lanjutan)</option>
+                                <option value="non_split">⚪ Non-Split (Normal / Standar)</option>
+                            </optgroup>
+                            <optgroup v-if="formattedSplitterRatios.length > 0" label="Rasio Splitter ODC">
+                                <option v-for="ratio in formattedSplitterRatios" :key="ratio.value" :value="ratio.value">
+                                    {{ ratio.label }}
+                                </option>
+                            </optgroup>
                         </select>
                         <select v-model="form.area_id" @change="applyFilters" class="w-full bg-slate-50 border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 py-2.5 px-3 focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
                             <option value="">Semua Area</option>
@@ -680,6 +694,7 @@ const props = defineProps({
     odps_filter: { type: Array, default: () => [] },
     areas: { type: Array, default: () => [] },
     odps: { type: Array, default: () => [] },
+    splitter_ratios: { type: Array, default: () => [] },
     stats: { type: Object, default: () => ({}) },
     filters: { type: Object, default: () => ({}) },
     terminated_customers: { type: Array, default: () => [] },
@@ -695,6 +710,7 @@ const form = useForm({
     olt_id: props.filters?.olt_id || '',
     odc_id: props.filters?.odc_id || '',
     odp_id: props.filters?.odp_id || '',
+    split: props.filters?.split || '',
     area_id: props.filters?.area_id || '',
     status: props.filters?.status || '',
     search: props.filters?.search || '',
@@ -881,10 +897,26 @@ watch(() => props.filters, (newFilters) => {
     form.olt_id = newFilters.olt_id || '';
     form.odc_id = newFilters.odc_id || '';
     form.odp_id = newFilters.odp_id || '';
+    form.split = newFilters.split || '';
     form.area_id = newFilters.area_id || '';
     form.status = newFilters.status || '';
     form.search = newFilters.search || '';
 }, { deep: true });
+
+watch(() => form.split, () => {
+    if (form.odc_id) {
+        const odcExists = filteredOdcs.value.some(o => o.id == form.odc_id);
+        if (!odcExists) {
+            form.odc_id = '';
+        }
+    }
+    if (form.odp_id) {
+        const odpExists = filteredOdpsDropdown.value.some(o => o.id == form.odp_id);
+        if (!odpExists) {
+            form.odp_id = '';
+        }
+    }
+});
 
 const refreshData = () => {
     isRefreshing.value = true;
@@ -921,6 +953,7 @@ const resetFilters = () => {
     form.olt_id = '';
     form.odc_id = '';
     form.odp_id = '';
+    form.split = '';
     form.area_id = '';
     form.status = '';
     form.search = '';
@@ -928,9 +961,53 @@ const resetFilters = () => {
     router.get(route('network-data.index'), {}, { preserveState: true, preserveScroll: true });
 };
 
+const formattedSplitterRatios = computed(() => {
+    const rawRatios = props.splitter_ratios || [];
+    const ratiosSet = new Set(['1:2', '1:4', '1:8', '1:16', '1:32']);
+    rawRatios.forEach(r => {
+        if (!r) return;
+        const match = String(r).match(/1:\d+/);
+        if (match) {
+            ratiosSet.add(match[0]);
+        } else {
+            ratiosSet.add(String(r).trim());
+        }
+    });
+
+    const sorted = Array.from(ratiosSet).sort((a, b) => {
+        const numA = parseInt(a.replace(/\D/g, '')) || 0;
+        const numB = parseInt(b.replace(/\D/g, '')) || 0;
+        return numA - numB;
+    });
+
+    return sorted.map(r => ({
+        value: `ratio:${r}`,
+        label: `Rasio ${r}`,
+    }));
+});
+
 const filteredOdcs = computed(() => {
-    if (!form.olt_id) return props.odcs || [];
-    return (props.odcs || []).filter(o => o.olt_id == form.olt_id);
+    let result = props.odcs || [];
+    if (form.olt_id) {
+        result = result.filter(o => o.olt_id == form.olt_id);
+    }
+    if (form.split) {
+        if (form.split === 'all_split' || form.split === 'odc_split') {
+            result = result.filter(o => {
+                const info = getOdcSplitInfo(o);
+                return info.isSplit;
+            });
+        } else if (form.split === 'non_split') {
+            result = result.filter(o => {
+                const info = getOdcSplitInfo(o);
+                return !info.isSplit;
+            });
+        } else if (form.split.startsWith('ratio:') || form.split.match(/^1:\d+/)) {
+            const ratioVal = form.split.startsWith('ratio:') ? form.split.substring(6) : form.split;
+            result = result.filter(o => (o.splitter_ratio || '').includes(ratioVal));
+        }
+    }
+    return result;
 });
 
 const filteredOdpsDropdown = computed(() => {
@@ -941,6 +1018,19 @@ const filteredOdpsDropdown = computed(() => {
     } else if (form.olt_id) {
         const odcIds = (props.odcs || []).filter(o => o.olt_id == form.olt_id).map(o => Number(o.id));
         result = result.filter(o => odcIds.includes(Number(o.odc_id)));
+    }
+    if (form.split) {
+        if (form.split === 'all_split' || form.split === 'odp_split') {
+            result = result.filter(o => {
+                const info = getOdpSplitInfo(o);
+                return info.isSplit;
+            });
+        } else if (form.split === 'non_split') {
+            result = result.filter(o => {
+                const info = getOdpSplitInfo(o);
+                return !info.isSplit;
+            });
+        }
     }
     return result;
 });
