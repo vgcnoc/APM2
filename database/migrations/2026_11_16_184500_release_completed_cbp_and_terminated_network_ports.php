@@ -27,3 +27,4 @@ return new class extends Migration
         // No rollback necessary as this only synchronizes port availability
     }
 };
+

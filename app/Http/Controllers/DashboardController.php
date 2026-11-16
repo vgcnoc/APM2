@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\Invoice;
+use App\Models\Payment;
 use App\Models\Odp;
 use App\Models\Odc;
 use App\Models\Olt;
@@ -180,6 +181,7 @@ class DashboardController extends Controller
             'total_survey'     => (clone $custBase)->whereIn('status', ['survey'])->count(),
             'total_installing' => (clone $custBase)->where('status', 'installing')->count(),
             'total_activation' => (clone $custBase)->where('status', 'menunggu_aktivasi')->count(),
+            'total_terminated' => (clone $custBase)->where('status', 'terminated')->count(),
             'total_all'        => (clone $custBase)->count(),
         ];
 
@@ -221,6 +223,44 @@ class DashboardController extends Controller
         $invoiceStats = [
             'paid_this_month'   => (clone $invoiceBase)->where('period_month', $currentMonth)->where('period_year', $currentYear)->where('status', 'paid')->count(),
             'unpaid_this_month' => (clone $invoiceBase)->where('period_month', $currentMonth)->where('period_year', $currentYear)->whereIn('status', ['unpaid', 'overdue'])->count(),
+        ];
+
+        // ── Tagihan & Pelanggan Jatuh Tempo (Overdue) ──────
+        $today = today();
+        $now = now();
+        $overdueInvoiceBase = (clone $invoiceBase)
+            ->whereIn('status', ['unpaid', 'partial', 'overdue'])
+            ->where('invoice_number', 'not like', 'INV-MIG-%')
+            ->where('status', '!=', 'cancelled')
+            ->where('is_reseller_balance', false)
+            ->where(function ($q) use ($now, $today) {
+                $q->where(function ($sub) use ($now) {
+                    $sub->whereNotNull('isolation_at')
+                        ->where('isolation_at', '<=', $now);
+                })->orWhere(function ($sub) use ($today) {
+                    $sub->whereNull('isolation_at')
+                        ->where('due_date', '<', $today);
+                });
+            })
+            ->whereHas('customer', fn($q) => $q->where('status', '!=', 'terminated'));
+
+        $overdueCustomersCount = (clone $overdueInvoiceBase)->distinct('customer_id')->count('customer_id');
+        $overdueInvoicesCount  = (clone $overdueInvoiceBase)->count();
+        $overdueGross          = (float) (clone $overdueInvoiceBase)->sum('amount');
+        $partialPaidOverdue    = (float) Payment::whereIn(
+            'invoice_id',
+            (clone $overdueInvoiceBase)->where('status', 'partial')->select('id')
+        )->where('status', 'verified')->sum('amount');
+        $overdueRemainingAmount = max(0.0, $overdueGross - $partialPaidOverdue);
+
+        $customerStats['total_overdue']          = $overdueCustomersCount;
+        $customerStats['total_overdue_invoices'] = $overdueInvoicesCount;
+        $customerStats['total_overdue_amount']   = $overdueRemainingAmount;
+
+        $billingStats = [
+            'overdue_customers' => $overdueCustomersCount,
+            'overdue_invoices'  => $overdueInvoicesCount,
+            'overdue_amount'    => $overdueRemainingAmount,
         ];
 
         // ── Reseller Voucher Belum Bayar ────────────────────
@@ -395,6 +435,7 @@ class DashboardController extends Controller
 
         return Inertia::render('Dashboard', [
             'customerStats'        => $customerStats,
+            'billingStats'         => $billingStats,
             'infraStats'           => $infraStats,
             'ticketStats'          => $ticketStats,
             'invoiceStats'         => $invoiceStats,
