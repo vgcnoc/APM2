@@ -185,6 +185,11 @@ class CbpRequestController extends Controller
             } elseif ($request->status === 'rescheduled') {
                 $query->whereIn('status', ['pending', 'assigned'])
                     ->where('reschedule_count', '>', 0);
+            } elseif ($request->status === 'completed_today') {
+                $query->where('status', 'completed')
+                    ->whereDate('completed_at', today());
+            } elseif ($request->status === 'completed') {
+                $query->where('status', 'completed');
             } else {
                 $query->where('status', $request->status);
             }
@@ -204,17 +209,64 @@ class CbpRequestController extends Controller
         }
 
         if ($request->filled('search')) {
-            $search = strtolower($request->search);
-            $query->where(function($q) use ($search) {
+            $rawSearch = trim((string) $request->search);
+            $search = strtolower($rawSearch);
+            $digitsOnly = preg_replace('/\D/', '', $rawSearch);
+            $cleanAlnum = preg_replace('/[^a-zA-Z0-9]/', '', $rawSearch);
+            $phoneVariants = [];
+            if (strlen($digitsOnly) >= 5) {
+                $phoneVariants[] = $digitsOnly;
+                if (str_starts_with($digitsOnly, '0')) {
+                    $phoneVariants[] = '62' . substr($digitsOnly, 1);
+                } elseif (str_starts_with($digitsOnly, '62')) {
+                    $phoneVariants[] = '0' . substr($digitsOnly, 2);
+                }
+            }
+
+            $query->where(function($q) use ($search, $phoneVariants, $cleanAlnum) {
+                // 1. Nomor Tiket CBP, Alasan, Disposisi
                 $q->where('cbp_number', 'like', "%{$search}%")
                   ->orWhere('reason', 'like', "%{$search}%")
-                  ->orWhere('dispatch_notes', 'like', "%{$search}%")
-                  ->orWhereHas('customer', function($cq) use ($search) {
-                      $cq->where('name', 'like', "%{$search}%")
-                        ->orWhere('customer_code', 'like', "%{$search}%")
-                        ->orWhere('phone', 'like', "%{$search}%")
-                        ->orWhere('address', 'like', "%{$search}%");
-                  });
+                  ->orWhere('dispatch_notes', 'like', "%{$search}%");
+
+                // 2. Teknisi Lapangan yang ditugaskan
+                $q->orWhereHas('technicians', function($tq) use ($search) {
+                    $tq->where('name', 'like', "%{$search}%");
+                });
+
+                // 3. Pelanggan & Jaringan (Nama, Kode, HP, Alamat, ODP, ONT SN/MAC)
+                $q->orWhereHas('customer', function($cq) use ($search, $phoneVariants, $cleanAlnum) {
+                    $cq->where('name', 'like', "%{$search}%")
+                      ->orWhere('customer_code', 'like', "%{$search}%")
+                      ->orWhere('address', 'like', "%{$search}%")
+                      ->orWhere('phone', 'like', "%{$search}%");
+
+                    foreach ($phoneVariants as $pv) {
+                        $cq->orWhere('phone', 'like', "%{$pv}%");
+                    }
+
+                    // ODP dari ONT pelanggan & survey
+                    $cq->orWhereHas('ont.odp', function($oq) use ($search) {
+                        $oq->where('name', 'like', "%{$search}%")
+                           ->orWhere('address', 'like', "%{$search}%");
+                    });
+
+                    // ONT Serial Number, MAC Address, PPPoE User
+                    $cq->orWhereHas('ont', function($ontQ) use ($search, $cleanAlnum) {
+                        $ontQ->where('serial_number', 'like', "%{$search}%")
+                             ->orWhere('mac_address', 'like', "%{$search}%")
+                             ->orWhere('pppoe_user', 'like', "%{$search}%");
+                        if (strlen($cleanAlnum) >= 4) {
+                            $ontQ->orWhereRaw("REPLACE(REPLACE(serial_number, ':', ''), '-', '') LIKE ?", ["%{$cleanAlnum}%"])
+                                 ->orWhereRaw("REPLACE(REPLACE(mac_address, ':', ''), '-', '') LIKE ?", ["%{$cleanAlnum}%"]);
+                        }
+                    });
+
+                    // Wilayah / Area Pelanggan
+                    $cq->orWhereHas('areaModel', function($aq) use ($search) {
+                        $aq->where('name', 'like', "%{$search}%");
+                    });
+                });
             });
         }
 

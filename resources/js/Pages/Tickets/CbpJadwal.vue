@@ -78,7 +78,9 @@
 
                 <!-- Card 5: Selesai Hari Ini -->
                 <div 
-                    class="bg-white p-4 rounded-2xl border border-gray-100 relative overflow-hidden group select-none"
+                    @click="filterByStatus('completed_today')" 
+                    class="bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer hover:shadow-md relative overflow-hidden group select-none"
+                    :class="filterStatus === 'completed_today' ? 'border-emerald-500 ring-2 ring-emerald-100 shadow-sm bg-gradient-to-br from-white to-emerald-50/30' : 'border-gray-100 hover:border-emerald-300'"
                 >
                     <div class="flex items-center justify-between">
                         <span class="text-[11px] font-black text-emerald-700 uppercase tracking-wider flex items-center gap-1.5">
@@ -97,51 +99,59 @@
             <!-- Header Actions & Filters -->
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
                 <div v-if="can('cbp_filter')" class="flex flex-wrap items-center gap-2.5 flex-1">
-                    <div class="relative flex-1 min-w-[240px] sm:max-w-xs">
+                    <div class="relative flex-1 min-w-[240px] max-w-md">
                         <input 
                             type="text" 
                             v-model="search" 
-                            placeholder="Cari ID CBP, pelanggan, HP, ODP..." 
-                            class="w-full pl-9 pr-8 py-2 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-100 text-xs transition-all font-medium"
-                            @keyup.enter="performSearch"
+                            placeholder="Cari ID CBP, pelanggan, HP, ODP, ONT, teknisi..." 
+                            class="w-full pl-9 pr-8 py-2 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-100 text-xs transition-all font-medium placeholder:text-gray-400"
+                            @input="debouncedSearch"
+                            @keyup.enter="performSearchImmediately"
                         >
                         <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                         </svg>
-                        <button v-if="search" @click="search = ''; performSearch()" class="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-600">
+                        <button v-if="search" @click="clearSearch" type="button" class="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-600 p-0.5 rounded-full hover:bg-gray-100 transition-colors" title="Hapus pencarian">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
 
-                    <select v-model="filterStatus" @change="performSearch" class="px-3 py-2 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-100 text-xs bg-gray-50/60 font-semibold text-slate-700 cursor-pointer">
+                    <select v-model="filterStatus" @change="performSearchImmediately" class="px-3 py-2 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-100 text-xs bg-gray-50/60 font-semibold text-slate-700 cursor-pointer">
                         <option value="">Semua Status Jadwal</option>
                         <option value="pending">⏳ Belum Ditugaskan</option>
                         <option value="assigned">🔵 Sedang Dikerjakan (Assigned)</option>
                         <option value="overdue">⚠️ Terlewat (Perlu Reschedule)</option>
+                        <option value="completed_today">✅ Selesai Hari Ini</option>
+                        <option value="completed">✔️ Semua Selesai (Completed)</option>
                         <option value="rescheduled">🗓️ Pernah Di-Reschedule</option>
                     </select>
 
-                    <select v-model="filterArea" @change="performSearch" class="px-3 py-2 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-100 text-xs bg-gray-50/60 font-semibold text-slate-700 cursor-pointer">
+                    <select v-model="filterArea" @change="performSearchImmediately" class="px-3 py-2 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-100 text-xs bg-gray-50/60 font-semibold text-slate-700 cursor-pointer">
                         <option value="">Semua Wilayah / Area</option>
                         <option v-for="area in areas" :key="area.id" :value="area.id">📍 {{ area.name }}</option>
                     </select>
 
-                    <div class="flex items-center gap-1 bg-gray-50/60 border border-gray-200 rounded-xl px-2.5 py-1.5">
+                    <div class="flex items-center gap-1 bg-gray-50/60 border border-gray-200 rounded-xl px-2.5 py-1.5 relative">
                         <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tgl:</span>
                         <input 
                             type="date" 
                             v-model="filterDate" 
-                            @change="performSearch" 
+                            @change="performSearchImmediately" 
                             class="bg-transparent border-0 p-0 text-xs font-semibold text-slate-700 focus:ring-0 cursor-pointer"
                             title="Filter Tanggal Pencabutan"
                         />
+                        <button v-if="filterDate" @click="clearDate" type="button" class="text-gray-400 hover:text-gray-600 ml-1" title="Hapus Filter Tanggal">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
                     </div>
 
                     <button 
-                        v-if="hasActiveFilters" 
                         @click="resetFilters" 
                         type="button" 
-                        class="px-3 py-2 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors flex items-center gap-1.5"
+                        class="px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                        :class="hasActiveFilters 
+                            ? 'text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 shadow-sm' 
+                            : 'text-slate-400 bg-slate-50 hover:bg-slate-100 border border-slate-200'"
                         title="Reset Semua Filter"
                     >
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
@@ -263,7 +273,10 @@
                                 <td colspan="7" class="p-8 text-center text-gray-500">
                                     <div class="flex flex-col items-center justify-center">
                                         <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                        <p>Belum ada Jadwal CBP.</p>
+                                        <p class="font-medium text-slate-600">{{ hasActiveFilters ? 'Tidak ada Jadwal CBP yang cocok dengan filter pencarian.' : 'Belum ada Jadwal CBP.' }}</p>
+                                        <button v-if="hasActiveFilters" @click="resetFilters" type="button" class="mt-2 text-xs font-semibold text-rose-600 hover:text-rose-700 underline cursor-pointer">
+                                            Reset Filter
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -1181,7 +1194,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { usePermission } from '@/Composables/usePermission';
@@ -1201,11 +1214,36 @@ const filterStatus = ref(props.filters?.status || '');
 const filterArea = ref(props.filters?.area_id || '');
 const filterDate = ref(props.filters?.scheduled_date || '');
 
+let searchDebounceTimeout = null;
+
 const hasActiveFilters = computed(() => {
     return !!(search.value || filterStatus.value || filterArea.value || filterDate.value);
 });
 
+function debouncedSearch() {
+    if (searchDebounceTimeout) clearTimeout(searchDebounceTimeout);
+    searchDebounceTimeout = setTimeout(() => {
+        performSearch();
+    }, 400);
+}
+
+function performSearchImmediately() {
+    if (searchDebounceTimeout) clearTimeout(searchDebounceTimeout);
+    performSearch();
+}
+
+function clearSearch() {
+    search.value = '';
+    performSearchImmediately();
+}
+
+function clearDate() {
+    filterDate.value = '';
+    performSearchImmediately();
+}
+
 function filterByStatus(status) {
+    if (searchDebounceTimeout) clearTimeout(searchDebounceTimeout);
     if (status === 'all') {
         filterStatus.value = '';
     } else if (filterStatus.value === status) {
@@ -1218,20 +1256,33 @@ function filterByStatus(status) {
 
 function performSearch() {
     router.get('/cbp/jadwal', {
-        search: search.value || undefined,
+        search: search.value ? search.value.trim() : undefined,
         status: filterStatus.value || undefined,
         area_id: filterArea.value || undefined,
         scheduled_date: filterDate.value || undefined,
-    }, { preserveState: true, preserveScroll: true });
+    }, { preserveState: true, preserveScroll: true, replace: true });
 }
 
 function resetFilters() {
+    if (searchDebounceTimeout) clearTimeout(searchDebounceTimeout);
     search.value = '';
     filterStatus.value = '';
     filterArea.value = '';
     filterDate.value = '';
     router.get('/cbp/jadwal', {}, { preserveState: true, preserveScroll: true });
 }
+
+watch(() => props.filters, (newFilters) => {
+    if (!newFilters) return;
+    search.value = newFilters.search || '';
+    filterStatus.value = newFilters.status || '';
+    filterArea.value = newFilters.area_id || '';
+    filterDate.value = newFilters.scheduled_date || '';
+}, { deep: true });
+
+onUnmounted(() => {
+    if (searchDebounceTimeout) clearTimeout(searchDebounceTimeout);
+});
 
 // Click outside directive implementation
 const vClickOutside = {
