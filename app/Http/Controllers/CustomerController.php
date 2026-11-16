@@ -5004,23 +5004,55 @@ class CustomerController extends Controller
                 $lat = $request->input('latitude');
                 $lng = $request->input('longitude');
 
-                if ($lat) {
-                    $lat = trim((string)$lat);
-                    if (str_contains($lat, ',') && empty($lng)) {
-                        $coords = explode(',', $lat);
-                        $lat = trim($coords[0]);
-                        $lng = trim($coords[1] ?? '');
-                    }
-                }
-                if ($lng) {
-                    $lng = trim((string)$lng);
-                }
+                if ($lat !== null || $lng !== null) {
+                    $latStr = trim((string)($lat ?? ''));
+                    $lngStr = trim((string)($lng ?? ''));
 
-                if ($request->has('latitude')) {
-                    $updateData['latitude'] = $lat ?: null;
-                }
-                if ($request->has('longitude')) {
-                    $updateData['longitude'] = $lng ?: null;
+                    // Jika user input format "lat, lng" di field latitude
+                    if (str_contains($latStr, ',') && empty($lngStr)) {
+                        $parts = explode(',', $latStr);
+                        $latStr = trim($parts[0] ?? '');
+                        $lngStr = trim($parts[1] ?? '');
+                    }
+
+                    // Ganti koma desimal ke titik desimal
+                    $latStr = str_replace(',', '.', $latStr);
+                    $lngStr = str_replace(',', '.', $lngStr);
+
+                    if (is_numeric($latStr) && is_numeric($lngStr)) {
+                        $fLat = (float) $latStr;
+                        $fLng = (float) $lngStr;
+
+                        // Auto swap jika Longitude tertukar dengan Latitude
+                        if ($fLat > 20 && $fLng < 0) {
+                            $temp = $fLat;
+                            $fLat = $fLng;
+                            $fLng = $temp;
+                        }
+
+                        // Auto fix missing minus sign untuk area Indonesia
+                        if ($fLat > 0 && $fLat >= 5 && $fLat <= 11 && $fLng >= 95 && $fLng <= 141) {
+                            $fLat = -1 * abs($fLat);
+                        }
+
+                        // Auto fix decimal shift (-69.xxx / -70.xxx)
+                        if ($fLat <= -60 && $fLat >= -75) {
+                            $fLat = $fLat / 10;
+                        }
+
+                        // Validasi batas geografis bumi
+                        if ($fLat >= -90 && $fLat <= 90 && $fLng >= -180 && $fLng <= 180) {
+                            $latStr = number_format($fLat, 8, '.', '');
+                            $lngStr = number_format($fLng, 8, '.', '');
+                        }
+                    }
+
+                    if ($request->has('latitude')) {
+                        $updateData['latitude'] = (!empty($latStr) && is_numeric($latStr)) ? $latStr : null;
+                    }
+                    if ($request->has('longitude')) {
+                        $updateData['longitude'] = (!empty($lngStr) && is_numeric($lngStr)) ? $lngStr : null;
+                    }
                 }
 
                 // 2. Alamat Pelanggan

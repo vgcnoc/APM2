@@ -207,33 +207,73 @@ function getCurrentLocation() {
 }
 
 // ── Parse Coordinates / Google Maps Link ──
+function sanitizeCoordinates(rawLat, rawLng) {
+    if (!rawLat || !rawLng) return { lat: '', lng: '' };
+
+    let lat = String(rawLat).trim().replace(',', '.');
+    let lng = String(rawLng).trim().replace(',', '.');
+
+    let numLat = parseFloat(lat);
+    let numLng = parseFloat(lng);
+
+    if (isNaN(numLat) || isNaN(numLng)) return { lat, lng };
+
+    // 1. Deteksi jika Longitude tertukar dengan Latitude (misal: 106.xxxx di Lat, -6.xxxx di Lng)
+    if (numLat > 20 && numLng < 0) {
+        const temp = numLat;
+        numLat = numLng;
+        numLng = temp;
+    }
+
+    // 2. Koreksi tanda minus untuk wilayah Indonesia (Jawa Barat/Sukabumi Lintang Selatan 5 - 11)
+    if (numLat > 0 && numLat >= 5 && numLat <= 11 && numLng >= 95 && numLng <= 141) {
+        numLat = -1 * Math.abs(numLat);
+    }
+
+    // 3. Koreksi kesalahan titik desimal dua digit (misal: -69.xxxx atau -70.xxxx harusnya -6.9xxx atau -7.0xxx)
+    if (numLat <= -60 && numLat >= -75) {
+        numLat = numLat / 10;
+    }
+
+    return {
+        lat: numLat.toFixed(8),
+        lng: numLng.toFixed(8)
+    };
+}
+
 function parsePastedCoordinates() {
     if (!pasteInput.value) return;
-    const text = pasteInput.value.trim();
+    let text = pasteInput.value.trim();
 
-    // 1. Coba pola "-6.123456, 106.123456" atau URL Google Maps
-    const match = text.match(/(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/);
-    if (match) {
-        form.latitude = match[1];
-        form.longitude = match[2];
-        pasteInput.value = '';
-        showPasteCoords.value = false;
-        gpsError.value = '';
-        return;
-    }
+    // 1. Normalisasi teks: jika ada koma desimal khas Indonesia (misal: -6,982312, 106,912381)
+    text = text.replace(/(\d+),(\d+)/g, '$1.$2');
 
-    // 2. Coba cari pola @latitude,longitude pada URL maps
-    const urlMatch = text.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    // 2. Cek pola URL maps @lat,lng atau q=lat,lng atau ll=lat,lng
+    const urlPattern = /[@?&](?:q|ll)?=?(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)/i;
+    const urlMatch = text.match(urlPattern);
     if (urlMatch) {
-        form.latitude = urlMatch[1];
-        form.longitude = urlMatch[2];
+        const cleaned = sanitizeCoordinates(urlMatch[1], urlMatch[2]);
+        form.latitude = cleaned.lat;
+        form.longitude = cleaned.lng;
         pasteInput.value = '';
         showPasteCoords.value = false;
         gpsError.value = '';
         return;
     }
 
-    gpsError.value = 'Format koordinat tidak dikenali. Pastikan berformat: Latitude, Longitude (contoh: -6.982312, 106.912381)';
+    // 3. Cek pola teks umum: "lat, lng" atau "lat lng"
+    const generalMatch = text.match(/(-?\d+(?:\.\d+)?)[,\s/|]+(-?\d+(?:\.\d+)?)/);
+    if (generalMatch) {
+        const cleaned = sanitizeCoordinates(generalMatch[1], generalMatch[2]);
+        form.latitude = cleaned.lat;
+        form.longitude = cleaned.lng;
+        pasteInput.value = '';
+        showPasteCoords.value = false;
+        gpsError.value = '';
+        return;
+    }
+
+    gpsError.value = 'Format koordinat tidak dikenali. Pastikan berformat: Latitude, Longitude (contoh: -6.982312, 106.912381) atau tautan Google Maps.';
 }
 
 // ── Image Handlers ──
@@ -308,6 +348,12 @@ async function saveChanges() {
     successMessage.value = '';
 
     try {
+        if (form.latitude && form.longitude) {
+            const sanitized = sanitizeCoordinates(form.latitude, form.longitude);
+            form.latitude = sanitized.lat;
+            form.longitude = sanitized.lng;
+        }
+
         const formData = new FormData();
         formData.append('phone', form.phone || '');
         formData.append('address', form.address || '');
