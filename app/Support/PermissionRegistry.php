@@ -597,13 +597,14 @@ class PermissionRegistry
 
             // ── 12. ROLLOUT INFRASTRUKTUR (WORK ORDERS) ──────────────
             [
-                'group' => 'Rollout Pembangunan ODC & ODP',
+                'group' => 'Progress Rollout Pembangunan ODC & ODP',
                 'category' => 'jaringan',
                 'icon' => 'zap',
                 'menu_parent' => 'menu_infrastructure_work_orders',
                 'permissions' => [
                     // Menu
                     ['name' => 'menu_infrastructure_work_orders', 'type' => 'menu', 'label' => 'Akses Menu Rollout Pembangunan ODC & ODP'],
+                    ['name' => 'menu_rollout_progress', 'type' => 'menu', 'label' => 'Akses Menu Progress Rollout ODC & ODP'],
 
                     // Card & Statistik
                     ['name' => 'infra_wo_card_stats', 'type' => 'card', 'label' => 'Card Statistik & Status WO (Total, Tunggu Material, Dikerjakan, Review QC, Aktif)'],
@@ -1243,7 +1244,7 @@ class PermissionRegistry
                 'menu_network_odp', 'network_odp_card_stats', 'network_odp_filter', 'network_odp_create', 'network_odp_edit', 'network_odp_delete', 'network_odp_delete_all', 'network_odp_view_all',
                 'menu_network_ont', 'network_ont_card_stats', 'network_ont_filter', 'network_ont_create', 'network_ont_edit', 'network_ont_delete', 'network_ont_delete_all', 'network_ont_print_card', 'network_ont_view_all',
                 'menu_network_find_onu',
-                'menu_infrastructure_work_orders', 'infra_wo_card_stats', 'infra_wo_tab_info', 'infra_wo_tab_materials', 'infra_wo_tab_qc', 'infra_wo_tab_photos', 'infra_wo_tab_logs', 'infra_wo_filter',
+                'menu_infrastructure_work_orders', 'menu_rollout_progress', 'infra_wo_card_stats', 'infra_wo_tab_info', 'infra_wo_tab_materials', 'infra_wo_tab_qc', 'infra_wo_tab_photos', 'infra_wo_tab_logs', 'infra_wo_filter',
                 'infrastructure_work_orders_create', 'infrastructure_work_orders_edit', 'infrastructure_work_orders_delete',
                 'infrastructure_work_orders_dispatch', 'infra_wo_btn_print_sj', 'infrastructure_work_orders_review_material',
                 'infrastructure_work_orders_start', 'infrastructure_work_orders_request_material', 'infrastructure_work_orders_report', 'infrastructure_work_orders_upload_photo',
@@ -1304,7 +1305,7 @@ class PermissionRegistry
                 'menu_network_odp', 'network_odp_card_stats', 'network_odp_filter', 'network_odp_create', 'network_odp_edit', 'network_odp_delete', 'network_odp_delete_all', 'network_odp_view_area',
                 'menu_network_ont', 'network_ont_card_stats', 'network_ont_filter', 'network_ont_create', 'network_ont_edit', 'network_ont_delete', 'network_ont_delete_all', 'network_ont_print_card', 'network_ont_view_area',
                 'menu_network_find_onu',
-                'menu_infrastructure_work_orders', 'infra_wo_card_stats', 'infra_wo_tab_info', 'infra_wo_tab_materials', 'infra_wo_tab_qc', 'infra_wo_tab_photos', 'infra_wo_tab_logs', 'infra_wo_filter',
+                'menu_infrastructure_work_orders', 'menu_rollout_progress', 'infra_wo_card_stats', 'infra_wo_tab_info', 'infra_wo_tab_materials', 'infra_wo_tab_qc', 'infra_wo_tab_photos', 'infra_wo_tab_logs', 'infra_wo_filter',
                 'infrastructure_work_orders_create', 'infrastructure_work_orders_edit', 'infrastructure_work_orders_delete',
                 'infrastructure_work_orders_dispatch', 'infra_wo_btn_print_sj', 'infrastructure_work_orders_review_material',
                 'infrastructure_work_orders_upload_photo', 'infrastructure_work_orders_approve', 'infrastructure_work_orders_reject',
@@ -1336,11 +1337,6 @@ class PermissionRegistry
                 'menu_network_odp', 'network_odp_card_stats', 'network_odp_filter', 'network_odp_create', 'network_odp_edit', 'network_odp_delete', 'network_odp_delete_all', 'network_odp_view_all',
                 'menu_network_ont', 'network_ont_card_stats', 'network_ont_filter', 'network_ont_create', 'network_ont_edit', 'network_ont_delete', 'network_ont_delete_all', 'network_ont_print_card', 'network_ont_view_all',
                 'menu_network_find_onu',
-                'menu_infrastructure_work_orders', 'infra_wo_card_stats', 'infra_wo_tab_info', 'infra_wo_tab_materials', 'infra_wo_tab_qc', 'infra_wo_tab_photos', 'infra_wo_tab_logs', 'infra_wo_filter',
-                'infrastructure_work_orders_create', 'infrastructure_work_orders_edit', 'infrastructure_work_orders_delete',
-                'infrastructure_work_orders_dispatch', 'infra_wo_btn_print_sj', 'infrastructure_work_orders_review_material',
-                'infrastructure_work_orders_upload_photo', 'infrastructure_work_orders_approve', 'infrastructure_work_orders_reject',
-                'infrastructure_work_orders_view_all',
                 'menu_materials', 'materials_card_stats', 'materials_filter_category', 'materials_create', 'materials_edit', 'materials_add_stock', 'materials_field_price', 'materials_field_supplier', 'materials_view_all',
                 'menu_material_transactions', 'material_transactions_create', 'material_transactions_view_all',
                 'menu_material_handovers', 'material_handover_card_stats', 'material_handover_tab_returns', 'material_handover_tab_requests', 'material_handover_tab_history', 'material_handover_filter_status', 'material_handover_filter_source', 'material_handover_filter_area', 'material_handover_btn_receive', 'material_handover_btn_reject_handover', 'material_handover_btn_approve_request', 'material_handover_btn_reject_request', 'material_handover_btn_create_return', 'material_handover_btn_create_request', 'material_handover_field_condition', 'material_handover_view_all',
@@ -1366,7 +1362,6 @@ class PermissionRegistry
                 'menu_customers_installed', 'customers_installed_card_stats', 'customers_installed_filter', 'customers_installed_assign', 'customers_installed_whatsapp', 'customers_installed_audit', 'customers_installed_cancel', 'customers_installed_view_all',
                 'menu_network_odc', 'network_odc_card_stats', 'network_odc_filter', 'network_odc_create', 'network_odc_view_all',
                 'menu_network_odp', 'network_odp_card_stats', 'network_odp_filter', 'network_odp_create', 'network_odp_view_all',
-                'menu_infrastructure_work_orders', 'infra_wo_card_stats', 'infra_wo_filter', 'infrastructure_work_orders_create', 'infrastructure_work_orders_dispatch', 'infra_wo_btn_print_sj', 'infrastructure_work_orders_view_all',
                 'menu_cbp', 'menu_cbp_jadwal', 'cbp_card_stats', 'cbp_filter', 'cbp_btn_dispatch', 'cbp_btn_assign', 'cbp_btn_reschedule', 'cbp_view_all',
                 'menu_pgk', 'menu_pgk_jadwal', 'pgk_card_summary', 'pgk_tab_flow', 'pgk_filter', 'pgk_btn_assign', 'pgk_view_all',
                 'menu_pgj', 'menu_pgj_jadwal', 'pgj_card_summary', 'pgj_tab_flow', 'pgj_filter', 'pgj_btn_assign', 'pgj_btn_view', 'pgj_view_all',
@@ -1567,8 +1562,6 @@ class PermissionRegistry
                 'material_handover_field_condition', 'material_handover_field_cost', 'material_handover_field_notes',
                 'material_handover_view_all',
                 'menu_material_mutations', 'material_mutations_filter', 'material_mutations_view_all',
-                'menu_infrastructure_work_orders', 'infra_wo_card_stats', 'infra_wo_tab_info', 'infra_wo_tab_materials', 'infra_wo_tab_logs', 'infra_wo_filter',
-                'infrastructure_work_orders_dispatch', 'infra_wo_btn_print_sj', 'infrastructure_work_orders_review_material', 'infrastructure_work_orders_view_all',
                 'menu_attendances', 'attendance_tab_reguler', 'attendances_view_own', 'menu_attendance_reports', 'attendance_report_btn_print', 'attendance_report_btn_export', 'attendance_report_btn_delete',
                 'menu_payroll', 'payroll_view_own', 'payroll_btn_print_slip',
             ],
@@ -1586,7 +1579,7 @@ class PermissionRegistry
             'menu_network_ont', 'network_ont_card_stats', 'network_ont_filter', 'network_ont_view_area',
             'menu_network_find_onu',
             // Rollout Pembangunan ODC & ODP (FOKUS 1 & 2: PERSIAPAN & PENUGASAN)
-            'menu_infrastructure_work_orders', 'infra_wo_card_stats', 'infra_wo_tab_info', 'infra_wo_tab_materials', 'infra_wo_tab_qc', 'infra_wo_tab_photos', 'infra_wo_tab_logs', 'infra_wo_filter',
+            'menu_infrastructure_work_orders', 'menu_rollout_progress', 'infra_wo_card_stats', 'infra_wo_tab_info', 'infra_wo_tab_materials', 'infra_wo_tab_qc', 'infra_wo_tab_photos', 'infra_wo_tab_logs', 'infra_wo_filter',
             'infrastructure_work_orders_create', // Tahap 1: Persiapan (Tipe ODC/ODP, Auto GPS Tiang, Rute Dropdown Cerdas, Auto-BOM Kalkulator)
             'infrastructure_work_orders_edit',   // Tahap 1: Koreksi & Update Parameter Rute
             'infrastructure_work_orders_delete', // Tahap 1: Pembatalan Penugasan & Restok Otomatis
@@ -1608,7 +1601,7 @@ class PermissionRegistry
             'menu_chronic_monitoring', 'chronic_monitoring_card_stats', 'chronic_monitoring_tab_customers', 'chronic_monitoring_tab_paths', 'chronic_monitoring_tab_visits', 'chronic_monitoring_filter', 'chronic_socialization_manage', 'chronic_socialization_report', 'chronic_socialization_delete', 'chronic_monitoring_schedule_maintenance', 'chronic_monitoring_whatsapp', 'chronic_monitoring_export', 'chronic_monitoring_view_area',
         ];
 
-        // Preset khusus Teknisi Tim Serbu (FOKUS 3: PENGERJAAN LAPANGAN, TARIK KABEL, QC OPM & AUTO-COMMISSIONING)
+        // Preset khusus Teknisi Tim Serbu (FOKUS: PENGERJAAN LAPANGAN & PENANGANAN GANGGUAN)
         $presets['teknisi tim serbu'] = [
             'menu_dashboard', 'dashboard_card_realtime', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_filter_area', 'dashboard_btn_refresh',
             'menu_network_map', 'network_map_routing', 'network_map_find_odp', 'menu_network_radar',
@@ -1616,14 +1609,6 @@ class PermissionRegistry
             'menu_network_odc', 'network_odc_card_stats', 'network_odc_filter', 'network_odc_view_area',
             'menu_network_odp', 'network_odp_card_stats', 'network_odp_filter', 'network_odp_view_area',
             'menu_network_find_onu',
-            // Rollout Pembangunan ODC & ODP (FOKUS 3: PENGERJAAN LAPANGAN & QC REDAMAN)
-            'menu_infrastructure_work_orders', 'infra_wo_card_stats', 'infra_wo_tab_info', 'infra_wo_tab_materials', 'infra_wo_tab_qc', 'infra_wo_tab_photos', 'infra_wo_tab_logs', 'infra_wo_filter',
-            'infra_wo_btn_print_sj', // Melihat Surat Jalan untuk Pengambilan Barang
-            'infrastructure_work_orders_start', // Mulai Pengerjaan Lapangan
-            'infrastructure_work_orders_request_material', // Request Tambahan Material di Lapangan jika kurang
-            'infrastructure_work_orders_report', // Submit Laporan Lapangan, Meter Kabel Riil, QC Redaman Optik & Auto-Commissioning Instan
-            'infrastructure_work_orders_upload_photo', // Upload Foto Bukti Fisik ODC/ODP, Tiang, Splicing Tray & Layar OPM
-            'infrastructure_work_orders_view_assigned', 'infrastructure_work_orders_view_area',
             'menu_materials', 'materials_view_area',
             'menu_material_transactions', 'material_transactions_create', 'material_transactions_view_area', 'material_transactions_view_own',
             'menu_material_handovers', 'material_handover_tab_returns', 'material_handover_tab_requests', 'material_handover_btn_create_return', 'material_handover_btn_create_request', 'material_handover_field_condition', 'material_handover_view_area',
@@ -1638,8 +1623,12 @@ class PermissionRegistry
             'menu_operational_progress', 'menu_network_maintenance', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'network_maintenance_create', 'network_maintenance_update',
         ];
 
-        // Preset khusus Infrastruktur (Pembangunan, Peremajaan Jalur & Monitoring Rawan Gangguan)
+        // Preset khusus Infrastruktur (Progress Rollout Pembangunan ODC & ODP, Peremajaan Jalur & Monitoring Rawan Gangguan)
         $presets['infrastruktur'] = array_values(array_unique(array_merge($presets['teknisi tim serbu'], [
+            // Rollout Pembangunan ODC & ODP (Hanya untuk Maintenance, Maintenance-1, Infrastruktur, NOC)
+            'menu_infrastructure_work_orders', 'menu_rollout_progress', 'infra_wo_card_stats', 'infra_wo_tab_info', 'infra_wo_tab_materials', 'infra_wo_tab_qc', 'infra_wo_tab_photos', 'infra_wo_tab_logs', 'infra_wo_filter',
+            'infra_wo_btn_print_sj', 'infrastructure_work_orders_create', 'infrastructure_work_orders_edit', 'infrastructure_work_orders_start', 'infrastructure_work_orders_request_material',
+            'infrastructure_work_orders_report', 'infrastructure_work_orders_upload_photo', 'infrastructure_work_orders_view_assigned', 'infrastructure_work_orders_view_area', 'infrastructure_work_orders_view_all',
             'menu_chronic_monitoring',
             'chronic_monitoring_card_stats',
             'chronic_monitoring_tab_customers',
