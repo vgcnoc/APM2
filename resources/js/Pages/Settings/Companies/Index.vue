@@ -131,13 +131,23 @@
                                 </div>
                             </div>
 
-                            <span 
-                                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold shrink-0"
-                                :class="company.status === 'active' ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'"
-                            >
-                                <span class="w-1.5 h-1.5 rounded-full" :class="company.status === 'active' ? 'bg-emerald-500' : 'bg-rose-500'"></span>
-                                {{ company.status === 'active' ? 'Aktif' : 'Nonaktif' }}
-                            </span>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <button 
+                                    type="button" 
+                                    @click="openEditModal(company)"
+                                    class="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition cursor-pointer"
+                                    title="Edit Profil & Pengaturan Mitra"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                </button>
+                                <span 
+                                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold shrink-0"
+                                    :class="company.status === 'active' ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'"
+                                >
+                                    <span class="w-1.5 h-1.5 rounded-full" :class="company.status === 'active' ? 'bg-emerald-500' : 'bg-rose-500'"></span>
+                                    {{ company.status === 'active' ? 'Aktif' : 'Nonaktif' }}
+                                </span>
+                            </div>
                         </div>
 
                         <!-- Info Alamat -->
@@ -237,9 +247,11 @@
                             <button 
                                 type="button"
                                 @click="openEditModal(company)"
-                                class="px-3 py-1.5 text-xs font-bold rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 transition shadow-2xs cursor-pointer"
+                                class="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 transition shadow-2xs cursor-pointer flex items-center gap-1.5"
+                                title="Edit profil perusahaan, kontak, rekening, dan izin modul"
                             >
-                                ⚙️ Pengaturan & Rekening
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                <span>✏️ Edit Mitra</span>
                             </button>
 
                             <button 
@@ -379,12 +391,12 @@
             <div v-if="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-xs overflow-y-auto">
                 <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-2xl w-full border border-gray-100 dark:border-gray-700 overflow-hidden my-8 animate-scale-in">
                     <!-- Modal Header -->
-                    <div class="p-5 sm:p-6 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between bg-gray-50/80 dark:bg-gray-800">
+                    <div class="p-5 sm:p-6 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-gray-800 dark:to-gray-800">
                         <div>
                             <h3 class="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
-                                <span>⚙️ Pengaturan Mitra: {{ editForm.name }}</span>
+                                <span>✏️ Edit Data & Pengaturan Mitra: {{ editForm.name }}</span>
                             </h3>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Kelola rekening bank, gateway, siklus, dan izin modul</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Perbarui profil perusahaan, kontak, alamat, rekening, gateway, dan izin modul</p>
                         </div>
                         <button @click="showEditModal = false" class="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-white dark:hover:bg-gray-700">
                             ✕
@@ -399,24 +411,53 @@
                                 <input v-model="editForm.name" type="text" required class="input-text w-full text-xs" />
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Kode Singkatan *</label>
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Kode Singkatan (Prefix) *</label>
                                 <input v-model="editForm.code" type="text" required class="input-text w-full text-xs uppercase" />
+                                <span class="text-[10px] text-gray-400">Prefix invoice & ID pelanggan mitra</span>
                             </div>
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Nama Brand Aplikasi</label>
-                                <input v-model="editForm.brand_name" type="text" class="input-text w-full text-xs" />
+                                <input v-model="editForm.brand_name" type="text" placeholder="Contoh: FIBERNET" class="input-text w-full text-xs" />
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Status Kemitraan</label>
-                                <select v-model="editForm.status" class="input-text w-full text-xs">
+                                <select 
+                                    v-model="editForm.status" 
+                                    :disabled="selectedEditCompany?.is_holding"
+                                    class="input-text w-full text-xs"
+                                    :class="selectedEditCompany?.is_holding ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed opacity-80' : ''"
+                                >
                                     <option value="active">Aktif</option>
                                     <option value="suspended">Ditangguhkan (Suspend)</option>
                                     <option value="inactive">Nonaktif</option>
                                 </select>
+                                <span v-if="selectedEditCompany?.is_holding" class="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold">Pusat / Holding selalu aktif permanen</span>
                             </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">No. Telepon / WhatsApp Mitra</label>
+                                <input v-model="editForm.phone" type="text" placeholder="Contoh: 08123456789" class="input-text w-full text-xs" />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Email Resmi Mitra</label>
+                                <input v-model="editForm.email" type="email" placeholder="Contoh: info@mitra.com" class="input-text w-full text-xs" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Alamat Kantor / Operasional</label>
+                            <textarea v-model="editForm.address" rows="2" placeholder="Alamat lengkap operasional kantor mitra" class="input-text w-full text-xs"></textarea>
+                        </div>
+
+                        <div v-if="!selectedEditCompany?.is_holding">
+                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Batas Kuota Pelanggan (Maksimal)</label>
+                            <input v-model="editForm.max_customers" type="number" min="1" placeholder="Kosongkan jika unlimited" class="input-text w-full text-xs" />
+                            <span class="text-[10px] text-gray-400">Kosongkan jika tidak ada batasan kuota pelanggan untuk mitra ini</span>
                         </div>
 
                         <!-- Rekening Bank Mitra -->
