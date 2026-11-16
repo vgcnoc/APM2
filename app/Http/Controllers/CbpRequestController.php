@@ -37,7 +37,7 @@ class CbpRequestController extends Controller
             'canceled' => (clone $baseCountQuery)->where('status', 'canceled')->count(),
         ];
 
-        $query = CbpRequest::with(['customer.areaModel', 'customer.ont.odp', 'technicians', 'creator', 'dispatcher', 'auditLogs']);
+        $query = CbpRequest::with(['customer.areaModel', 'customer.package', 'customer.ont.odp', 'technicians', 'creator', 'dispatcher', 'auditLogs']);
 
         // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
         DataScopeService::applyCbpScope($query);
@@ -161,6 +161,7 @@ class CbpRequestController extends Controller
 
         $query = CbpRequest::with([
             'customer.areaModel',
+            'customer.package',
             'customer.ont.odp',
             'technicians',
             'creator',
@@ -320,6 +321,7 @@ class CbpRequestController extends Controller
 
         $query = CbpRequest::with([
             'customer.areaModel',
+            'customer.package',
             'customer.ont.odp',
             'customer.technicianSchedules',
             'technicians',

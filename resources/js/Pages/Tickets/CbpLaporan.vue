@@ -128,9 +128,16 @@
                             <tr v-for="req in requests.data" :key="req.id" class="hover:bg-gray-50/50 transition-colors">
                                 <td class="p-4 font-mono font-medium text-red-600">{{ req.cbp_number }}</td>
                                 <td class="p-4">
-                                    <div class="font-bold text-gray-900">{{ req.customer?.name || '-' }}</div>
+                                    <div 
+                                        @click="openCustomerModal(req.customer)"
+                                        class="font-bold text-gray-900 hover:text-blue-600 cursor-pointer transition-colors flex items-center gap-1 group"
+                                        title="Klik untuk melihat Detail Pelanggan"
+                                    >
+                                        <span>{{ req.customer?.name || '-' }}</span>
+                                        <svg class="w-3.5 h-3.5 text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                    </div>
                                     <div class="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
-                                        <span class="px-1.5 py-0.5 rounded bg-gray-100 border border-gray-200">{{ req.customer?.customer_code || '-' }}</span>
+                                        <span class="px-1.5 py-0.5 rounded bg-gray-100 border border-gray-200 font-mono">{{ req.customer?.customer_code || '-' }}</span>
                                         <span v-if="req.customer?.areaModel?.name || req.customer?.area" class="text-slate-400">• {{ req.customer?.areaModel?.name || req.customer?.area }}</span>
                                     </div>
                                 </td>
@@ -207,6 +214,18 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
                                             </svg>
                                             <span>Laporan Selesai</span>
+                                        </button>
+
+                                        <!-- Tombol Detail Pelanggan -->
+                                        <button 
+                                            type="button" 
+                                            @click="openCustomerModal(req.customer)" 
+                                            class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700 border border-blue-200/80 shadow-2xs hover:shadow-xs transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer" 
+                                            title="Detail Pelanggan"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                            </svg>
                                         </button>
 
                                         <!-- History Modal Button -->
@@ -934,6 +953,14 @@
                 </div>
             </div>
         </Teleport>
+
+        <!-- Quick Detail & Edit Customer Modal -->
+        <CustomerQuickDetailModal
+            :show="showCustomerModal"
+            :customer="selectedCustomer"
+            @close="showCustomerModal = false"
+            @updated="onCustomerUpdated"
+        />
     </AppLayout>
 </template>
 
@@ -942,8 +969,31 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { usePermission } from '@/Composables/usePermission';
+import CustomerQuickDetailModal from '@/Components/CustomerQuickDetailModal.vue';
 
 const { can } = usePermission();
+
+// Customer Detail Modal State
+const showCustomerModal = ref(false);
+const selectedCustomer = ref(null);
+
+const openCustomerModal = (customer) => {
+    if (!customer) return;
+    selectedCustomer.value = customer;
+    showCustomerModal.value = true;
+};
+
+const onCustomerUpdated = (updatedCust) => {
+    if (!updatedCust) return;
+    selectedCustomer.value = updatedCust;
+    if (props.requests?.data) {
+        props.requests.data.forEach((req) => {
+            if (req.customer && req.customer.id === updatedCust.id) {
+                req.customer = { ...req.customer, ...updatedCust };
+            }
+        });
+    }
+};
 
 const props = defineProps({
     requests: Object,
