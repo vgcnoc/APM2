@@ -25,7 +25,12 @@ class AppServiceProvider extends ServiceProvider
 
         // Superadmin & Admin bypass for all permissions
         \Illuminate\Support\Facades\Gate::before(function ($user, $ability) {
-            if ($user->hasRole('admin') || (method_exists($user, 'hasRole') && $user->hasRole('superadmin')) || in_array($user->role, ['admin', 'superadmin'])) {
+            $userRole = strtolower(trim((string) ($user->role ?? '')));
+            if (
+                (method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'super admin', 'superadmin'])) ||
+                (method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->hasRole('superadmin'))) ||
+                in_array($userRole, ['admin', 'super admin', 'superadmin'], true)
+            ) {
                 return true;
             }
             return null;

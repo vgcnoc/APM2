@@ -263,7 +263,7 @@
                                     >
                                         <template v-for="(child, childIndex) in item.children" :key="childIndex">
                                             <Link
-                                                v-if="!child.permission || hasPermission(child.permission)"
+                                                v-if="isChildVisible(child)"
                                                 :href="child.href"
                                                 :aria-current="child.active($page.url) ? 'page' : undefined"
                                                 @click="mobileMenuOpen = false"
@@ -399,7 +399,7 @@
                 <div v-else-if="hoveredFlyout.item.type === 'dropdown'" class="space-y-1 max-h-72 overflow-y-auto overscroll-contain pr-1">
                     <template v-for="(child, ci) in hoveredFlyout.item.children" :key="ci">
                         <Link
-                            v-if="!child.permission || hasPermission(child.permission)"
+                            v-if="isChildVisible(child)"
                             :href="child.href"
                             class="flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all"
                             :class="child.active($page.url) ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white font-medium'"
@@ -1472,6 +1472,14 @@ const isHoldingSuperAdmin = () => {
     return isHolding && ['admin', 'super admin', 'superadmin'].includes(uRole);
 };
 
+const isChildVisible = (c) => {
+    if (!c) return false;
+    if (c.module && !isModuleAllowed(c.module)) return false;
+    if (c.href === '/settings/companies' && !isHoldingSuperAdmin()) return false;
+    if (isPathHiddenByMasking(c.href)) return false;
+    return !c.permission || hasPermission(c.permission);
+};
+
 const filteredMenuItems = computed(() => {
     try {
         const filtered = [];
@@ -1492,13 +1500,7 @@ const filteredMenuItems = computed(() => {
 
                 let isAllowed = false;
                 if (item.type === 'dropdown' && item.children) {
-                    const allowedChildren = item.children.filter(c => {
-                        if (c.module && !isModuleAllowed(c.module)) return false;
-                        if (c.href === '/settings/companies' && !isHoldingSuperAdmin()) return false;
-                        const hasChildAccess = !c.permission || hasPermission(c.permission);
-                        const isHidden = isPathHiddenByMasking(c.href);
-                        return hasChildAccess && !isHidden;
-                    });
+                    const allowedChildren = item.children.filter(c => isChildVisible(c));
                     // Dropdown diizinkan tampil jika memiliki minimal 1 submenu yang dapat diakses oleh user
                     isAllowed = allowedChildren.length > 0;
                     if (isAllowed) {

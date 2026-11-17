@@ -356,8 +356,10 @@ class InfrastructureWorkOrderController extends Controller
     public function reschedule(Request $request, InfrastructureWorkOrder $workOrder)
     {
         $user = Auth::user();
-        $allowedRoles = ['admin', 'manager', 'maintenance', 'maintenance-1', 'infrastruktur', 'noc'];
-        if (!$user->can('infrastructure_work_orders_reschedule') && !$user->hasRole($allowedRoles)) {
+        $allowedRoles = ['admin', 'super admin', 'superadmin', 'manager', 'maintenance', 'maintenance-1', 'infrastruktur', 'noc'];
+        $userRole = strtolower(trim((string) ($user->role ?? '')));
+        $hasSpatieRole = method_exists($user, 'hasAnyRole') ? $user->hasAnyRole($allowedRoles) : (method_exists($user, 'hasRole') ? $user->hasRole($allowedRoles) : false);
+        if (!$user->can('infrastructure_work_orders_reschedule') && !$hasSpatieRole && !in_array($userRole, $allowedRoles, true)) {
             abort(403, 'Anda tidak memiliki hak akses untuk menjadwalkan ulang (reschedule) pembangunan ODC / ODP ini.');
         }
 

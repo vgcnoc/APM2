@@ -876,7 +876,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ── Manajemen Role & Hak Akses ─────────────────────────────
-    Route::middleware(['permission:menu_settings_roles'])->group(function () {
+    Route::middleware(['role_or_permission:admin|super admin|superadmin|menu_settings_roles'])->group(function () {
         Route::resource('settings/roles', \App\Http\Controllers\RoleController::class)->except(['create', 'show', 'edit']);
         Route::post('settings/roles/{role}/update', [\App\Http\Controllers\RoleController::class, 'update'])->name('roles.update.post');
         Route::post('settings/roles/{role}/clone', [\App\Http\Controllers\RoleController::class, 'clone'])->name('roles.clone');

@@ -2,8 +2,10 @@
 import { Head, Link, useForm, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, watch } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { usePermission } from '@/Composables/usePermission';
 
 const page = usePage();
+const { can, hasRole } = usePermission();
 
 const props = defineProps({
     workOrder: Object,
@@ -18,9 +20,8 @@ const props = defineProps({
 });
 
 const canReschedule = computed(() => {
-    const userRole = (page.props.auth?.user?.role || '').toLowerCase();
-    const allowedRoles = ['admin', 'manager', 'maintenance', 'maintenance-1', 'infrastruktur', 'noc'];
-    return page.props.auth?.permissions?.includes('infrastructure_work_orders_reschedule') || allowedRoles.includes(userRole);
+    const allowedRoles = ['admin', 'super admin', 'superadmin', 'manager', 'maintenance', 'maintenance-1', 'infrastruktur', 'noc'];
+    return can('infrastructure_work_orders_reschedule') || hasRole(allowedRoles);
 });
 
 // Modal & Form Reschedule Jadwal Pembangunan
