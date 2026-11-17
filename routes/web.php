@@ -917,7 +917,22 @@ Route::middleware(['auth'])->group(function () {
                 ->middleware(['permission:menu_routers|menu_radius_nas|menu_customers_online|customers_active_suspend|menu_vouchers_monitoring|voucher_monitoring_btn_kick'])
                 ->name('online-users.disconnect');
 
-            Route::get('auth-logs', [\App\Http\Controllers\Radius\AuthLogController::class, 'index'])->name('auth-logs.index');
+            Route::get('auth-logs', [\App\Http\Controllers\Radius\AuthLogController::class, 'index'])
+                ->withoutMiddleware(['permission:menu_routers|menu_radius_nas'])
+                ->middleware(['permission:menu_routers|menu_radius_nas|menu_radius_auth_logs'])
+                ->name('auth-logs.index');
+            Route::delete('auth-logs/{id}', [\App\Http\Controllers\Radius\AuthLogController::class, 'destroy'])
+                ->withoutMiddleware(['permission:menu_routers|menu_radius_nas'])
+                ->middleware(['permission:menu_routers|menu_radius_nas|menu_radius_auth_logs|radius_auth_logs_delete'])
+                ->name('auth-logs.destroy');
+            Route::post('auth-logs/{id}/delete', [\App\Http\Controllers\Radius\AuthLogController::class, 'destroy'])
+                ->withoutMiddleware(['permission:menu_routers|menu_radius_nas'])
+                ->middleware(['permission:menu_routers|menu_radius_nas|menu_radius_auth_logs|radius_auth_logs_delete'])
+                ->name('auth-logs.destroy.post');
+            Route::post('auth-logs/bulk-delete', [\App\Http\Controllers\Radius\AuthLogController::class, 'bulkDestroy'])
+                ->withoutMiddleware(['permission:menu_routers|menu_radius_nas'])
+                ->middleware(['permission:menu_routers|menu_radius_nas|menu_radius_auth_logs|radius_auth_logs_delete'])
+                ->name('auth-logs.bulk-destroy');
         });
     });
 
