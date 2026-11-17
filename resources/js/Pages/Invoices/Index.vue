@@ -93,7 +93,27 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
                 Stop Permanen <span class="bg-red-50 text-red-800 px-2 py-0.5 rounded-full text-[10px]">{{ stats?.stop_permanen ?? 0 }}</span>
             </button>
+
+            <!-- Tombol Panduan Detail 11 Tab -->
+            <button 
+                type="button"
+                @click="tabGuideRef?.openModal(filterTabVal || 'semua')" 
+                class="ml-auto px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 shadow-2xs whitespace-nowrap"
+                title="Buka Buku Panduan Detail 11 Tab Invoice"
+            >
+                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                <span>Panduan 11 Tab</span>
+            </button>
         </div>
+
+        <!-- Dynamic Smart Tab Guide Component -->
+        <InvoiceTabGuide 
+            ref="tabGuideRef"
+            :stats="stats"
+            :active-tab="filterTabVal || 'semua'"
+            :invoice-issue-date="invoice_issue_date"
+            @select-tab="filterTab"
+        />
 
         <DataTable
             :columns="columns"
@@ -2132,6 +2152,9 @@ import { Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
 import CustomerQuickDetailModal from '@/Components/CustomerQuickDetailModal.vue';
+import InvoiceTabGuide from '@/Components/Invoices/InvoiceTabGuide.vue';
+
+const tabGuideRef = ref(null);
 
 const props = defineProps({
     invoices: Object,
