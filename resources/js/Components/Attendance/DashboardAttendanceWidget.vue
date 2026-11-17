@@ -604,6 +604,7 @@
                         </div>
                         <p class="text-[11px] leading-relaxed">{{ cameraError }}</p>
                         <button
+                            v-if="can('attendance_btn_camera_hp')"
                             type="button"
                             @click="triggerNativeCamera"
                             class="mt-1 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1"
@@ -668,6 +669,7 @@
                                     Aktifkan Live Kamera
                                 </button>
                                 <button
+                                    v-if="can('attendance_btn_camera_hp')"
                                     type="button"
                                     @click="triggerNativeCamera"
                                     class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-md shadow-emerald-500/20 flex items-center gap-1.5"
@@ -691,7 +693,7 @@
                                 🔄 Putar Kamera
                             </button>
                             <button
-                                v-if="isCameraOpen && !capturedPhoto"
+                                v-if="isCameraOpen && !capturedPhoto && can('attendance_btn_camera_hp')"
                                 type="button"
                                 @click="triggerNativeCamera"
                                 class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-[11px] font-bold transition flex items-center gap-1"
@@ -1367,6 +1369,7 @@ const startCamera = async () => {
 };
 
 const triggerNativeCamera = () => {
+    if (!can('attendance_btn_camera_hp')) return;
     if (fileInputRef.value) {
         fileInputRef.value.click();
     }

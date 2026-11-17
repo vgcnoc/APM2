@@ -703,6 +703,7 @@
                                         </div>
                                         <p class="text-[11px] leading-relaxed">{{ cameraError }}</p>
                                         <button
+                                            v-if="can('attendance_btn_camera_hp')"
                                             type="button"
                                             @click="triggerNativeCamera"
                                             class="mt-1 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1"
@@ -769,6 +770,7 @@
                                                 <span v-else>Aktifkan Live Kamera</span>
                                             </button>
                                             <button
+                                                v-if="can('attendance_btn_camera_hp')"
                                                 type="button"
                                                 @click="triggerNativeCamera"
                                                 :disabled="isEarlyClockInRestricted || isEarlyClockOutRestricted"
@@ -794,7 +796,7 @@
                                         <span v-else>Nyalakan Kamera</span>
                                     </button>
                                     <button
-                                        v-if="!isCameraOpen && !capturedPhoto"
+                                        v-if="!isCameraOpen && !capturedPhoto && can('attendance_btn_camera_hp')"
                                         type="button"
                                         @click="triggerNativeCamera"
                                         :disabled="isEarlyClockInRestricted || isEarlyClockOutRestricted"
@@ -804,7 +806,7 @@
                                     </button>
 
                                     <button
-                                        v-if="isCameraOpen && !capturedPhoto"
+                                        v-if="isCameraOpen && !capturedPhoto && can('attendance_btn_camera_hp')"
                                         type="button"
                                         @click="triggerNativeCamera"
                                         class="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-bold transition flex items-center gap-1.5"
@@ -1697,6 +1699,7 @@ const fileInputRef = ref(null);
 let mediaStream = null;
 
 const triggerNativeCamera = () => {
+    if (!can('attendance_btn_camera_hp')) return;
     if (fileInputRef.value) {
         fileInputRef.value.click();
     }
