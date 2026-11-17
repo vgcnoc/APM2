@@ -103,7 +103,7 @@ class InvoiceController extends Controller
 
         $query->where('invoice_number', 'not like', 'INV-MIG-%')
            ->where('status', '!=', 'cancelled')
-           ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
+           ->whereDoesntHave('customer', fn($q) => $q->whereIn('service_status', ['gratis', 'free_home']));
 
         $isAreaRestricted = auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('invoices_view_all');
         $userAreaIds = auth()->check() ? auth()->user()->getAccessibleAreaIds() : [];
@@ -172,7 +172,7 @@ class InvoiceController extends Controller
                 $q->whereNull('issued_date')
                   ->orWhereDate('issued_date', '<=', $cycleEnd);
             })
-            ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
+            ->whereDoesntHave('customer', fn($q) => $q->whereIn('service_status', ['gratis', 'free_home']));
         $scopedAreaFilter($baseQuery);
 
         if ($request->filled('area_id')) {
@@ -203,7 +203,7 @@ class InvoiceController extends Controller
                   ->orWhere('billing_type', 'prorata');
             })
             ->whereDate('issued_date', '>', $cycleEnd)
-            ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
+            ->whereDoesntHave('customer', fn($q) => $q->whereIn('service_status', ['gratis', 'free_home']));
         $scopedAreaFilter($prorataBaseQuery);
         if ($request->filled('area_id')) {
             $prorataBaseQuery->whereHas('customer', fn($q) => $q->where('area_id', $request->area_id));
@@ -1431,7 +1431,7 @@ class InvoiceController extends Controller
             ->where('is_reseller_balance', false)
             ->where('invoice_number', 'not like', 'INV-MIG-%')
             ->where('status', '!=', 'cancelled')
-            ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
+            ->whereDoesntHave('customer', fn($q) => $q->whereIn('service_status', ['gratis', 'free_home']));
 
         $isAreaRestricted = auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('invoices_view_all');
         $userAreaIds = auth()->check() ? auth()->user()->getAccessibleAreaIds() : [];
@@ -1560,7 +1560,7 @@ class InvoiceController extends Controller
             ->where('is_reseller_balance', false)
             ->where('invoice_number', 'not like', 'INV-MIG-%')
             ->where('status', '!=', 'cancelled')
-            ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
+            ->whereDoesntHave('customer', fn($q) => $q->whereIn('service_status', ['gratis', 'free_home']));
 
         $isAreaRestricted = auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('invoices_view_all');
         $userAreaIds = auth()->check() ? auth()->user()->getAccessibleAreaIds() : [];

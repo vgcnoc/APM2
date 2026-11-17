@@ -174,6 +174,9 @@ class CustomerController extends Controller
                     $q->where('status', 'suspended')->whereNotNull('suspend_end');
                 } elseif ($status === 'active') {
                     $q->where('status', 'active')->where(fn ($sub) => $sub->where('connection_disabled', false)->orWhereNull('connection_disabled'));
+                    if (!$request->filled('service_status')) {
+                        $q->where(fn ($sub) => $sub->whereNull('service_status')->orWhere('service_status', 'berbayar')->orWhere('service_status', ''));
+                    }
                 } else {
                     $q->where('status', $status);
                 }
@@ -1343,14 +1346,14 @@ class CustomerController extends Controller
                 $updateData['base_amount'] = 0;
                 // Bersihkan tagihan berjalan yang belum lunas jika diubah ke gratis
                 \App\Models\Invoice::where('customer_id', $customer->id)
-                    ->whereIn('status', ['unpaid', 'partial'])
+                    ->whereIn('status', ['unpaid', 'partial', 'overdue'])
                     ->delete();
             } elseif ($newStatus === 'free_home') {
                 $updateData['base_amount'] = 0;
                 $updateData['package_id'] = null;
                 // Bersihkan tagihan berjalan yang belum lunas jika diubah ke free home
                 \App\Models\Invoice::where('customer_id', $customer->id)
-                    ->whereIn('status', ['unpaid', 'partial'])
+                    ->whereIn('status', ['unpaid', 'partial', 'overdue'])
                     ->delete();
             } else {
                 // Berbayar: jika ada paket dipilih
@@ -2137,7 +2140,10 @@ class CustomerController extends Controller
      */
     public function active(Request $request): RedirectResponse
     {
-        return redirect()->route('customers.index', array_merge($request->query(), ['status' => 'active']));
+        return redirect()->route('customers.index', array_merge($request->query(), [
+            'status' => 'active',
+            'service_status' => 'berbayar',
+        ]));
     }
 
     /**
@@ -3539,7 +3545,7 @@ class CustomerController extends Controller
                 $validated['package_id'] = null;
             }
             \App\Models\Invoice::where('customer_id', $customer->id)
-                ->whereIn('status', ['unpaid', 'partial'])
+                ->whereIn('status', ['unpaid', 'partial', 'overdue'])
                 ->delete();
         } else {
             // Berbayar: jika sebelumnya free_home dan sekarang berpindah ke berbayar dengan paket
@@ -5959,6 +5965,18 @@ class CustomerController extends Controller
             $custUpdates['tax_ppn'] = 0;
             $custUpdates['tax_bhp'] = 0;
             $custUpdates['tax_uso'] = 0;
+            \App\Models\Invoice::where('customer_id', $customer->id)
+                ->whereIn('status', ['unpaid', 'partial', 'overdue'])
+                ->delete();
+        } elseif (in_array($validated['service_status'], ['gratis', 'free_home'])) {
+            $custUpdates['base_amount'] = 0;
+            if ($validated['service_status'] === 'free_home') {
+                $custUpdates['package_id'] = null;
+            }
+            // Pelanggan gratis tidak memiliki tagihan berjalan
+            \App\Models\Invoice::where('customer_id', $customer->id)
+                ->whereIn('status', ['unpaid', 'partial', 'overdue'])
+                ->delete();
         } elseif (!empty($validated['package_id'])) {
             $custUpdates['package_id'] = $validated['package_id'];
             $pkg = \App\Models\InternetPackage::find($validated['package_id']);
