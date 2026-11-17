@@ -124,6 +124,7 @@ class RolloutProgressController extends Controller
             'indonesianDate' => $indonesianDayDate,
             'areaLabel' => $areaLabel,
             'rolloutList' => $rolloutList,
+            'technicians' => User::forAssignment()->orderBy('name')->get(['id', 'name', 'phone', 'role']),
             'activeTechNames' => $activeTechNames,
             'summary' => $summary,
             'waText' => $waText,

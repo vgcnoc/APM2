@@ -1,7 +1,9 @@
 <script setup>
-import { Head, Link, useForm, router } from '@inertiajs/vue3';
+import { Head, Link, useForm, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, watch } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
+
+const page = usePage();
 
 const props = defineProps({
     workOrder: Object,
@@ -9,7 +11,56 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    technicians: {
+        type: Array,
+        default: () => [],
+    },
 });
+
+const canReschedule = computed(() => {
+    const userRole = (page.props.auth?.user?.role || '').toLowerCase();
+    const allowedRoles = ['admin', 'manager', 'maintenance', 'maintenance-1', 'infrastruktur', 'noc'];
+    return page.props.auth?.permissions?.includes('infrastructure_work_orders_reschedule') || allowedRoles.includes(userRole);
+});
+
+// Modal & Form Reschedule Jadwal Pembangunan
+const showRescheduleModal = ref(false);
+const rescheduleForm = useForm({
+    scheduled_date: props.workOrder.scheduled_date ? props.workOrder.scheduled_date.substring(0, 10) : '',
+    reason: '',
+    technician_ids: props.workOrder.technicians && props.workOrder.technicians.length > 0
+        ? props.workOrder.technicians.map(t => t.id)
+        : (props.workOrder.technician_id ? [props.workOrder.technician_id] : []),
+    notes: '',
+});
+
+const openRescheduleModal = () => {
+    rescheduleForm.scheduled_date = props.workOrder.scheduled_date ? props.workOrder.scheduled_date.substring(0, 10) : '';
+    rescheduleForm.reason = '';
+    rescheduleForm.technician_ids = props.workOrder.technicians && props.workOrder.technicians.length > 0
+        ? props.workOrder.technicians.map(t => t.id)
+        : (props.workOrder.technician_id ? [props.workOrder.technician_id] : []);
+    rescheduleForm.notes = '';
+    showRescheduleModal.value = true;
+};
+
+const submitReschedule = () => {
+    if (!rescheduleForm.scheduled_date) {
+        alert('Silakan pilih tanggal jadwal baru.');
+        return;
+    }
+    if (!rescheduleForm.reason || !rescheduleForm.reason.trim()) {
+        alert('Alasan reschedule wajib diisi.');
+        return;
+    }
+
+    rescheduleForm.post(route('infrastructure.work-orders.reschedule', props.workOrder.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showRescheduleModal.value = false;
+        },
+    });
+};
 
 const activeTab = ref('details'); // 'details' | 'materials' | 'optical' | 'photos'
 const showReportModal = ref(false);
@@ -389,6 +440,17 @@ const formatDate = (dateStr) => {
                         >
                             <span>📄 Cetak Surat Jalan</span>
                         </a>
+
+                        <!-- Action: Reschedule Jadwal Pembangunan (Maintenance, Infrastruktur, NOC, Manager) -->
+                        <button
+                            v-if="workOrder.status !== 'completed' && canReschedule"
+                            type="button"
+                            @click="openRescheduleModal"
+                            class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold text-xs rounded-xl shadow-lg transition-all flex items-center gap-1.5 cursor-pointer"
+                            title="Reschedule jadwal pembangunan ODC / ODP ini"
+                        >
+                            <span>📅 Reschedule Jadwal</span>
+                        </button>
 
                         <!-- Action: Request Tambahan Material Lapangan (Teknisi / Admin) -->
                         <button
@@ -1457,6 +1519,112 @@ const formatDate = (dateStr) => {
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- MODAL: RESCHEDULE JADWAL PEMBANGUNAN ODC & ODP                 -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <div 
+            v-if="showRescheduleModal" 
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4"
+            @click.self="showRescheduleModal = false"
+        >
+            <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-2xl bg-amber-500 text-slate-900 flex items-center justify-center font-bold text-lg">
+                            📅
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-900 dark:text-white">Reschedule Jadwal Pembangunan</h3>
+                            <p class="text-[11px] text-slate-400 font-mono">{{ workOrder.wo_number }} - {{ workOrder.target_name }}</p>
+                        </div>
+                    </div>
+                    <button @click="showRescheduleModal = false" class="p-1 rounded-lg text-slate-400 hover:text-slate-600 cursor-pointer">✕</button>
+                </div>
+
+                <form @submit.prevent="submitReschedule" class="space-y-4">
+                    <!-- Tanggal Baru -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            Tanggal Jadwal Baru <span class="text-rose-500">*</span>
+                        </label>
+                        <input
+                            type="date"
+                            v-model="rescheduleForm.scheduled_date"
+                            required
+                            class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                        />
+                    </div>
+
+                    <!-- Pilihan Teknisi / Tim Lapangan -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            Tim Teknisi Rollout Lapangan (Opsional Ubah Tim)
+                        </label>
+                        <select
+                            multiple
+                            v-model="rescheduleForm.technician_ids"
+                            class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none h-28"
+                        >
+                            <option
+                                v-for="t in technicians"
+                                :key="'tech-' + t.id"
+                                :value="t.id"
+                            >
+                                {{ t.name }} ({{ t.role }})
+                            </option>
+                        </select>
+                        <p class="text-[10px] text-slate-400 mt-1">Tahan Ctrl / Cmd untuk memilih beberapa personil teknisi lapangan.</p>
+                    </div>
+
+                    <!-- Alasan Reschedule -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            Alasan Reschedule <span class="text-rose-500">*</span>
+                        </label>
+                        <textarea
+                            v-model="rescheduleForm.reason"
+                            rows="2"
+                            required
+                            placeholder="Contoh: Terkendala cuaca hujan deras, menunggu penyesuaian izin tiang PLN, dll."
+                            class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                        ></textarea>
+                    </div>
+
+                    <!-- Catatan Tambahan -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            Catatan Tambahan
+                        </label>
+                        <input
+                            type="text"
+                            v-model="rescheduleForm.notes"
+                            placeholder="Catatan pelengkap instruksi kerja"
+                            class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                        />
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                        <button
+                            type="button"
+                            @click="showRescheduleModal = false"
+                            class="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all cursor-pointer"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            type="submit"
+                            :disabled="rescheduleForm.processing"
+                            class="px-5 py-2 text-xs font-bold text-slate-900 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 rounded-xl transition-all flex items-center gap-2 shadow-md cursor-pointer"
+                        >
+                            <span v-if="rescheduleForm.processing">Menyimpan...</span>
+                            <span v-else>Simpan Perubahan Jadwal</span>
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </AppLayout>

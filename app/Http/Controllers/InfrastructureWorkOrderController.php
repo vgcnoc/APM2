@@ -345,7 +345,75 @@ class InfrastructureWorkOrderController extends Controller
         return Inertia::render('Infrastructure/WorkOrders/Show', [
             'workOrder' => $workOrder,
             'materials' => $materials,
+            'technicians' => $this->getEligibleTechnicians(),
         ]);
+    }
+
+    /**
+     * Reschedule Jadwal Pembangunan ODC / ODP
+     * Khusus role: maintenance, maintenance-1, infrastruktur, noc, manager (dan superadmin admin).
+     */
+    public function reschedule(Request $request, InfrastructureWorkOrder $workOrder)
+    {
+        $user = Auth::user();
+        $allowedRoles = ['admin', 'manager', 'maintenance', 'maintenance-1', 'infrastruktur', 'noc'];
+        if (!$user->can('infrastructure_work_orders_reschedule') && !$user->hasRole($allowedRoles)) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menjadwalkan ulang (reschedule) pembangunan ODC / ODP ini.');
+        }
+
+        $validated = $request->validate([
+            'scheduled_date' => 'required|date',
+            'reason' => 'required|string|max:500',
+            'technician_ids' => 'nullable|array',
+            'technician_ids.*' => 'exists:users,id',
+            'notes' => 'nullable|string|max:1000',
+        ], [
+            'scheduled_date.required' => 'Tanggal jadwal baru wajib diisi.',
+            'scheduled_date.date' => 'Format tanggal jadwal tidak valid.',
+            'reason.required' => 'Alasan penjadwalan ulang (reschedule) wajib diisi.',
+        ]);
+
+        $oldDate = $workOrder->scheduled_date ? \Carbon\Carbon::parse($workOrder->scheduled_date)->format('d/m/Y') : '-';
+        $newDate = \Carbon\Carbon::parse($validated['scheduled_date'])->format('d/m/Y');
+        $timestamp = now()->translatedFormat('d/m/Y H:i');
+
+        // Catat jejak audit reschedule pada riwayat catatan WO
+        $rescheduleEntry = "[Reschedule {$timestamp} oleh {$user->name}]: Jadwal diubah dari {$oldDate} ke {$newDate}. Alasan: {$validated['reason']}"
+            . (!empty($validated['notes']) ? " | Catatan: {$validated['notes']}" : '');
+        $existingNotes = $workOrder->notes ? trim($workOrder->notes) . "\n" : '';
+        $workOrder->notes = $existingNotes . $rescheduleEntry;
+        $workOrder->scheduled_date = $validated['scheduled_date'];
+
+        // Update personil teknisi jika disertakan
+        if (isset($validated['technician_ids']) && is_array($validated['technician_ids'])) {
+            $techIds = array_filter(array_map('intval', $validated['technician_ids']));
+            if (!empty($techIds)) {
+                $leadTechId = $techIds[0];
+                $workOrder->technician_id = $leadTechId;
+                $attachData = [];
+                foreach ($techIds as $tId) {
+                    $role = ($tId == $leadTechId) ? 'lead_splicer' : 'assistant_technician';
+                    $attachData[$tId] = ['role' => $role];
+                }
+                $workOrder->technicians()->sync($attachData);
+            }
+        }
+
+        $workOrder->save();
+
+        try {
+            \App\Models\AuditLog::createLog(
+                'Reschedule Pembangunan Rollout',
+                $workOrder,
+                ['scheduled_date' => $oldDate],
+                ['scheduled_date' => $newDate],
+                "Reschedule WO {$workOrder->wo_number} ({$workOrder->target_name}) ke {$newDate}. Alasan: {$validated['reason']}"
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[InfrastructureWorkOrderController::reschedule] Gagal mencatat AuditLog: ' . $e->getMessage());
+        }
+
+        return redirect()->back()->with('success', "Pembangunan {$workOrder->wo_number} ({$workOrder->target_name}) berhasil dijadwalkan ulang ke tanggal {$newDate}.");
     }
 
     /**

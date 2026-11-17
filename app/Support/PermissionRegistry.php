@@ -621,6 +621,7 @@ class PermissionRegistry
 
                     // Aksi Penugasan & Material (Kepala Teknisi / Maintenance / Gudang)
                     ['name' => 'infrastructure_work_orders_create', 'type' => 'button', 'label' => 'Tombol Buat Penugasan Rollout Baru (Kepala Teknisi / Maintenance)'],
+                    ['name' => 'infrastructure_work_orders_reschedule', 'type' => 'button', 'label' => 'Tombol Reschedule Jadwal Pembangunan ODC & ODP'],
                     ['name' => 'infrastructure_work_orders_edit', 'type' => 'button', 'label' => 'Tombol Edit Informasi & Parameter Penugasan'],
                     ['name' => 'infrastructure_work_orders_delete', 'type' => 'button', 'label' => 'Tombol Hapus Work Order Rollout'],
                     ['name' => 'infrastructure_work_orders_dispatch', 'type' => 'button', 'label' => 'Tombol Siapkan / Setujui Pengeluaran Material (Gudang / Ka. Teknisi)'],
@@ -1245,7 +1246,7 @@ class PermissionRegistry
                 'menu_network_ont', 'network_ont_card_stats', 'network_ont_filter', 'network_ont_create', 'network_ont_edit', 'network_ont_delete', 'network_ont_delete_all', 'network_ont_print_card', 'network_ont_view_all',
                 'menu_network_find_onu',
                 'menu_infrastructure_work_orders', 'menu_rollout_progress', 'infra_wo_card_stats', 'infra_wo_tab_info', 'infra_wo_tab_materials', 'infra_wo_tab_qc', 'infra_wo_tab_photos', 'infra_wo_tab_logs', 'infra_wo_filter',
-                'infrastructure_work_orders_create', 'infrastructure_work_orders_edit', 'infrastructure_work_orders_delete',
+                'infrastructure_work_orders_create', 'infrastructure_work_orders_reschedule', 'infrastructure_work_orders_edit', 'infrastructure_work_orders_delete',
                 'infrastructure_work_orders_dispatch', 'infra_wo_btn_print_sj', 'infrastructure_work_orders_review_material',
                 'infrastructure_work_orders_start', 'infrastructure_work_orders_request_material', 'infrastructure_work_orders_report', 'infrastructure_work_orders_upload_photo',
                 'infrastructure_work_orders_approve', 'infrastructure_work_orders_reject',
@@ -1306,7 +1307,7 @@ class PermissionRegistry
                 'menu_network_ont', 'network_ont_card_stats', 'network_ont_filter', 'network_ont_create', 'network_ont_edit', 'network_ont_delete', 'network_ont_delete_all', 'network_ont_print_card', 'network_ont_view_area',
                 'menu_network_find_onu',
                 'menu_infrastructure_work_orders', 'menu_rollout_progress', 'infra_wo_card_stats', 'infra_wo_tab_info', 'infra_wo_tab_materials', 'infra_wo_tab_qc', 'infra_wo_tab_photos', 'infra_wo_tab_logs', 'infra_wo_filter',
-                'infrastructure_work_orders_create', 'infrastructure_work_orders_edit', 'infrastructure_work_orders_delete',
+                'infrastructure_work_orders_create', 'infrastructure_work_orders_reschedule', 'infrastructure_work_orders_edit', 'infrastructure_work_orders_delete',
                 'infrastructure_work_orders_dispatch', 'infra_wo_btn_print_sj', 'infrastructure_work_orders_review_material',
                 'infrastructure_work_orders_upload_photo', 'infrastructure_work_orders_approve', 'infrastructure_work_orders_reject',
                 'infrastructure_work_orders_view_area', 'infrastructure_work_orders_view_all',
@@ -1479,6 +1480,7 @@ class PermissionRegistry
             ],
             'manager' => [
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_revenue', 'dashboard_card_infra', 'dashboard_view_stats', 'dashboard_view_charts', 'dashboard_filter_area', 'dashboard_btn_refresh',
+                'menu_infrastructure_work_orders', 'menu_rollout_progress', 'infra_wo_card_stats', 'infra_wo_tab_info', 'infra_wo_tab_materials', 'infra_wo_tab_qc', 'infra_wo_tab_photos', 'infra_wo_tab_logs', 'infra_wo_filter', 'infrastructure_work_orders_view_all', 'infrastructure_work_orders_reschedule',
                 'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_export', 'network_capacity_view_all',
                 'menu_customers_all', 'customers_card_summary', 'customers_card_billing_status', 'customers_all_view_all', 'customers_all_export', 'customers_delete',
                 'menu_customers_active', 'customers_active_view_all', 'customers_active_terminate',
@@ -1581,6 +1583,7 @@ class PermissionRegistry
             // Rollout Pembangunan ODC & ODP (FOKUS 1 & 2: PERSIAPAN & PENUGASAN)
             'menu_infrastructure_work_orders', 'menu_rollout_progress', 'infra_wo_card_stats', 'infra_wo_tab_info', 'infra_wo_tab_materials', 'infra_wo_tab_qc', 'infra_wo_tab_photos', 'infra_wo_tab_logs', 'infra_wo_filter',
             'infrastructure_work_orders_create', // Tahap 1: Persiapan (Tipe ODC/ODP, Auto GPS Tiang, Rute Dropdown Cerdas, Auto-BOM Kalkulator)
+            'infrastructure_work_orders_reschedule', // Reschedule Jadwal Pembangunan
             'infrastructure_work_orders_edit',   // Tahap 1: Koreksi & Update Parameter Rute
             'infrastructure_work_orders_delete', // Tahap 1: Pembatalan Penugasan & Restok Otomatis
             'infrastructure_work_orders_dispatch', // Tahap 2: Penugasan (Konfirmasi & Pengeluaran Material Gudang)
@@ -1627,7 +1630,7 @@ class PermissionRegistry
         $presets['infrastruktur'] = array_values(array_unique(array_merge($presets['teknisi tim serbu'], [
             // Rollout Pembangunan ODC & ODP (Hanya untuk Maintenance, Maintenance-1, Infrastruktur, NOC)
             'menu_infrastructure_work_orders', 'menu_rollout_progress', 'infra_wo_card_stats', 'infra_wo_tab_info', 'infra_wo_tab_materials', 'infra_wo_tab_qc', 'infra_wo_tab_photos', 'infra_wo_tab_logs', 'infra_wo_filter',
-            'infra_wo_btn_print_sj', 'infrastructure_work_orders_create', 'infrastructure_work_orders_edit', 'infrastructure_work_orders_start', 'infrastructure_work_orders_request_material',
+            'infra_wo_btn_print_sj', 'infrastructure_work_orders_create', 'infrastructure_work_orders_reschedule', 'infrastructure_work_orders_edit', 'infrastructure_work_orders_start', 'infrastructure_work_orders_request_material',
             'infrastructure_work_orders_report', 'infrastructure_work_orders_upload_photo', 'infrastructure_work_orders_view_assigned', 'infrastructure_work_orders_view_area', 'infrastructure_work_orders_view_all',
             'menu_chronic_monitoring',
             'chronic_monitoring_card_stats',
