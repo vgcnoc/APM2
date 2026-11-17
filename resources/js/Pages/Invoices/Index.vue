@@ -2313,7 +2313,7 @@ watch(() => props.filters, (newFilters) => {
 
 function filterTab(tab) {
     filterTabVal.value = tab;
-    if (['lunas', 'piutang', 'jatuh_tempo', 'belum_lunas', 'prorata', 'janji_bayar', 'terisolir', 'stop_sementara', 'stop_permanen'].includes(tab)) {
+    if (['lunas', 'piutang', 'jatuh_tempo', 'belum_lunas', 'prorata', 'upgrade', 'janji_bayar', 'terisolir', 'stop_sementara', 'stop_permanen'].includes(tab)) {
         filterStatusVal.value = '';
     }
     applyFilters();

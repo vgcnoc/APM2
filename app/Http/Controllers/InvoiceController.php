@@ -269,7 +269,8 @@ class InvoiceController extends Controller
             'stop_permanen' => (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', 'terminated'))->count(),
 
             // Amounts for cards (Konsisten dengan data aktif & filter)
-            'total_unpaid_amount' => (clone $activeBaseQuery)->whereIn('status', ['unpaid', 'overdue'])->sum('amount'),
+            'total_unpaid_amount' => (float) (clone $activeBaseQuery)->whereIn('status', ['unpaid', 'overdue'])->sum('amount')
+                + max(0, (float) (clone $activeBaseQuery)->where('status', 'partial')->sum('amount') - $partialPaidSum),
             'total_paid_amount' => $totalPaidAmount,
             'total_piutang_amount' => max(0, (float) (clone $activeBaseQuery)->where('status', 'partial')->sum('amount') - $partialPaidSum),
             'total_jatuh_tempo_amount' => (float) (clone $overdueActiveQuery)->whereIn('status', ['unpaid', 'overdue'])->sum('amount')
