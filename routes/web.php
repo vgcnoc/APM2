@@ -643,6 +643,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('tax-reports/print', [\App\Http\Controllers\TaxReportController::class, 'print'])->name('tax.reports.print');
         Route::get('tax-reports', [\App\Http\Controllers\TaxReportController::class, 'index'])->name('tax.reports.index');
         Route::get('/financial-reports/print', [\App\Http\Controllers\FinancialReportController::class, 'print'])->name('financial-reports.print');
+        Route::get('/financial-reports/print-transaction/{id}', [\App\Http\Controllers\FinancialReportController::class, 'printTransaction'])->name('financial-reports.print-transaction');
         Route::get('/financial-reports', [\App\Http\Controllers\FinancialReportController::class, 'index'])->name('financial-reports.index');
         Route::get('/customer-reports', [\App\Http\Controllers\CustomerReportController::class, 'index'])->name('customer-reports.index');
     });

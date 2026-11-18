@@ -329,6 +329,15 @@
                                     <span>Terapkan</span>
                                 </button>
                                 <button 
+                                    @click="printReport" 
+                                    type="button" 
+                                    class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 p-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                                    title="Cetak Laporan Buku Kas Sesuai Filter Saat Ini"
+                                >
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                                    <span class="hidden xl:inline">Cetak</span>
+                                </button>
+                                <button 
                                     @click="resetLedgerFilter" 
                                     type="button" 
                                     class="bg-gray-100 hover:bg-gray-200 text-gray-600 p-2 rounded-xl text-xs transition cursor-pointer"
@@ -467,19 +476,51 @@
                                     <p v-else class="text-sm font-black text-rose-600">- Rp {{ formatRupiah(item.amount) }}</p>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center">
-                                    <button v-if="item.material_order" @click="openMaterialDetail(item.material_order)" class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:text-indigo-900 border border-indigo-200 rounded-xl transition-all shadow-xs cursor-pointer">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
-                                        Rincian
-                                    </button>
-                                    <button v-else-if="item.type === 'expense' && item.expense_id" @click="deleteExpense(item.expense_id, item.description)" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 hover:text-rose-900 border border-rose-200 rounded-xl transition-all shadow-xs cursor-pointer" title="Hapus Catatan Pengeluaran">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                        Hapus
-                                    </button>
-                                    <button v-else-if="item.type === 'income' && item.income_id" @click="deleteIncome(item.income_id, item.description)" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 hover:text-rose-900 border border-rose-200 rounded-xl transition-all shadow-xs cursor-pointer" title="Hapus Catatan Pemasukan">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                        Hapus
-                                    </button>
-                                    <span v-else class="text-xs text-gray-300">-</span>
+                                    <div class="inline-flex items-center gap-1.5 justify-center">
+                                        <!-- 1. Tombol View / Lihat Detail Transaksi -->
+                                        <button 
+                                            @click="viewTransaction(item)" 
+                                            type="button" 
+                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 hover:text-sky-900 border border-sky-200 rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer active:scale-95" 
+                                            title="Lihat Rincian / Detail Transaksi Lengkap"
+                                        >
+                                            <svg class="w-3.5 h-3.5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                            <span>View</span>
+                                        </button>
+
+                                        <!-- 2. Tombol Print / Cetak Bukti Transaksi Kas -->
+                                        <button 
+                                            @click="printSingleTransaction(item)" 
+                                            type="button" 
+                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-900 border border-emerald-200 rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer active:scale-95" 
+                                            title="Cetak Bukti Kas Masuk / Kas Keluar (Kuitansi / Voucher)"
+                                        >
+                                            <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                                            <span>Print</span>
+                                        </button>
+
+                                        <!-- 3. Tombol Hapus (Khusus Pengeluaran & Pemasukan Manual) -->
+                                        <button 
+                                            v-if="item.type === 'expense' && item.expense_id" 
+                                            @click="deleteExpense(item.expense_id, item.description)" 
+                                            type="button" 
+                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 hover:text-rose-900 border border-rose-200 rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer active:scale-95" 
+                                            title="Hapus Catatan Pengeluaran"
+                                        >
+                                            <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                            <span>Hapus</span>
+                                        </button>
+                                        <button 
+                                            v-else-if="item.type === 'income' && item.income_id" 
+                                            @click="deleteIncome(item.income_id, item.description)" 
+                                            type="button" 
+                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 hover:text-rose-900 border border-rose-200 rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer active:scale-95" 
+                                            title="Hapus Catatan Pemasukan"
+                                        >
+                                            <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                            <span>Hapus</span>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                             <tr v-if="ledgerItems.length === 0">
@@ -864,6 +905,172 @@
             </div>
         </Teleport>
 
+        <!-- Modal Detail Transaksi Kas / Buku Kas Umum -->
+        <Teleport to="body">
+            <div v-if="showTransactionModal && selectedTransaction" class="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4">
+                <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-xs transition-opacity" @click="showTransactionModal = false"></div>
+                <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden animate-fade-in-up">
+                    
+                    <!-- Header Modal -->
+                    <div 
+                        :class="[
+                            'p-5 sm:p-6 border-b border-gray-100 flex items-center justify-between',
+                            selectedTransaction.type === 'income' 
+                                ? 'bg-gradient-to-r from-emerald-50/80 via-teal-50/40 to-white' 
+                                : 'bg-gradient-to-r from-rose-50/80 via-red-50/40 to-white'
+                        ]"
+                    >
+                        <div class="flex items-center gap-3">
+                            <div 
+                                :class="[
+                                    'w-11 h-11 rounded-2xl flex items-center justify-center shadow-md shrink-0',
+                                    selectedTransaction.type === 'income' 
+                                        ? 'bg-emerald-600 text-white shadow-emerald-500/20' 
+                                        : 'bg-rose-600 text-white shadow-rose-500/20'
+                                ]"
+                            >
+                                <svg v-if="selectedTransaction.type === 'income'" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+                                <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-black text-gray-900">
+                                    {{ selectedTransaction.type === 'income' ? 'Detail Pemasukan Kas' : 'Detail Pengeluaran Kas' }}
+                                </h3>
+                                <p class="text-xs text-gray-500 font-mono">
+                                    ID: {{ selectedTransaction.id }} &bull; Waktu: {{ formatDateTime(selectedTransaction.date) }}
+                                </p>
+                            </div>
+                        </div>
+                        <button @click="showTransactionModal = false" class="text-gray-400 hover:text-gray-600 p-2 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Body Modal -->
+                    <div class="p-5 sm:p-6 overflow-y-auto space-y-4 flex-1">
+                        <!-- Big Nominal Card -->
+                        <div 
+                            :class="[
+                                'p-4 rounded-2xl border text-center',
+                                selectedTransaction.type === 'income' 
+                                    ? 'bg-emerald-50/70 border-emerald-200' 
+                                    : 'bg-rose-50/70 border-rose-200'
+                            ]"
+                        >
+                            <span 
+                                :class="[
+                                    'inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider mb-1.5',
+                                    selectedTransaction.type === 'income' 
+                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
+                                        : 'bg-rose-100 text-rose-800 border border-rose-300'
+                                ]"
+                            >
+                                {{ selectedTransaction.type === 'income' ? 'Kas Masuk (+)' : 'Kas Keluar (-)' }}
+                            </span>
+                            <div 
+                                :class="[
+                                    'text-2xl sm:text-3xl font-black font-mono',
+                                    selectedTransaction.type === 'income' ? 'text-emerald-700' : 'text-rose-700'
+                                ]"
+                            >
+                                {{ selectedTransaction.type === 'income' ? '+' : '-' }} Rp {{ formatRupiah(selectedTransaction.amount) }}
+                            </div>
+                        </div>
+
+                        <!-- Metadata Grid -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-gray-50/80 rounded-2xl border border-gray-100 text-xs">
+                            <div>
+                                <span class="text-gray-400 block text-[10px] uppercase font-bold">Kategori Mutasi</span>
+                                <span class="font-bold text-gray-900">
+                                    <span v-if="selectedTransaction.category_code" class="text-indigo-600 font-mono">[{{ selectedTransaction.category_code }}]</span> 
+                                    {{ selectedTransaction.category_name }}
+                                </span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400 block text-[10px] uppercase font-bold">Wilayah / Area</span>
+                                <span class="font-bold text-emerald-700 flex items-center gap-1 mt-0.5">
+                                    <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                    {{ selectedTransaction.area || 'Semua Wilayah' }}
+                                </span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400 block text-[10px] uppercase font-bold">Pihak Terkait (Sumber / Penerima)</span>
+                                <span class="font-bold text-gray-800">{{ selectedTransaction.person || selectedTransaction.source || '-' }}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400 block text-[10px] uppercase font-bold">Dicatat Oleh (User)</span>
+                                <span class="font-bold text-gray-800">{{ selectedTransaction.user || 'Admin' }}</span>
+                            </div>
+                            <div v-if="selectedTransaction.payment_method">
+                                <span class="text-gray-400 block text-[10px] uppercase font-bold">Metode Pembayaran</span>
+                                <span class="font-bold text-gray-800 uppercase font-mono">{{ selectedTransaction.payment_method }}</span>
+                            </div>
+                            <div v-if="selectedTransaction.reference_no">
+                                <span class="text-gray-400 block text-[10px] uppercase font-bold">No. Referensi</span>
+                                <span class="font-mono font-bold text-gray-800">{{ selectedTransaction.reference_no }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Uraian / Keterangan Box -->
+                        <div class="p-4 bg-white rounded-2xl border border-gray-200 shadow-2xs space-y-1">
+                            <span class="text-gray-400 block text-[10px] uppercase font-bold">Uraian / Keterangan Transaksi</span>
+                            <p class="text-sm text-gray-900 font-medium whitespace-pre-line leading-relaxed">
+                                {{ selectedTransaction.description }}
+                            </p>
+                        </div>
+
+                        <!-- Jika Ada Rincian Material PO -->
+                        <div v-if="selectedTransaction.material_order" class="space-y-2">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-gray-700">📦 Rincian Barang Material (PO: {{ selectedTransaction.material_order.transaction_number }}):</span>
+                                <span class="text-xs font-bold text-indigo-600">{{ selectedTransaction.material_order.items?.length || 0 }} Item</span>
+                            </div>
+                            <div class="border border-gray-200 rounded-xl overflow-hidden text-xs">
+                                <table class="min-w-full divide-y divide-gray-100">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-3 py-2 text-left text-[10px] font-bold text-gray-500 uppercase">Barang</th>
+                                            <th class="px-3 py-2 text-center text-[10px] font-bold text-gray-500 uppercase">Qty</th>
+                                            <th class="px-3 py-2 text-right text-[10px] font-bold text-gray-500 uppercase">Harga</th>
+                                            <th class="px-3 py-2 text-right text-[10px] font-bold text-gray-500 uppercase">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100 bg-white">
+                                        <tr v-for="it in (selectedTransaction.material_order.items || [])" :key="it.id">
+                                            <td class="px-3 py-2 font-medium text-gray-900">{{ it.material_name }}</td>
+                                            <td class="px-3 py-2 text-center font-bold text-emerald-600">{{ it.quantity }} {{ it.unit }}</td>
+                                            <td class="px-3 py-2 text-right text-gray-600 font-mono">Rp {{ formatRupiah(it.price_per_unit) }}</td>
+                                            <td class="px-3 py-2 text-right font-bold text-gray-900 font-mono">Rp {{ formatRupiah(it.total_price) }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer Modal -->
+                    <div class="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-3">
+                        <button 
+                            @click="printSingleTransaction(selectedTransaction)" 
+                            type="button" 
+                            class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                            <span>Cetak Bukti Kas (Print)</span>
+                        </button>
+                        <button 
+                            @click="showTransactionModal = false" 
+                            type="button" 
+                            class="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl text-xs font-bold transition cursor-pointer"
+                        >
+                            Tutup
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </Teleport>
+
     </AppLayout>
 </template>
 
@@ -1179,6 +1386,41 @@ const showMaterialDetailModal = ref(false);
 const openMaterialDetail = (order) => {
     selectedMaterialOrder.value = order;
     showMaterialDetailModal.value = true;
+};
+
+// Modal Detail Transaksi Kas Tunggal & Aksi Print
+const selectedTransaction = ref(null);
+const showTransactionModal = ref(false);
+
+const viewTransaction = (item) => {
+    if (!item) return;
+    selectedTransaction.value = item;
+    showTransactionModal.value = true;
+};
+
+const printSingleTransaction = (item) => {
+    if (!item || !item.id) return;
+    try {
+        window.open(route('financial-reports.print-transaction', { id: item.id }), '_blank');
+    } catch (e) {
+        window.open(`/financial-reports/print-transaction/${item.id}`, '_blank');
+    }
+};
+
+const formatDateTime = (dateStr) => {
+    if (!dateStr) return '-';
+    try {
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('id-ID', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        }) + ' WIB';
+    } catch (e) {
+        return dateStr;
+    }
 };
 
 const submitExpense = () => {

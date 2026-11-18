@@ -714,4 +714,110 @@ class FinancialReportController extends Controller
             'printDate' => now()->translatedFormat('d F Y, H:i') . ' WIB',
         ]);
     }
+
+    /**
+     * Cetak Bukti Transaksi Kas Tunggal (Kuitansi Penerimaan Kas / Bukti Pengeluaran Kas).
+     */
+    public function printTransaction(Request $request, string $id)
+    {
+        Carbon::setLocale('id');
+        $parts = explode('_', $id, 2);
+        $prefix = $parts[0] ?? '';
+        $rawId = (int) ($parts[1] ?? 0);
+
+        if ($prefix === 'e') {
+            // Expense
+            $expense = Expense::with(['category', 'creator', 'areaModel', 'materialTransaction.items.material'])->findOrFail($rawId);
+            $type = 'expense';
+            $docTitle = 'BUKTI PENGELUARAN KAS';
+            $docSubtitle = 'KAS KELUAR / CASH DISBURSEMENT VOUCHER';
+            $docNumber = 'BKK-' . ($expense->expense_date ? $expense->expense_date->format('Ym') : date('Ym')) . '-' . str_pad($expense->id, 5, '0', STR_PAD_LEFT);
+            $date = $expense->expense_date ? $expense->expense_date->format('Y-m-d') : date('Y-m-d');
+            $dateTime = $expense->created_at ? $expense->created_at->timezone('Asia/Jakarta')->translatedFormat('d F Y, H:i') . ' WIB' : ($expense->expense_date ? $expense->expense_date->translatedFormat('d F Y') : '-');
+            $amount = (float) $expense->amount;
+            $categoryName = $expense->category?->name ?? ($expense->materialTransaction ? 'Belanja Material' : 'Operasional');
+            $categoryCode = $expense->category?->code ?? ($expense->materialTransaction ? 'MAT' : 'OPR');
+            $description = $expense->description;
+            $recipientOrPayer = '-';
+            $userName = $expense->creator?->name ?? 'Admin';
+            $areaName = $expense->area ?: ($expense->areaModel?->name ?: '-');
+            $method = 'Kas Tunai / Pengeluaran Kas';
+            $refNo = '-';
+            $materialTransaction = $expense->materialTransaction;
+        } elseif ($prefix === 'inc') {
+            // Manual Income
+            $income = Income::with(['category', 'creator', 'areaModel'])->findOrFail($rawId);
+            $type = 'income';
+            $docTitle = 'BUKTI PENERIMAAN KAS';
+            $docSubtitle = 'KAS MASUK / OFFICIAL CASH RECEIPT';
+            $docNumber = 'BKM-' . ($income->income_date ? $income->income_date->format('Ym') : date('Ym')) . '-' . str_pad($income->id, 5, '0', STR_PAD_LEFT);
+            $date = $income->income_date ? $income->income_date->format('Y-m-d') : date('Y-m-d');
+            $dateTime = $income->created_at ? $income->created_at->timezone('Asia/Jakarta')->translatedFormat('d F Y, H:i') . ' WIB' : ($income->income_date ? $income->income_date->translatedFormat('d F Y') : '-');
+            $amount = (float) $income->amount;
+            $categoryName = $income->category?->name ?? 'Pemasukan Lainnya';
+            $categoryCode = $income->category?->code ?? 'INC';
+            $description = $income->description;
+            $recipientOrPayer = $income->source ?: '-';
+            $userName = $income->creator?->name ?? 'Admin';
+            $areaName = $income->area ?: ($income->areaModel?->name ?: '-');
+            $method = $income->payment_method ? strtoupper($income->payment_method) : 'Kas Tunai';
+            $refNo = $income->reference_no ?: '-';
+            $materialTransaction = null;
+        } elseif ($prefix === 'p') {
+            // Payment (Invoice)
+            $payment = Payment::with(['customer.areaModel', 'collector', 'invoice'])->findOrFail($rawId);
+            $type = 'income';
+            $docTitle = 'BUKTI PEMBAYARAN KAS MASUK';
+            $docSubtitle = 'KUITANSI RESMI PEMBAYARAN INTERNET';
+            $docNumber = 'KWT-' . date('Ym', strtotime($payment->payment_date)) . '-' . str_pad($payment->id, 5, '0', STR_PAD_LEFT);
+            $date = date('Y-m-d', strtotime($payment->payment_date));
+            $dateTime = Carbon::parse($payment->payment_date)->timezone('Asia/Jakarta')->translatedFormat('d F Y, H:i') . ' WIB';
+            $amount = (float) $payment->amount;
+            $isReseller = ($payment->invoice && $payment->invoice->is_reseller_balance);
+            $categoryName = $isReseller ? 'Reseller Voucher' : 'Pelanggan Reguler';
+            $categoryCode = $isReseller ? 'RSL' : 'CUS';
+            $customerName = $payment->customer?->name ?? ($payment->invoice?->customer?->name ?? 'Pelanggan');
+            $description = "Pembayaran " . ($isReseller ? 'Reseller' : 'Tagihan Internet') . " ({$customerName})" . ($payment->invoice ? " [{$payment->invoice->invoice_number}]" : '') . ($payment->notes ? " - {$payment->notes}" : '');
+            $recipientOrPayer = $customerName . ($payment->customer?->customer_code ? ' (' . $payment->customer->customer_code . ')' : '');
+            $userName = $payment->collector?->name ?? 'System';
+            $areaName = $payment->customer?->areaModel?->name ?? ($payment->customer?->area ?? '-');
+            $method = strtoupper($payment->payment_method ?: 'TRANSFER');
+            $refNo = $payment->invoice?->invoice_number ?? ('PAY-' . $payment->id);
+            $materialTransaction = null;
+        } else {
+            abort(404, 'Transaksi tidak valid.');
+        }
+
+        $terbilang = \App\Support\NumberHelper::terbilangRupiah($amount);
+        $companyName = \App\Models\Setting::get('company_name', 'VIZBILL INTERNET & NETWORK');
+        $companyAddress = \App\Models\Setting::get('company_address', '');
+        $companyPhone = \App\Models\Setting::get('company_phone', '');
+        $companyEmail = \App\Models\Setting::get('company_email', '');
+        $companyLogo = \App\Models\Setting::get('company_logo', null);
+
+        return view('print.bukti-kas', compact(
+            'type',
+            'docTitle',
+            'docSubtitle',
+            'docNumber',
+            'date',
+            'dateTime',
+            'amount',
+            'categoryName',
+            'categoryCode',
+            'description',
+            'recipientOrPayer',
+            'userName',
+            'areaName',
+            'method',
+            'refNo',
+            'materialTransaction',
+            'terbilang',
+            'companyName',
+            'companyAddress',
+            'companyPhone',
+            'companyEmail',
+            'companyLogo'
+        ));
+    }
 }
