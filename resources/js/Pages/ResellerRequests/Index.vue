@@ -1,25 +1,25 @@
 <template>
-    <AppLayout title="Riwayat & Mutasi Saldo Reseller" subtitle="Pantau seluruh mutasi saldo masuk & keluar (voucher, loket, kasbon) dan kelola permohonan isi saldo reseller.">
+    <AppLayout title="Riwayat &amp; Mutasi Saldo Reseller" subtitle="Pantau seluruh mutasi saldo masuk &amp; keluar (voucher, loket, kasbon) dan kelola permohonan isi saldo reseller.">
         <div class="w-full max-w-7xl mx-auto min-w-0 space-y-5 sm:space-y-6 pb-12">
             
             <!-- Header Actions & Flash Messages -->
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-gray-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] min-w-0">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-gray-100 dark:border-slate-700/80 shadow-[0_4px_20px_rgb(0,0,0,0.02)] min-w-0 transition-colors">
                 <div class="min-w-0">
-                    <h2 class="text-lg sm:text-xl font-black text-gray-900 tracking-tight flex items-center gap-2 flex-wrap">
+                    <h2 class="text-lg sm:text-xl font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-2 flex-wrap">
                         <span>💳</span>
                         <span>Riwayat Saldo &amp; Keuangan Reseller</span>
                     </h2>
-                    <p class="text-xs sm:text-sm text-gray-500 mt-1">
+                    <p class="text-xs sm:text-sm text-gray-500 dark:text-slate-400 mt-1">
                         Sistem pencatatan terintegrasi untuk saldo dompet reseller, mutasi transaksi pembelian voucher, loket biller, dan kasbon.
                     </p>
                 </div>
                 <div class="flex items-center gap-3 w-full sm:w-auto shrink-0">
                     <button 
-                        @click="openAddModal" 
-                        class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-4 sm:px-5 py-2.5 rounded-2xl font-bold text-xs sm:text-sm shadow-lg shadow-indigo-200 transition-all cursor-pointer transform active:scale-95 whitespace-nowrap"
+                        @click="openAddModal()" 
+                        class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-4 sm:px-5 py-2.5 rounded-2xl font-bold text-xs sm:text-sm shadow-lg shadow-indigo-200 dark:shadow-indigo-950/50 transition-all cursor-pointer transform active:scale-95 whitespace-nowrap"
                     >
                         <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-                        <span>Isi Saldo Manual</span>
+                        <span>+ Isi Saldo Manual</span>
                     </button>
                 </div>
             </div>
@@ -27,7 +27,7 @@
             <!-- KPI Stats Cards -->
             <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5 sm:gap-4">
                 <!-- Total Saldo Beredar -->
-                <div class="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl sm:rounded-3xl p-4 sm:p-5 text-white shadow-lg shadow-indigo-100 relative overflow-hidden min-w-0">
+                <div class="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl sm:rounded-3xl p-4 sm:p-5 text-white shadow-lg shadow-indigo-100 dark:shadow-indigo-950/40 relative overflow-hidden min-w-0">
                     <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
                     <div class="flex items-center justify-between gap-2 mb-3">
                         <span class="text-xs font-bold uppercase tracking-wider text-purple-100">Total Saldo Beredar</span>
@@ -36,53 +36,53 @@
                         </div>
                     </div>
                     <div class="text-lg sm:text-xl 2xl:text-2xl font-black font-mono break-words leading-tight">Rp {{ formatRupiah(stats.total_saldo_beredar) }}</div>
-                    <p class="text-[11px] text-purple-100 mt-1.5">Saldo aktif di dompet {{ resellers.length }} reseller</p>
+                    <p class="text-[11px] text-purple-100 mt-1.5">Saldo aktif di dompet {{ stats.total_resellers || resellers.length }} reseller</p>
                 </div>
 
                 <!-- Total Saldo Masuk (Kredit) -->
-                <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-gray-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] min-w-0">
+                <div class="bg-white dark:bg-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-gray-100 dark:border-slate-700/80 shadow-[0_4px_20px_rgb(0,0,0,0.02)] min-w-0 transition-colors">
                     <div class="flex items-center justify-between gap-2 mb-3">
-                        <span class="text-xs font-bold uppercase tracking-wider text-emerald-600">Total Saldo Masuk</span>
-                        <div class="p-2 bg-emerald-50 rounded-xl text-emerald-600 shrink-0">
+                        <span class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Total Saldo Masuk</span>
+                        <div class="p-2 bg-emerald-50 dark:bg-emerald-950/50 rounded-xl text-emerald-600 dark:text-emerald-400 shrink-0">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"/></svg>
                         </div>
                     </div>
-                    <div class="text-lg sm:text-xl 2xl:text-2xl font-black font-mono text-gray-900 break-words leading-tight">+ Rp {{ formatRupiah(stats.total_credit) }}</div>
-                    <p class="text-[11px] text-gray-400 mt-1.5 break-words">
+                    <div class="text-lg sm:text-xl 2xl:text-2xl font-black font-mono text-gray-900 dark:text-white break-words leading-tight">+ Rp {{ formatRupiah(stats.total_credit) }}</div>
+                    <p class="text-[11px] text-gray-400 dark:text-slate-400 mt-1.5 break-words">
                         <span v-if="stats.total_credit > 0">Top Up Kasbon, Tunai &amp; Payment Gateway</span>
-                        <span v-else-if="stats.total_saldo_beredar > 0" class="text-indigo-600 font-medium">Saldo aktif dompet: Rp {{ formatRupiah(stats.total_saldo_beredar) }}</span>
+                        <span v-else-if="stats.total_saldo_beredar > 0" class="text-indigo-600 dark:text-indigo-400 font-medium">Saldo aktif dompet: Rp {{ formatRupiah(stats.total_saldo_beredar) }}</span>
                         <span v-else>Belum ada mutasi saldo masuk</span>
                     </p>
                 </div>
 
                 <!-- Total Saldo Terpakai (Debit) -->
-                <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-gray-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] min-w-0">
+                <div class="bg-white dark:bg-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-gray-100 dark:border-slate-700/80 shadow-[0_4px_20px_rgb(0,0,0,0.02)] min-w-0 transition-colors">
                     <div class="flex items-center justify-between gap-2 mb-3">
-                        <span class="text-xs font-bold uppercase tracking-wider text-rose-600">Saldo Terpakai</span>
-                        <div class="p-2 bg-rose-50 rounded-xl text-rose-600 shrink-0">
+                        <span class="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Saldo Terpakai</span>
+                        <div class="p-2 bg-rose-50 dark:bg-rose-950/50 rounded-xl text-rose-600 dark:text-rose-400 shrink-0">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 13l-5 5m0 0l-5-5m5 5V6"/></svg>
                         </div>
                     </div>
-                    <div class="text-lg sm:text-xl 2xl:text-2xl font-black font-mono text-gray-900 break-words leading-tight">- Rp {{ formatRupiah(stats.total_debit) }}</div>
-                    <p class="text-[11px] text-gray-400 mt-1.5">
+                    <div class="text-lg sm:text-xl 2xl:text-2xl font-black font-mono text-gray-900 dark:text-white break-words leading-tight">- Rp {{ formatRupiah(stats.total_debit) }}</div>
+                    <p class="text-[11px] text-gray-400 dark:text-slate-400 mt-1.5">
                         <span v-if="stats.total_debit > 0">Pembelian Voucher &amp; Bayar Tagihan Loket</span>
                         <span v-else>Belum ada pemakaian saldo voucher/loket</span>
                     </p>
                 </div>
 
                 <!-- Permintaan Pending -->
-                <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-gray-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] min-w-0">
+                <div class="bg-white dark:bg-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-gray-100 dark:border-slate-700/80 shadow-[0_4px_20px_rgb(0,0,0,0.02)] min-w-0 transition-colors">
                     <div class="flex items-center justify-between gap-2 mb-3">
-                        <span class="text-xs font-bold uppercase tracking-wider text-amber-600">Permintaan Pending</span>
-                        <div class="p-2 bg-amber-50 rounded-xl text-amber-600 shrink-0">
+                        <span class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Permintaan Pending</span>
+                        <div class="p-2 bg-amber-50 dark:bg-amber-950/50 rounded-xl text-amber-600 dark:text-amber-400 shrink-0">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         </div>
                     </div>
                     <div class="flex items-baseline gap-2 flex-wrap">
-                        <div class="text-lg sm:text-xl 2xl:text-2xl font-black font-mono text-gray-900">{{ stats.pending_requests_count }}</div>
-                        <span class="text-xs font-bold text-amber-600">Pengajuan</span>
+                        <div class="text-lg sm:text-xl 2xl:text-2xl font-black font-mono text-gray-900 dark:text-white">{{ stats.pending_requests_count }}</div>
+                        <span class="text-xs font-bold text-amber-600 dark:text-amber-400">Pengajuan</span>
                     </div>
-                    <p class="text-[11px] mt-1.5 break-words" :class="stats.pending_requests_count > 0 ? 'text-amber-600 font-bold' : 'text-gray-400'">
+                    <p class="text-[11px] mt-1.5 break-words" :class="stats.pending_requests_count > 0 ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-gray-400 dark:text-slate-400'">
                         <span v-if="stats.pending_requests_count > 0">
                             Rp {{ formatRupiah(stats.pending_requests_amount) }} menunggu persetujuan
                         </span>
@@ -97,33 +97,33 @@
             </div>
 
             <!-- Tab Navigation & Filters Container -->
-            <div class="bg-white rounded-2xl sm:rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.02)] border border-gray-100 overflow-hidden min-w-0">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl sm:rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.02)] border border-gray-100 dark:border-slate-700/80 overflow-hidden min-w-0 transition-colors">
                 
                 <!-- Tab Headers -->
-                <div class="flex items-center justify-between border-b border-gray-100 px-3 sm:px-6 pt-3 sm:pt-4 bg-gray-50/60 flex-wrap gap-2 sm:gap-4 min-w-0">
+                <div class="flex items-center justify-between border-b border-gray-100 dark:border-slate-700/80 px-3 sm:px-6 pt-3 sm:pt-4 bg-gray-50/60 dark:bg-slate-850 flex-wrap gap-2 sm:gap-4 min-w-0">
                     <div class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto max-w-full overscroll-x-contain">
                         <button 
                             @click="switchTab('transactions')" 
                             class="px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-t-2xl font-bold text-xs sm:text-sm transition-all relative flex items-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap shrink-0"
-                            :class="activeTab === 'transactions' ? 'bg-white text-indigo-600 border-t-2 border-indigo-600 shadow-xs' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100/70'"
+                            :class="activeTab === 'transactions' ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 border-t-2 border-indigo-600 dark:border-indigo-400 shadow-xs' : 'text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/70 dark:hover:bg-slate-700/50'"
                         >
                             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                             <span>Mutasi Saldo (Kredit &amp; Debit)</span>
-                            <span class="text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full font-black font-mono" :class="activeTab === 'transactions' ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-200/70 text-gray-600'">
+                            <span class="text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full font-black font-mono" :class="activeTab === 'transactions' ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300' : 'bg-gray-200/70 dark:bg-slate-700 text-gray-600 dark:text-slate-300'">
                                 {{ transactions.total || 0 }} Mutasi
                             </span>
                         </button>
                         <button 
                             @click="switchTab('requests')" 
                             class="px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-t-2xl font-bold text-xs sm:text-sm transition-all relative flex items-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap shrink-0"
-                            :class="activeTab === 'requests' ? 'bg-white text-indigo-600 border-t-2 border-indigo-600 shadow-xs' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100/70'"
+                            :class="activeTab === 'requests' ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 border-t-2 border-indigo-600 dark:border-indigo-400 shadow-xs' : 'text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/70 dark:hover:bg-slate-700/50'"
                         >
                             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             <span>Permintaan &amp; Top Up Saldo</span>
                             <span v-if="stats.pending_requests_count > 0" class="text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full font-black font-mono bg-amber-500 text-white animate-pulse">
                                 {{ stats.pending_requests_count }} Pending
                             </span>
-                            <span v-else class="text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full font-black font-mono" :class="activeTab === 'requests' ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-200/70 text-gray-600'">
+                            <span v-else class="text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full font-black font-mono" :class="activeTab === 'requests' ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300' : 'bg-gray-200/70 dark:bg-slate-700 text-gray-600 dark:text-slate-300'">
                                 {{ requests.total || 0 }} Riwayat
                             </span>
                         </button>
@@ -133,7 +133,7 @@
                     <div v-if="hasActiveFilters" class="pb-2">
                         <button 
                             @click="resetFilters" 
-                            class="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap"
+                            class="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 px-3 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap"
                         >
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                             <span>Reset Filter</span>
@@ -142,18 +142,18 @@
                 </div>
 
                 <!-- Filter Controls Toolbar -->
-                <div class="p-4 sm:p-6 border-b border-gray-100 bg-white">
+                <div class="p-4 sm:p-6 border-b border-gray-100 dark:border-slate-700/80 bg-white dark:bg-slate-800 transition-colors">
                     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-12 gap-3">
                         <!-- Search Box -->
                         <div class="sm:col-span-2 xl:col-span-3 relative min-w-0">
-                            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-400">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-400 dark:text-slate-500">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                             </span>
                             <input 
                                 v-model="filterForm.search" 
                                 @input="debouncedSearch"
                                 type="text" 
-                                class="w-full pl-10 pr-4 py-2.5 bg-gray-50/70 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition" 
+                                class="w-full pl-10 pr-4 py-2.5 bg-gray-50/70 dark:bg-slate-900/80 border border-gray-200 dark:border-slate-700 rounded-xl text-sm text-gray-900 dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition" 
                                 placeholder="Cari keterangan, kode ref, nama..."
                             />
                         </div>
@@ -163,7 +163,7 @@
                             <select 
                                 v-model="filterForm.reseller_id" 
                                 @change="applyFilters"
-                                class="w-full px-3 py-2.5 bg-gray-50/70 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition cursor-pointer"
+                                class="w-full px-3 py-2.5 bg-gray-50/70 dark:bg-slate-900/80 border border-gray-200 dark:border-slate-700 rounded-xl text-sm text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition cursor-pointer"
                             >
                                 <option value="">Semua Reseller</option>
                                 <option v-for="res in resellers" :key="res.id" :value="res.id">
@@ -177,7 +177,7 @@
                             <select 
                                 v-model="filterForm.type" 
                                 @change="applyFilters"
-                                class="w-full px-3 py-2.5 bg-gray-50/70 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition cursor-pointer"
+                                class="w-full px-3 py-2.5 bg-gray-50/70 dark:bg-slate-900/80 border border-gray-200 dark:border-slate-700 rounded-xl text-sm text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition cursor-pointer"
                             >
                                 <option value="">Semua Tipe Mutasi</option>
                                 <option value="credit">➕ Saldo Masuk (Kredit)</option>
@@ -188,7 +188,7 @@
                             <select 
                                 v-model="filterForm.status" 
                                 @change="applyFilters"
-                                class="w-full px-3 py-2.5 bg-gray-50/70 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition cursor-pointer"
+                                class="w-full px-3 py-2.5 bg-gray-50/70 dark:bg-slate-900/80 border border-gray-200 dark:border-slate-700 rounded-xl text-sm text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition cursor-pointer"
                             >
                                 <option value="">Semua Status</option>
                                 <option value="pending">⏳ Menunggu (Pending)</option>
@@ -203,15 +203,15 @@
                                 v-model="filterForm.start_date" 
                                 @change="applyFilters"
                                 type="date" 
-                                class="w-full sm:flex-1 min-w-0 px-2.5 py-2 bg-gray-50/70 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                                class="w-full sm:flex-1 min-w-0 px-2.5 py-2 bg-gray-50/70 dark:bg-slate-900/80 border border-gray-200 dark:border-slate-700 rounded-xl text-xs text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                                 title="Dari Tanggal"
                             />
-                            <span class="hidden sm:inline text-gray-400 text-xs shrink-0">-</span>
+                            <span class="hidden sm:inline text-gray-400 dark:text-slate-500 text-xs shrink-0">-</span>
                             <input 
                                 v-model="filterForm.end_date" 
                                 @change="applyFilters"
                                 type="date" 
-                                class="w-full sm:flex-1 min-w-0 px-2.5 py-2 bg-gray-50/70 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                                class="w-full sm:flex-1 min-w-0 px-2.5 py-2 bg-gray-50/70 dark:bg-slate-900/80 border border-gray-200 dark:border-slate-700 rounded-xl text-xs text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                                 title="Sampai Tanggal"
                             />
                         </div>
@@ -221,45 +221,45 @@
                 <!-- TAB 1: Mutasi Transaksi Saldo (Kredit & Debit) -->
                 <div v-if="activeTab === 'transactions'">
                     <div class="overflow-x-auto w-full overscroll-x-contain">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50/80">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+                            <thead class="bg-gray-50/80 dark:bg-slate-900/60">
                                 <tr>
-                                    <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Waktu &amp; Tanggal</th>
-                                    <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Reseller</th>
-                                    <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Tipe</th>
-                                    <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Nominal</th>
-                                    <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Keterangan &amp; Referensi</th>
-                                    <th scope="col" class="px-6 py-4 text-right text-xs font-black text-gray-500 uppercase tracking-wider">Aksi</th>
+                                    <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 dark:text-slate-400 uppercase tracking-wider">Waktu &amp; Tanggal</th>
+                                    <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 dark:text-slate-400 uppercase tracking-wider">Reseller</th>
+                                    <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 dark:text-slate-400 uppercase tracking-wider">Tipe</th>
+                                    <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 dark:text-slate-400 uppercase tracking-wider">Nominal</th>
+                                    <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 dark:text-slate-400 uppercase tracking-wider">Keterangan &amp; Referensi</th>
+                                    <th scope="col" class="px-6 py-4 text-right text-xs font-black text-gray-500 dark:text-slate-400 uppercase tracking-wider">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody class="bg-white divide-y divide-gray-100">
-                                <tr v-for="tx in transactions.data" :key="tx.id" class="hover:bg-indigo-50/30 transition-colors">
+                            <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-100 dark:divide-slate-700/60">
+                                <tr v-for="tx in transactions.data" :key="tx.id" class="hover:bg-indigo-50/30 dark:hover:bg-slate-700/40 transition-colors">
                                     <!-- Tanggal -->
-                                    <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-600">
-                                        <div class="font-bold text-gray-900">{{ formatDate(tx.created_at) }}</div>
-                                        <div class="text-[11px] text-gray-400 font-mono mt-0.5">{{ formatTime(tx.created_at) }} WIB</div>
+                                    <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-600 dark:text-slate-300">
+                                        <div class="font-bold text-gray-900 dark:text-white">{{ formatDate(tx.created_at) }}</div>
+                                        <div class="text-[11px] text-gray-400 dark:text-slate-500 font-mono mt-0.5">{{ formatTime(tx.created_at) }} WIB</div>
                                     </td>
 
                                     <!-- Reseller -->
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                                        <div class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
                                             <span>{{ getResellerName(tx.reseller) }}</span>
-                                            <span v-if="tx.reseller?.customer" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200/60">
+                                            <span v-if="tx.reseller?.customer" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60">
                                                 Pelanggan
                                             </span>
-                                            <span v-else class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200/60">
+                                            <span v-else class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60">
                                                 Mitra User
                                             </span>
                                         </div>
-                                        <div class="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
+                                        <div class="text-xs text-gray-500 dark:text-slate-400 flex items-center gap-2 mt-0.5">
                                             <span>{{ tx.reseller?.customer?.phone || tx.reseller?.user?.phone || '-' }}</span>
                                             <a 
                                                 v-if="tx.reseller?.customer?.phone || tx.reseller?.user?.phone" 
                                                 :href="`https://wa.me/${formatWa(tx.reseller?.customer?.phone || tx.reseller?.user?.phone)}`" 
                                                 target="_blank" 
-                                                class="text-[10px] text-emerald-600 font-bold hover:underline"
+                                                class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold hover:underline flex items-center gap-0.5"
                                             >
-                                                💬 WA
+                                                <span>💬 WA</span>
                                             </a>
                                         </div>
                                     </td>
@@ -268,17 +268,17 @@
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span 
                                             v-if="tx.type === 'credit'" 
-                                            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-50 text-emerald-700 border border-emerald-200/70"
+                                            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60"
                                         >
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v12m6-6H6"/></svg>
-                                            KREDIT (Masuk)
+                                            + KREDIT (Masuk)
                                         </span>
                                         <span 
                                             v-else 
-                                            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-rose-50 text-rose-700 border border-rose-200/70"
+                                            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/70 dark:border-rose-800/60"
                                         >
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M20 12H4"/></svg>
-                                            DEBIT (Keluar)
+                                            - DEBIT (Keluar)
                                         </span>
                                     </td>
 
@@ -286,7 +286,7 @@
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div 
                                             class="text-sm font-black font-mono"
-                                            :class="tx.type === 'credit' ? 'text-emerald-600' : 'text-rose-600'"
+                                            :class="tx.type === 'credit' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'"
                                         >
                                             {{ tx.type === 'credit' ? '+' : '-' }} Rp {{ formatRupiah(tx.amount) }}
                                         </div>
@@ -294,11 +294,11 @@
 
                                     <!-- Keterangan & Referensi -->
                                     <td class="px-6 py-4">
-                                        <div class="text-xs text-gray-800 font-medium break-words max-w-md">
+                                        <div class="text-xs text-gray-800 dark:text-slate-200 font-medium break-words max-w-md">
                                             {{ tx.description }}
                                         </div>
                                         <div v-if="tx.reference_id" class="mt-1">
-                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-gray-100 text-gray-600 border border-gray-200">
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-600">
                                                 Ref: {{ tx.reference_id }}
                                             </span>
                                         </div>
@@ -309,15 +309,15 @@
                                         <div class="flex items-center justify-end gap-1.5">
                                             <button 
                                                 @click="openAddModal(tx.reseller_id)" 
-                                                class="inline-flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-800 px-2.5 py-1.5 rounded-lg border border-emerald-200 transition font-bold cursor-pointer shadow-xs active:scale-95"
+                                                class="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 px-2.5 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800 transition font-bold cursor-pointer shadow-xs active:scale-95"
                                                 title="Isi saldo manual untuk reseller ini"
                                             >
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-                                                <span>Isi Saldo</span>
+                                                <span>+ Isi Saldo</span>
                                             </button>
                                             <button 
                                                 @click="openCorrectionForTx(tx)" 
-                                                class="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-2.5 py-1.5 rounded-lg border border-indigo-200 transition font-bold cursor-pointer"
+                                                class="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 px-2.5 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800 transition font-bold cursor-pointer"
                                                 title="Koreksi nominal transaksi jika salah input"
                                             >
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
@@ -325,7 +325,7 @@
                                             </button>
                                             <button 
                                                 @click="confirmDeleteTx(tx)" 
-                                                class="inline-flex items-center gap-1 text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-200 transition font-bold cursor-pointer"
+                                                class="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/50 px-2.5 py-1.5 rounded-lg border border-rose-200 dark:border-rose-800 transition font-bold cursor-pointer"
                                                 title="Hapus riwayat mutasi ini dan sesuaikan saldo reseller"
                                             >
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
@@ -336,13 +336,13 @@
                                 </tr>
 
                                 <tr v-if="!transactions.data || !transactions.data.length">
-                                    <td colspan="6" class="px-6 py-16 text-center text-gray-500">
+                                    <td colspan="6" class="px-6 py-16 text-center text-gray-500 dark:text-slate-400">
                                         <div class="flex flex-col items-center justify-center">
-                                            <div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 mb-3">
+                                            <div class="w-14 h-14 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center text-gray-400 dark:text-slate-500 mb-3">
                                                 <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                                             </div>
-                                            <p class="font-bold text-gray-800 text-sm">Belum Ada Riwayat Mutasi Saldo</p>
-                                            <p class="text-xs text-gray-400 mt-1 max-w-sm">
+                                            <p class="font-bold text-gray-800 dark:text-slate-200 text-sm">Belum Ada Riwayat Mutasi Saldo</p>
+                                            <p class="text-xs text-gray-400 dark:text-slate-500 mt-1 max-w-sm">
                                                 Mutasi akan otomatis tercatat setiap kali reseller membeli voucher, membayar di loket biller, atau mendapatkan isi saldo manual.
                                             </p>
                                         </div>
@@ -353,19 +353,20 @@
                     </div>
 
                     <!-- Pagination -->
-                    <div v-if="transactions.links && transactions.links.length > 3" class="px-6 py-4 bg-gray-50/70 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div class="text-xs text-gray-500">
-                            Menampilkan <span class="font-bold text-gray-800">{{ transactions.from || 0 }}</span> - <span class="font-bold text-gray-800">{{ transactions.to || 0 }}</span> dari <span class="font-bold text-gray-800">{{ transactions.total || 0 }}</span> mutasi
+                    <div v-if="transactions.links && transactions.links.length > 3" class="px-6 py-4 bg-gray-50/70 dark:bg-slate-800 border-t border-gray-100 dark:border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div class="text-xs text-gray-500 dark:text-slate-400">
+                            Menampilkan <span class="font-bold text-gray-800 dark:text-white">{{ transactions.from || 0 }}</span> - <span class="font-bold text-gray-800 dark:text-white">{{ transactions.to || 0 }}</span> dari <span class="font-bold text-gray-800 dark:text-white">{{ transactions.total || 0 }}</span> mutasi
                         </div>
                         <div class="flex flex-wrap gap-1">
                             <template v-for="(link, p) in transactions.links" :key="p">
-                                <div v-if="link.url === null" class="px-3 py-1 text-xs text-gray-400 border border-gray-200 rounded-lg bg-gray-50 select-none" v-html="link.label" />
+                                <div v-if="link.url === null" class="px-3 py-1 text-xs text-gray-400 dark:text-slate-500 border border-gray-200 dark:border-slate-700 rounded-lg bg-gray-50 dark:bg-slate-800 select-none" v-html="link.label" />
                                 <Link 
                                     v-else 
                                     :href="link.url" 
                                     preserve-scroll 
-                                    class="px-3 py-1 text-xs border rounded-lg hover:bg-gray-100 transition cursor-pointer"
-                                    :class="link.active ? 'bg-indigo-600 border-indigo-600 text-white font-bold shadow-xs' : 'bg-white border-gray-200 text-gray-700'"
+                                    preserve-state
+                                    class="px-3 py-1 text-xs border rounded-lg transition cursor-pointer"
+                                    :class="link.active ? 'bg-indigo-600 border-indigo-600 text-white font-bold shadow-xs' : 'bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-600'"
                                     v-html="link.label" 
                                 />
                             </template>
@@ -376,38 +377,52 @@
                 <!-- TAB 2: Permintaan & Top Up Saldo (Kasbon & Transfer) -->
                 <div v-else-if="activeTab === 'requests'">
                     <div class="overflow-x-auto w-full overscroll-x-contain">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50/80">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+                            <thead class="bg-gray-50/80 dark:bg-slate-900/60">
                                 <tr>
-                                    <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Tanggal Pengajuan</th>
-                                    <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Reseller</th>
-                                    <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Nominal</th>
-                                    <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Metode &amp; Catatan</th>
-                                    <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Disetujui Oleh</th>
-                                    <th scope="col" class="px-6 py-4 text-right text-xs font-black text-gray-500 uppercase tracking-wider">Aksi</th>
+                                    <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 dark:text-slate-400 uppercase tracking-wider">Tanggal Pengajuan</th>
+                                    <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 dark:text-slate-400 uppercase tracking-wider">Reseller</th>
+                                    <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 dark:text-slate-400 uppercase tracking-wider">Nominal</th>
+                                    <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 dark:text-slate-400 uppercase tracking-wider">Metode &amp; Catatan</th>
+                                    <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                                    <th scope="col" class="px-6 py-4 text-left text-xs font-black text-gray-500 dark:text-slate-400 uppercase tracking-wider">Disetujui Oleh</th>
+                                    <th scope="col" class="px-6 py-4 text-right text-xs font-black text-gray-500 dark:text-slate-400 uppercase tracking-wider">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody class="bg-white divide-y divide-gray-100">
-                                <tr v-for="req in requests.data" :key="req.id" class="hover:bg-indigo-50/30 transition-colors">
+                            <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-100 dark:divide-slate-700/60">
+                                <tr v-for="req in requests.data" :key="req.id" class="hover:bg-indigo-50/30 dark:hover:bg-slate-700/40 transition-colors">
                                     <!-- Tanggal -->
-                                    <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-600">
-                                        <div class="font-bold text-gray-900">{{ formatDate(req.created_at) }}</div>
-                                        <div class="text-[11px] text-gray-400 font-mono mt-0.5">{{ formatTime(req.created_at) }} WIB</div>
+                                    <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-600 dark:text-slate-300">
+                                        <div class="font-bold text-gray-900 dark:text-white">{{ formatDate(req.created_at) }}</div>
+                                        <div class="text-[11px] text-gray-400 dark:text-slate-500 font-mono mt-0.5">{{ formatTime(req.created_at) }} WIB</div>
                                     </td>
 
                                     <!-- Reseller -->
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                                        <div class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
                                             <span>{{ getResellerName(req.reseller) }}</span>
+                                            <span v-if="req.reseller?.customer" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60">
+                                                Pelanggan
+                                            </span>
+                                            <span v-else class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60">
+                                                Mitra User
+                                            </span>
                                         </div>
-                                        <div class="text-xs text-gray-500 mt-0.5">
-                                            {{ req.reseller?.customer?.phone || req.reseller?.user?.phone || '-' }}
+                                        <div class="text-xs text-gray-500 dark:text-slate-400 flex items-center gap-2 mt-0.5">
+                                            <span>{{ req.reseller?.customer?.phone || req.reseller?.user?.phone || '-' }}</span>
+                                            <a 
+                                                v-if="req.reseller?.customer?.phone || req.reseller?.user?.phone" 
+                                                :href="`https://wa.me/${formatWa(req.reseller?.customer?.phone || req.reseller?.user?.phone)}`" 
+                                                target="_blank" 
+                                                class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold hover:underline flex items-center gap-0.5"
+                                            >
+                                                <span>💬 WA</span>
+                                            </a>
                                         </div>
                                     </td>
 
                                     <!-- Nominal -->
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-black font-mono text-indigo-600">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-black font-mono text-indigo-600 dark:text-indigo-400">
                                         Rp {{ formatRupiah(req.amount) }}
                                     </td>
 
@@ -416,38 +431,38 @@
                                         <span 
                                             class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase mb-1"
                                             :class="{
-                                                'bg-purple-100 text-purple-800 border border-purple-200': req.payment_method === 'kasbon',
-                                                'bg-blue-100 text-blue-800 border border-blue-200': req.payment_method === 'transfer',
-                                                'bg-emerald-100 text-emerald-800 border border-emerald-200': req.payment_method === 'cash',
+                                                'bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800': req.payment_method === 'kasbon',
+                                                'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800': req.payment_method === 'transfer',
+                                                'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800': req.payment_method === 'cash',
                                             }"
                                         >
                                             {{ req.payment_method === 'kasbon' ? 'Kasbon Saldo' : (req.payment_method === 'transfer' ? 'Transfer Bank' : 'Tunai / Cash') }}
                                         </span>
-                                        <div class="text-xs text-gray-500 italic break-words line-clamp-2 max-w-xs">
+                                        <div class="text-xs text-gray-500 dark:text-slate-400 italic break-words line-clamp-2 max-w-xs">
                                             {{ req.notes || 'Tidak ada catatan' }}
                                         </div>
                                     </td>
 
                                     <!-- Status -->
                                     <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                        <span v-if="req.status === 'pending'" class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
+                                        <span v-if="req.status === 'pending'" class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 animate-pulse">
                                             ⏳ Menunggu
                                         </span>
-                                        <span v-else-if="req.status === 'approved'" class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                        <span v-else-if="req.status === 'approved'" class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                                             ✅ Disetujui
                                         </span>
-                                        <span v-else-if="req.status === 'paid'" class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-200">
+                                        <span v-else-if="req.status === 'paid'" class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-green-50 dark:bg-green-950/60 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800">
                                             🟢 Lunas
                                         </span>
-                                        <span v-else-if="req.status === 'rejected'" class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                        <span v-else-if="req.status === 'rejected'" class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
                                             ❌ Ditolak
                                         </span>
                                     </td>
 
                                     <!-- Approver -->
-                                    <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
-                                        <div v-if="req.approver" class="font-bold text-gray-800">{{ req.approver.name }}</div>
-                                        <div v-else class="text-gray-400 italic">-</div>
+                                    <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500 dark:text-slate-400">
+                                        <div v-if="req.approver" class="font-bold text-gray-800 dark:text-slate-200">{{ req.approver.name }}</div>
+                                        <div v-else class="text-gray-400 dark:text-slate-500 italic">-</div>
                                     </td>
 
                                     <!-- Aksi -->
@@ -463,7 +478,7 @@
                                             </button>
                                             <button 
                                                 @click="openCorrectionForReq(req)" 
-                                                class="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-2.5 py-1.5 rounded-lg border border-indigo-200 transition text-xs font-bold cursor-pointer"
+                                                class="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 px-2.5 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800 transition text-xs font-bold cursor-pointer"
                                                 title="Koreksi nominal sebelum disetujui"
                                             >
                                                 ✏️ Koreksi
@@ -481,15 +496,15 @@
                                         <div v-else-if="req.status === 'approved'" class="flex justify-end items-center gap-1.5">
                                             <button 
                                                 @click="openAddModal(req.reseller_id)" 
-                                                class="inline-flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-800 px-2.5 py-1.5 rounded-lg border border-emerald-200 transition font-bold cursor-pointer shadow-xs active:scale-95"
+                                                class="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 px-2.5 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800 transition font-bold cursor-pointer shadow-xs active:scale-95"
                                                 title="Isi saldo manual lagi untuk reseller ini"
                                             >
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-                                                <span>Isi Saldo</span>
+                                                <span>+ Isi Saldo</span>
                                             </button>
                                             <button 
                                                 @click="openCorrectionForReq(req)" 
-                                                class="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-2.5 py-1.5 rounded-lg border border-indigo-200 transition text-xs font-bold cursor-pointer"
+                                                class="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 px-2.5 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800 transition text-xs font-bold cursor-pointer"
                                                 title="Koreksi nominal saldo yang sudah masuk"
                                             >
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
@@ -497,7 +512,7 @@
                                             </button>
                                             <button 
                                                 @click="confirmRollbackReq(req)" 
-                                                class="inline-flex items-center gap-1 text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-200 transition text-xs font-bold cursor-pointer"
+                                                class="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/50 px-2.5 py-1.5 rounded-lg border border-rose-200 dark:border-rose-800 transition text-xs font-bold cursor-pointer"
                                                 title="Batalkan pengisian saldo dan tarik kembali saldonya"
                                             >
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
@@ -509,18 +524,18 @@
                                         <div v-else class="flex justify-end items-center gap-1.5">
                                             <button 
                                                 @click="openAddModal(req.reseller_id)" 
-                                                class="inline-flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-800 px-2.5 py-1.5 rounded-lg border border-emerald-200 transition font-bold cursor-pointer shadow-xs active:scale-95"
+                                                class="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 px-2.5 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800 transition font-bold cursor-pointer shadow-xs active:scale-95"
                                                 title="Isi saldo manual untuk reseller ini"
                                             >
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-                                                <span>Isi Saldo</span>
+                                                <span>+ Isi Saldo</span>
                                             </button>
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] bg-gray-100 text-gray-500 font-semibold">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-300 font-semibold">
                                                 Dibatalkan
                                             </span>
                                             <button 
                                                 @click="confirmDeleteReq(req)" 
-                                                class="inline-flex items-center gap-1 text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2 py-1 rounded-lg border border-rose-200 transition text-xs font-bold cursor-pointer"
+                                                class="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/50 px-2 py-1 rounded-lg border border-rose-200 dark:border-rose-800 transition text-xs font-bold cursor-pointer"
                                                 title="Hapus riwayat pengajuan ini"
                                             >
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
@@ -531,14 +546,14 @@
                                 </tr>
 
                                 <tr v-if="!requests.data || !requests.data.length">
-                                    <td colspan="7" class="px-6 py-16 text-center text-gray-500">
+                                    <td colspan="7" class="px-6 py-16 text-center text-gray-500 dark:text-slate-400">
                                         <div class="flex flex-col items-center justify-center">
-                                            <div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 mb-3">
+                                            <div class="w-14 h-14 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center text-gray-400 dark:text-slate-500 mb-3">
                                                 <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                             </div>
-                                            <p class="font-bold text-gray-800 text-sm">Tidak Ada Permintaan Saldo</p>
-                                            <p class="text-xs text-gray-400 mt-1 max-w-sm">
-                                                Gunakan tombol "Isi Saldo Manual" untuk menambahkan saldo reseller secara langsung.
+                                            <p class="font-bold text-gray-800 dark:text-slate-200 text-sm">Tidak Ada Permintaan Saldo</p>
+                                            <p class="text-xs text-gray-400 dark:text-slate-500 mt-1 max-w-sm">
+                                                Gunakan tombol "+ Isi Saldo Manual" untuk menambahkan saldo reseller secara langsung.
                                             </p>
                                         </div>
                                     </td>
@@ -548,19 +563,20 @@
                     </div>
 
                     <!-- Pagination -->
-                    <div v-if="requests.links && requests.links.length > 3" class="px-6 py-4 bg-gray-50/70 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div class="text-xs text-gray-500">
-                            Menampilkan <span class="font-bold text-gray-800">{{ requests.from || 0 }}</span> - <span class="font-bold text-gray-800">{{ requests.to || 0 }}</span> dari <span class="font-bold text-gray-800">{{ requests.total || 0 }}</span> permohonan
+                    <div v-if="requests.links && requests.links.length > 3" class="px-6 py-4 bg-gray-50/70 dark:bg-slate-800 border-t border-gray-100 dark:border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div class="text-xs text-gray-500 dark:text-slate-400">
+                            Menampilkan <span class="font-bold text-gray-800 dark:text-white">{{ requests.from || 0 }}</span> - <span class="font-bold text-gray-800 dark:text-white">{{ requests.to || 0 }}</span> dari <span class="font-bold text-gray-800 dark:text-white">{{ requests.total || 0 }}</span> permohonan
                         </div>
                         <div class="flex flex-wrap gap-1">
                             <template v-for="(link, p) in requests.links" :key="p">
-                                <div v-if="link.url === null" class="px-3 py-1 text-xs text-gray-400 border border-gray-200 rounded-lg bg-gray-50 select-none" v-html="link.label" />
+                                <div v-if="link.url === null" class="px-3 py-1 text-xs text-gray-400 dark:text-slate-500 border border-gray-200 dark:border-slate-700 rounded-lg bg-gray-50 dark:bg-slate-800 select-none" v-html="link.label" />
                                 <Link 
                                     v-else 
                                     :href="link.url" 
                                     preserve-scroll 
-                                    class="px-3 py-1 text-xs border rounded-lg hover:bg-gray-100 transition cursor-pointer"
-                                    :class="link.active ? 'bg-indigo-600 border-indigo-600 text-white font-bold shadow-xs' : 'bg-white border-gray-200 text-gray-700'"
+                                    preserve-state
+                                    class="px-3 py-1 text-xs border rounded-lg transition cursor-pointer"
+                                    :class="link.active ? 'bg-indigo-600 border-indigo-600 text-white font-bold shadow-xs' : 'bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-600'"
                                     v-html="link.label" 
                                 />
                             </template>
@@ -573,8 +589,8 @@
 
         <!-- Add Manual Topup Modal -->
         <div v-if="showAddModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-            <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="showAddModal = false"></div>
-            <div class="relative bg-white rounded-2xl sm:rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:max-w-lg w-full max-h-[90vh] flex flex-col border border-gray-100">
+            <div class="fixed inset-0 bg-gray-900/60 dark:bg-black/70 backdrop-blur-sm transition-opacity" @click="showAddModal = false"></div>
+            <div class="relative bg-white dark:bg-slate-800 rounded-2xl sm:rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:max-w-lg w-full max-h-[90vh] flex flex-col border border-gray-100 dark:border-slate-700">
                     
                     <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-5 sm:px-6 py-4 sm:py-5 text-white flex items-center justify-between shrink-0">
                         <div class="min-w-0 pr-2">
@@ -596,17 +612,17 @@
                         <!-- Select Reseller -->
                         <div>
                             <div class="flex items-center justify-between mb-1.5">
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider">
                                     Pilih Reseller <span class="text-rose-500">*</span>
                                 </label>
-                                <span v-if="selectedReseller" class="text-[11px] font-bold px-2 py-0.5 rounded-full" :class="selectedReseller.has_customer ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-purple-50 text-purple-700 border border-purple-200'">
+                                <span v-if="selectedReseller" class="text-[11px] font-bold px-2 py-0.5 rounded-full" :class="selectedReseller.has_customer ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800' : 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800'">
                                     {{ selectedReseller.has_customer ? 'Tipe: Pelanggan' : 'Tipe: Mitra User' }}
                                 </span>
                             </div>
                             <select 
                                 v-model="form.reseller_id" 
                                 @change="onResellerChange"
-                                class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium transition"
+                                class="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-xl text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium transition"
                                 required
                             >
                                 <option value="">-- Pilih Reseller --</option>
@@ -617,14 +633,14 @@
                         </div>
 
                         <!-- Current Balance Preview if selected -->
-                        <div v-if="selectedReseller" class="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-3.5 flex items-center justify-between">
+                        <div v-if="selectedReseller" class="bg-indigo-50/70 dark:bg-slate-900/60 border border-indigo-100 dark:border-slate-700 rounded-2xl p-3.5 flex items-center justify-between">
                             <div>
-                                <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-600">Saldo Saat Ini</span>
-                                <div class="text-base font-black font-mono text-indigo-950">Rp {{ formatRupiah(selectedReseller.balance) }}</div>
+                                <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Saldo Saat Ini</span>
+                                <div class="text-base font-black font-mono text-indigo-950 dark:text-white">Rp {{ formatRupiah(selectedReseller.balance) }}</div>
                             </div>
                             <div class="text-right">
-                                <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-600">Estimasi Saldo Baru</span>
-                                <div class="text-base font-black font-mono text-emerald-600">
+                                <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Estimasi Saldo Baru</span>
+                                <div class="text-base font-black font-mono text-emerald-600 dark:text-emerald-400">
                                     Rp {{ formatRupiah(Number(selectedReseller.balance || 0) + (Number(form.amount) || 0)) }}
                                 </div>
                             </div>
@@ -632,21 +648,21 @@
 
                         <!-- Nominal Saldo -->
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                            <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                                 Nominal Tambah Saldo (Rp) <span class="text-rose-500">*</span>
                             </label>
                             <input 
                                 ref="amountInputRef"
                                 type="number" 
                                 v-model.number="form.amount" 
-                                class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-mono font-bold text-gray-900" 
+                                class="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-mono font-bold text-gray-900 dark:text-white" 
                                 required 
                                 min="1000"
                                 step="1000"
                                 placeholder="Contoh: 100000"
                             />
                             
-                            <!-- Quick Chips -->
+                            <!-- Quick Chips Presets -->
                             <div class="flex items-center gap-1.5 flex-wrap mt-2">
                                 <button 
                                     type="button" 
@@ -654,24 +670,32 @@
                                     :key="preset"
                                     @click="form.amount = preset"
                                     class="text-[11px] font-bold px-2.5 py-1 rounded-lg border transition cursor-pointer"
-                                    :class="form.amount === preset ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-200'"
+                                    :class="form.amount === preset ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' : 'bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-200 border-gray-200 dark:border-slate-600'"
                                 >
-                                    +{{ formatRupiah(preset) }}
+                                    Rp {{ formatRupiah(preset) }}
+                                </button>
+                                <button 
+                                    v-if="form.amount" 
+                                    type="button" 
+                                    @click="form.amount = ''" 
+                                    class="text-[10px] font-bold px-2 py-1 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-600 border border-gray-200 dark:border-slate-600 cursor-pointer ml-auto"
+                                >
+                                    Clear
                                 </button>
                             </div>
                         </div>
 
                         <!-- Metode Pembayaran -->
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                            <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                                 Metode Pembayaran <span class="text-rose-500">*</span>
                             </label>
                             <div class="grid grid-cols-3 gap-2">
                                 <label 
                                     class="flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition text-center"
                                     :class="[
-                                        form.payment_method === 'kasbon' ? 'border-indigo-600 bg-indigo-50/50 text-indigo-900 font-black' : 'border-gray-200 hover:border-gray-300 text-gray-600',
-                                        selectedReseller && !selectedReseller.has_customer ? 'opacity-40 cursor-not-allowed bg-gray-50' : 'cursor-pointer'
+                                        form.payment_method === 'kasbon' ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 font-black' : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 text-gray-600 dark:text-slate-400',
+                                        selectedReseller && !selectedReseller.has_customer ? 'opacity-40 cursor-not-allowed bg-gray-50 dark:bg-slate-900' : 'cursor-pointer'
                                     ]"
                                 >
                                     <input 
@@ -683,61 +707,61 @@
                                     />
                                     <span class="text-base mb-1">📝</span>
                                     <span class="text-xs">Kasbon</span>
-                                    <span class="text-[9px] text-gray-400 mt-0.5">Tagihan Besok</span>
+                                    <span class="text-[9px] text-gray-400 dark:text-slate-500 mt-0.5">Tagihan Besok</span>
                                 </label>
                                 <label 
                                     class="flex flex-col items-center justify-center p-3 rounded-2xl border-2 cursor-pointer transition text-center"
-                                    :class="form.payment_method === 'transfer' ? 'border-indigo-600 bg-indigo-50/50 text-indigo-900 font-black' : 'border-gray-200 hover:border-gray-300 text-gray-600'"
+                                    :class="form.payment_method === 'transfer' ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 font-black' : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 text-gray-600 dark:text-slate-400'"
                                 >
                                     <input type="radio" v-model="form.payment_method" value="transfer" class="sr-only" />
                                     <span class="text-base mb-1">🏦</span>
                                     <span class="text-xs">Transfer</span>
-                                    <span class="text-[9px] text-emerald-600 font-bold mt-0.5">Sudah Bayar</span>
+                                    <span class="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">Sudah Bayar</span>
                                 </label>
                                 <label 
                                     class="flex flex-col items-center justify-center p-3 rounded-2xl border-2 cursor-pointer transition text-center"
-                                    :class="form.payment_method === 'cash' ? 'border-indigo-600 bg-indigo-50/50 text-indigo-900 font-black' : 'border-gray-200 hover:border-gray-300 text-gray-600'"
+                                    :class="form.payment_method === 'cash' ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 font-black' : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 text-gray-600 dark:text-slate-400'"
                                 >
                                     <input type="radio" v-model="form.payment_method" value="cash" class="sr-only" />
                                     <span class="text-base mb-1">💵</span>
                                     <span class="text-xs">Tunai / Cash</span>
-                                    <span class="text-[9px] text-emerald-600 font-bold mt-0.5">Sudah Bayar</span>
+                                    <span class="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">Sudah Bayar</span>
                                 </label>
                             </div>
-                            <p v-if="form.payment_method === 'kasbon'" class="text-[11px] text-purple-700 bg-purple-50 p-2.5 rounded-xl border border-purple-200/70 mt-2">
+                            <p v-if="form.payment_method === 'kasbon'" class="text-[11px] text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 p-2.5 rounded-xl border border-purple-200/70 dark:border-purple-800 mt-2">
                                 ℹ️ <strong>Mode Kasbon:</strong> Saldo langsung bertambah dan otomatis diterbitkan Invoice Penagihan Kasbon di menu <em>Penagihan Kasbon</em>.
                             </p>
-                            <p v-else-if="selectedReseller && !selectedReseller.has_customer" class="text-[11px] text-amber-700 bg-amber-50 p-2 rounded-xl border border-amber-200/70 mt-2">
+                            <p v-else-if="selectedReseller && !selectedReseller.has_customer" class="text-[11px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 p-2 rounded-xl border border-amber-200/70 dark:border-amber-800 mt-2">
                                 💡 <em>Reseller tipe Mitra User hanya dapat diisi via Transfer atau Tunai (Kasbon khusus akun reseller bertipe pelanggan).</em>
                             </p>
                         </div>
 
                         <!-- Catatan Tambahan -->
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                            <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                                 Catatan / Keterangan
                             </label>
                             <textarea 
                                 v-model="form.notes" 
                                 rows="2" 
-                                class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" 
+                                class="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-xl text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" 
                                 placeholder="Contoh: Permintaan via WhatsApp, setor tunai kantor, dll"
                             ></textarea>
                         </div>
 
                         <!-- Footer Actions -->
-                        <div class="pt-4 flex flex-wrap items-center justify-end gap-2.5 sm:gap-3 border-t border-gray-100">
+                        <div class="pt-4 flex flex-wrap items-center justify-end gap-2.5 sm:gap-3 border-t border-gray-100 dark:border-slate-700">
                             <button 
                                 type="button" 
                                 @click="showAddModal = false" 
-                                class="flex-1 sm:flex-initial px-4 sm:px-5 py-2.5 rounded-xl border border-gray-300 text-xs sm:text-sm font-bold text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+                                class="flex-1 sm:flex-initial px-4 sm:px-5 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 text-xs sm:text-sm font-bold text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition cursor-pointer"
                             >
                                 Batal
                             </button>
                             <button 
                                 type="submit" 
                                 :disabled="form.processing" 
-                                class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold shadow-md shadow-indigo-200 transition cursor-pointer disabled:opacity-50"
+                                class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold shadow-md shadow-indigo-200 dark:shadow-indigo-950/50 transition cursor-pointer disabled:opacity-50"
                             >
                                 <svg v-if="form.processing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -753,8 +777,8 @@
 
         <!-- Correction Modal (Koreksi Nominal Saldo) -->
         <div v-if="showCorrectionModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto" aria-labelledby="modal-correction" role="dialog" aria-modal="true">
-            <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="showCorrectionModal = false"></div>
-            <div class="relative bg-white rounded-2xl sm:rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:max-w-md w-full max-h-[90vh] flex flex-col border border-gray-100">
+            <div class="fixed inset-0 bg-gray-900/60 dark:bg-black/70 backdrop-blur-sm transition-opacity" @click="showCorrectionModal = false"></div>
+            <div class="relative bg-white dark:bg-slate-800 rounded-2xl sm:rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:max-w-md w-full max-h-[90vh] flex flex-col border border-gray-100 dark:border-slate-700">
                     
                     <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-5 sm:px-6 py-4 sm:py-5 text-white flex items-center justify-between shrink-0">
                         <div class="min-w-0 pr-2">
@@ -768,32 +792,41 @@
 
                     <form @submit.prevent="submitCorrection" class="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
                         <!-- Info Reseller -->
-                        <div class="bg-gray-50 border border-gray-200/80 rounded-2xl p-3.5 space-y-1.5">
+                        <div class="bg-gray-50 dark:bg-slate-900/70 border border-gray-200/80 dark:border-slate-700 rounded-2xl p-3.5 space-y-1.5">
                             <div class="flex justify-between items-center text-xs">
-                                <span class="text-gray-500 font-semibold">Reseller:</span>
-                                <span class="font-bold text-gray-900">{{ correctionTarget?.resellerName }}</span>
+                                <span class="text-gray-500 dark:text-slate-400 font-semibold">Reseller:</span>
+                                <span class="font-bold text-gray-900 dark:text-white">{{ correctionTarget?.resellerName }}</span>
                             </div>
                             <div class="flex justify-between items-center text-xs">
-                                <span class="text-gray-500 font-semibold">Saldo Dompet Saat Ini:</span>
-                                <span class="font-bold font-mono text-indigo-700">Rp {{ formatRupiah(correctionTarget?.currentBalance) }}</span>
+                                <span class="text-gray-500 dark:text-slate-400 font-semibold">Tipe Transaksi:</span>
+                                <span v-if="correctionTarget?.txType === 'debit'" class="font-bold text-rose-600 dark:text-rose-400">
+                                    ➖ DEBIT (Saldo Keluar)
+                                </span>
+                                <span v-else class="font-bold text-emerald-600 dark:text-emerald-400">
+                                    ➕ KREDIT (Saldo Masuk)
+                                </span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-gray-500 dark:text-slate-400 font-semibold">Saldo Dompet Saat Ini:</span>
+                                <span class="font-bold font-mono text-indigo-700 dark:text-indigo-400">Rp {{ formatRupiah(correctionTarget?.currentBalance) }}</span>
                             </div>
                             <div v-if="correctionTarget?.referenceId" class="flex justify-between items-center text-xs">
-                                <span class="text-gray-500 font-semibold">Kode Referensi:</span>
-                                <span class="font-mono text-[11px] text-gray-600 font-bold bg-white px-2 py-0.5 rounded border">{{ correctionTarget?.referenceId }}</span>
+                                <span class="text-gray-500 dark:text-slate-400 font-semibold">Kode Referensi:</span>
+                                <span class="font-mono text-[11px] text-gray-600 dark:text-slate-300 font-bold bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-gray-200 dark:border-slate-700">{{ correctionTarget?.referenceId }}</span>
                             </div>
                         </div>
 
                         <!-- Perbandingan Nominal -->
                         <div class="grid grid-cols-2 gap-3">
-                            <div class="bg-gray-100 rounded-2xl p-3 border border-gray-200">
-                                <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Nominal Lama</span>
-                                <div class="text-sm font-black font-mono text-gray-700 line-through">
+                            <div class="bg-gray-100 dark:bg-slate-900 rounded-2xl p-3 border border-gray-200 dark:border-slate-700">
+                                <span class="text-[11px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Nominal Lama</span>
+                                <div class="text-sm font-black font-mono text-gray-700 dark:text-slate-300 line-through">
                                     Rp {{ formatRupiah(correctionTarget?.oldAmount) }}
                                 </div>
                             </div>
-                            <div class="bg-indigo-50/80 rounded-2xl p-3 border border-indigo-200">
-                                <span class="text-[11px] font-bold text-indigo-600 uppercase tracking-wider block mb-1">Nominal Baru</span>
-                                <div class="text-sm font-black font-mono text-indigo-700">
+                            <div class="bg-indigo-50/80 dark:bg-indigo-950/40 rounded-2xl p-3 border border-indigo-200 dark:border-indigo-800">
+                                <span class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block mb-1">Nominal Baru</span>
+                                <div class="text-sm font-black font-mono text-indigo-700 dark:text-indigo-300">
                                     Rp {{ formatRupiah(correctionForm.amount) }}
                                 </div>
                             </div>
@@ -801,13 +834,13 @@
 
                         <!-- Input Nominal Baru -->
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                            <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                                 Nominal Seharusnya (Rp) <span class="text-rose-500">*</span>
                             </label>
                             <input 
                                 type="number" 
                                 v-model.number="correctionForm.amount" 
-                                class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono font-bold text-gray-900" 
+                                class="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono font-bold text-gray-900 dark:text-white" 
                                 required 
                                 min="1000"
                                 step="1000"
@@ -822,7 +855,7 @@
                                     :key="preset"
                                     @click="correctionForm.amount = preset"
                                     class="text-[10px] font-bold px-2 py-1 rounded-lg border transition cursor-pointer"
-                                    :class="correctionForm.amount === preset ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-200'"
+                                    :class="correctionForm.amount === preset ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' : 'bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-200 border-gray-200 dark:border-slate-600'"
                                 >
                                     {{ formatRupiah(preset) }}
                                 </button>
@@ -832,53 +865,53 @@
                         <!-- Live Adjustment Summary Callout -->
                         <div 
                             class="rounded-2xl p-3.5 border transition-all"
-                            :class="correctionDiff >= 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-900'"
+                            :class="balanceImpact >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200' : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200'"
                         >
                             <div class="flex items-center justify-between text-xs font-bold mb-1">
-                                <span>Selisih Penyesuaian Saldo:</span>
+                                <span>Dampak Pada Saldo Reseller:</span>
                                 <span class="font-mono text-sm font-black">
-                                    {{ correctionDiff >= 0 ? '+' : '' }}Rp {{ formatRupiah(correctionDiff) }}
+                                    {{ balanceImpact >= 0 ? '+' : '' }}Rp {{ formatRupiah(balanceImpact) }}
                                 </span>
                             </div>
-                            <div class="text-[11px] text-gray-600">
+                            <div class="text-[11px] text-gray-600 dark:text-slate-300">
                                 Saldo reseller akan otomatis 
-                                <strong :class="correctionDiff >= 0 ? 'text-emerald-700' : 'text-amber-700'">
-                                    {{ correctionDiff >= 0 ? 'bertambah' : 'berkurang' }}
+                                <strong :class="balanceImpact >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'">
+                                    {{ balanceImpact >= 0 ? 'bertambah' : 'berkurang' }}
                                 </strong> 
-                                sebesar Rp {{ formatRupiah(Math.abs(correctionDiff)) }}, sehingga saldo akhirnya menjadi 
-                                <strong class="font-mono text-gray-900">Rp {{ formatRupiah(newEstimatedBalance) }}</strong>.
+                                sebesar Rp {{ formatRupiah(Math.abs(balanceImpact)) }}, sehingga estimasi saldo akhirnya menjadi 
+                                <strong class="font-mono text-gray-900 dark:text-white">Rp {{ formatRupiah(newEstimatedBalance) }}</strong>.
                             </div>
-                            <div v-if="newEstimatedBalance < 0" class="text-rose-600 font-bold text-[11px] mt-2 flex items-center gap-1">
+                            <div v-if="newEstimatedBalance < 0" class="text-rose-600 dark:text-rose-400 font-bold text-[11px] mt-2 flex items-center gap-1">
                                 ⚠️ Saldo akhir tidak boleh minus! Reseller saat ini hanya memiliki saldo Rp {{ formatRupiah(correctionTarget?.currentBalance) }}.
                             </div>
                         </div>
 
                         <!-- Alasan Koreksi -->
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                            <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                                 Alasan / Catatan Koreksi
                             </label>
                             <input 
                                 type="text" 
                                 v-model="correctionForm.reason" 
-                                class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" 
+                                class="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-xl text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" 
                                 placeholder="Contoh: Salah ketik kelebihan angka nol"
                             />
                         </div>
 
                         <!-- Footer Actions -->
-                        <div class="pt-4 flex flex-wrap items-center justify-end gap-2.5 sm:gap-3 border-t border-gray-100">
+                        <div class="pt-4 flex flex-wrap items-center justify-end gap-2.5 sm:gap-3 border-t border-gray-100 dark:border-slate-700">
                             <button 
                                 type="button" 
                                 @click="showCorrectionModal = false" 
-                                class="flex-1 sm:flex-initial px-4 sm:px-5 py-2.5 rounded-xl border border-gray-300 text-xs sm:text-sm font-bold text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+                                class="flex-1 sm:flex-initial px-4 sm:px-5 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 text-xs sm:text-sm font-bold text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition cursor-pointer"
                             >
                                 Batal
                             </button>
                             <button 
                                 type="submit" 
                                 :disabled="correctionForm.processing || newEstimatedBalance < 0 || correctionForm.amount === correctionTarget?.oldAmount" 
-                                class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold shadow-md shadow-indigo-200 transition cursor-pointer disabled:opacity-50"
+                                class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold shadow-md shadow-indigo-200 dark:shadow-indigo-950/50 transition cursor-pointer disabled:opacity-50"
                             >
                                 <svg v-if="correctionForm.processing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -897,9 +930,11 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { router, useForm, Link } from '@inertiajs/vue3';
+import { router, useForm, Link, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Swal from 'sweetalert2';
+
+const page = usePage();
 
 const props = defineProps({
     transactions: {
@@ -917,6 +952,7 @@ const props = defineProps({
     stats: {
         type: Object,
         default: () => ({
+            total_resellers: 0,
             total_saldo_beredar: 0,
             total_credit: 0,
             total_debit: 0,
@@ -1008,7 +1044,7 @@ const form = useForm({
 
 const selectedReseller = computed(() => {
     if (!form.reseller_id) return null;
-    return props.resellers.find(r => r.id === form.reseller_id);
+    return props.resellers.find(r => String(r.id) === String(form.reseller_id));
 });
 
 const amountInputRef = ref(null);
@@ -1052,7 +1088,11 @@ const submitTopup = () => {
 
     form.post(route('reseller-requests.store'), {
         preserveScroll: true,
-        onSuccess: () => {
+        onSuccess: (res) => {
+            if (res?.props?.flash?.error) {
+                Swal.fire('Gagal Menambah Saldo', res.props.flash.error, 'error');
+                return;
+            }
             showAddModal.value = false;
             form.reset();
             Swal.fire({
@@ -1086,7 +1126,11 @@ const confirmApprove = (req) => {
         if (result.isConfirmed) {
             router.post(route('reseller-requests.approve', req.id), {}, {
                 preserveScroll: true,
-                onSuccess: () => {
+                onSuccess: (res) => {
+                    if (res?.props?.flash?.error) {
+                        Swal.fire('Gagal', res.props.flash.error, 'error');
+                        return;
+                    }
                     Swal.fire('Disetujui!', 'Permintaan saldo reseller telah disetujui.', 'success');
                 },
                 onError: (err) => {
@@ -1136,7 +1180,11 @@ const confirmRollbackReq = (req) => {
         if (result.isConfirmed) {
             router.delete(route('reseller-requests.destroy', req.id), {
                 preserveScroll: true,
-                onSuccess: () => {
+                onSuccess: (res) => {
+                    if (res?.props?.flash?.error) {
+                        Swal.fire('Gagal', res.props.flash.error, 'error');
+                        return;
+                    }
                     Swal.fire('Dibatalkan!', 'Pengisian saldo berhasil dibatalkan dan saldo telah dikembalikan.', 'success');
                 },
                 onError: (err) => {
@@ -1156,14 +1204,14 @@ const confirmDeleteTx = (tx) => {
     Swal.fire({
         title: 'Hapus Transaksi Mutasi?',
         html: `
-            <div class="text-left text-xs text-gray-600 space-y-3 mt-2">
+            <div class="text-left text-xs text-gray-600 dark:text-gray-300 space-y-3 mt-2">
                 <p>Apakah Anda yakin ingin menghapus data riwayat mutasi untuk <strong>${resellerName}</strong>?</p>
-                <div class="bg-gray-50 p-3 rounded-xl border border-gray-200 text-xs space-y-1">
-                    <div><span class="text-gray-500 font-semibold">Tipe:</span> <span class="font-bold ${isCredit ? 'text-emerald-700' : 'text-rose-700'}">${isCredit ? '➕ Saldo Masuk (Kredit)' : '➖ Saldo Keluar (Debit)'}</span></div>
-                    <div><span class="text-gray-500 font-semibold">Nominal:</span> <span class="font-bold font-mono text-gray-900">Rp ${amountStr}</span></div>
-                    <div class="text-gray-500 italic pt-1 border-t border-gray-200">${tx.description || '-'}</div>
+                <div class="bg-gray-50 dark:bg-slate-700 p-3 rounded-xl border border-gray-200 dark:border-slate-600 text-xs space-y-1">
+                    <div><span class="text-gray-500 dark:text-gray-400 font-semibold">Tipe:</span> <span class="font-bold ${isCredit ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'}">${isCredit ? '➕ Saldo Masuk (Kredit)' : '➖ Saldo Keluar (Debit)'}</span></div>
+                    <div><span class="text-gray-500 dark:text-gray-400 font-semibold">Nominal:</span> <span class="font-bold font-mono text-gray-900 dark:text-white">Rp ${amountStr}</span></div>
+                    <div class="text-gray-500 dark:text-gray-400 italic pt-1 border-t border-gray-200 dark:border-slate-600">${tx.description || '-'}</div>
                 </div>
-                <div class="p-3 rounded-xl text-xs ${isCredit ? 'bg-amber-50 text-amber-900 border border-amber-200' : 'bg-emerald-50 text-emerald-900 border border-emerald-200'}">
+                <div class="p-3 rounded-xl text-xs ${isCredit ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800' : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800'}">
                     <label class="flex items-start gap-2.5 cursor-pointer font-medium">
                         <input type="checkbox" id="swal-adjust-balance" checked class="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4" />
                         <span>
@@ -1194,7 +1242,11 @@ const confirmDeleteTx = (tx) => {
             router.delete(route('reseller-transactions.destroy', tx.id), {
                 data: { adjust_balance: adjust },
                 preserveScroll: true,
-                onSuccess: () => {
+                onSuccess: (res) => {
+                    if (res?.props?.flash?.error) {
+                        Swal.fire('Gagal Menghapus', res.props.flash.error, 'error');
+                        return;
+                    }
                     Swal.fire({
                         icon: 'success',
                         title: 'Berhasil Dihapus!',
@@ -1227,7 +1279,11 @@ const confirmDeleteReq = (req) => {
         if (result.isConfirmed) {
             router.delete(route('reseller-requests.destroy', req.id), {
                 preserveScroll: true,
-                onSuccess: () => {
+                onSuccess: (res) => {
+                    if (res?.props?.flash?.error) {
+                        Swal.fire('Gagal Menghapus', res.props.flash.error, 'error');
+                        return;
+                    }
                     Swal.fire({
                         icon: 'success',
                         title: 'Dihapus!',
@@ -1255,21 +1311,32 @@ const correctionForm = useForm({
     reason: 'Koreksi salah ketik nominal'
 });
 
-const correctionDiff = computed(() => {
+// Nominal change = newAmount - oldAmount
+const nominalDiff = computed(() => {
     if (!correctionTarget.value || !correctionForm.amount) return 0;
     return Number(correctionForm.amount) - Number(correctionTarget.value.oldAmount || 0);
 });
 
+// Balance impact: for credit it adds, for debit it subtracts
+const balanceImpact = computed(() => {
+    if (!correctionTarget.value) return 0;
+    if (correctionTarget.value.txType === 'debit') {
+        return -nominalDiff.value;
+    }
+    return nominalDiff.value;
+});
+
 const newEstimatedBalance = computed(() => {
     if (!correctionTarget.value) return 0;
-    return Number(correctionTarget.value.currentBalance || 0) + correctionDiff.value;
+    return Number(correctionTarget.value.currentBalance || 0) + balanceImpact.value;
 });
 
 const openCorrectionForTx = (tx) => {
-    const res = props.resellers.find(r => r.id === tx.reseller_id) || tx.reseller;
+    const res = props.resellers.find(r => String(r.id) === String(tx.reseller_id)) || tx.reseller;
     correctionTarget.value = {
         targetType: 'transaction',
         id: tx.id,
+        txType: tx.type, // 'credit' or 'debit'
         resellerName: getResellerName(tx.reseller),
         currentBalance: Number(res?.balance || tx.reseller?.balance || 0),
         oldAmount: Number(tx.amount || 0),
@@ -1282,10 +1349,11 @@ const openCorrectionForTx = (tx) => {
 };
 
 const openCorrectionForReq = (req) => {
-    const res = props.resellers.find(r => r.id === req.reseller_id) || req.reseller;
+    const res = props.resellers.find(r => String(r.id) === String(req.reseller_id)) || req.reseller;
     correctionTarget.value = {
         targetType: 'request',
         id: req.id,
+        txType: 'credit', // requests always add balance
         resellerName: getResellerName(req.reseller),
         currentBalance: Number(res?.balance || req.reseller?.balance || 0),
         oldAmount: Number(req.amount || 0),
@@ -1308,7 +1376,11 @@ const submitCorrection = () => {
     if (correctionTarget.value.targetType === 'transaction') {
         correctionForm.put(route('reseller-transactions.update', correctionTarget.value.id), {
             preserveScroll: true,
-            onSuccess: () => {
+            onSuccess: (res) => {
+                if (res?.props?.flash?.error) {
+                    Swal.fire('Gagal Mengoreksi', res.props.flash.error, 'error');
+                    return;
+                }
                 showCorrectionModal.value = false;
                 Swal.fire({
                     icon: 'success',
@@ -1325,7 +1397,11 @@ const submitCorrection = () => {
     } else {
         correctionForm.put(route('reseller-requests.update', correctionTarget.value.id), {
             preserveScroll: true,
-            onSuccess: () => {
+            onSuccess: (res) => {
+                if (res?.props?.flash?.error) {
+                    Swal.fire('Gagal Mengoreksi', res.props.flash.error, 'error');
+                    return;
+                }
                 showCorrectionModal.value = false;
                 Swal.fire({
                     icon: 'success',
@@ -1366,7 +1442,11 @@ const formatTime = (dateStr) => {
 
 const formatWa = (phone) => {
     if (!phone) return '';
-    return String(phone).replace(/^0/, '62').replace(/\D/g, '');
+    const clean = String(phone).replace(/\D/g, '');
+    if (clean.startsWith('0')) {
+        return '62' + clean.slice(1);
+    }
+    return clean;
 };
 
 const getResellerName = (reseller) => {

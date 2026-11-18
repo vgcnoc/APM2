@@ -35,6 +35,7 @@ class ResellerBalanceRequestController extends Controller
             $txQuery->where(function($q) use ($search) {
                 $q->where('description', 'like', "%{$search}%")
                   ->orWhere('reference_id', 'like', "%{$search}%")
+                  ->orWhere('amount', 'like', "%{$search}%")
                   ->orWhereHas('reseller.customer', function($cq) use ($search) {
                       $cq->where('name', 'like', "%{$search}%")
                         ->orWhere('customer_code', 'like', "%{$search}%")
@@ -73,6 +74,9 @@ class ResellerBalanceRequestController extends Controller
             $search = trim($request->search);
             $reqQuery->where(function($q) use ($search) {
                 $q->where('notes', 'like', "%{$search}%")
+                  ->orWhere('payment_method', 'like', "%{$search}%")
+                  ->orWhere('id', 'like', "%{$search}%")
+                  ->orWhere('amount', 'like', "%{$search}%")
                   ->orWhereHas('reseller.customer', function($cq) use ($search) {
                       $cq->where('name', 'like', "%{$search}%")
                         ->orWhere('customer_code', 'like', "%{$search}%")
@@ -83,6 +87,13 @@ class ResellerBalanceRequestController extends Controller
                         ->orWhere('email', 'like', "%{$search}%");
                   });
             });
+        }
+
+        if ($request->filled('start_date')) {
+            $reqQuery->whereDate('created_at', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $reqQuery->whereDate('created_at', '<=', $request->end_date);
         }
 
         $requests = $reqQuery->paginate(15, ['*'], 'req_page')->withQueryString();
@@ -105,6 +116,7 @@ class ResellerBalanceRequestController extends Controller
 
         // 4. KPI Stats
         $stats = [
+            'total_resellers' => Reseller::count(),
             'total_saldo_beredar' => (float)Reseller::sum('balance'),
             'total_credit' => (float)ResellerTransaction::whereHas('reseller')->where('type', 'credit')->sum('amount'),
             'total_debit' => (float)ResellerTransaction::whereHas('reseller')->where('type', 'debit')->sum('amount'),
