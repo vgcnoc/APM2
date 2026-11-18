@@ -1966,8 +1966,8 @@ class DashboardController extends Controller
             $allEvents = array_values(array_filter($allEvents, fn($ev) => $ev['status'] === $statusFilter));
         }
 
-        // Sediakan hingga 500 feed aktivitas agar tab filter (Semua/UP/DOWN/ISOLIR/EXPIRED) & paginasi lengkap
-        $connectionFeed = array_slice($allEvents, 0, 500);
+        // Sediakan seluruh feed aktivitas agar tab filter (Semua/UP/DOWN/ISOLIR/EXPIRED) & paginasi lengkap 100%
+        $connectionFeed = $allEvents;
 
         // ── 8. Unpaid & Isolir Billing ──────────────────────────────────────────────
         $invoiceBase = Invoice::query()
