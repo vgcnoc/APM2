@@ -683,7 +683,17 @@ class VoucherController extends Controller
                 ->where('name', '!=', 'Hotspot Gratis Pelanggan')
                 ->orderBy('name')->get(['id', 'name', 'duration', 'price']);
         }
-        $resellers = \App\Models\Reseller::with('customer.areaModel')->get();
+        $resellers = \App\Models\Reseller::with(['customer.areaModel', 'user'])->get()->map(function($r) {
+            $name = $r->customer?->name ?? ($r->user?->name ?? ('Reseller #' . $r->id));
+            $area = $r->customer?->areaModel?->name ?? ($r->customer?->area ?? null);
+            return [
+                'id' => $r->id,
+                'name' => $name,
+                'area' => $area,
+                'is_mitra_user' => !empty($r->user_id),
+            ];
+        })->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)->values();
+
         $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
 
         // 1. Ambil Sesi Online Aktif dari RADIUS
@@ -701,6 +711,11 @@ class VoucherController extends Controller
                 $onlineSessions->put(strtolower($u), $s);
                 $onlineUsernames[] = $u;
                 $onlineUsernames[] = strtolower($u);
+                if (str_contains($u, '@')) {
+                    $clean = explode('@', $u)[0];
+                    $onlineUsernames[] = $clean;
+                    $onlineUsernames[] = strtolower($clean);
+                }
             }
             $onlineUsernames = array_values(array_unique($onlineUsernames));
         } catch (\Exception $e) {
@@ -710,7 +725,7 @@ class VoucherController extends Controller
         }
 
         // 2. Ambil data Voucher yang valid (Voucher Hotspot selain khusus ONT Langganan)
-        $vouchersQuery = Voucher::with(['profile', 'reseller.customer.areaModel', 'customer.areaModel'])
+        $vouchersQuery = Voucher::with(['profile', 'reseller.customer.areaModel', 'reseller.user', 'customer.areaModel'])
             ->whereDoesntHave('profile', function($pq) {
                 $pq->where('is_customer_free', true)
                    ->orWhere('duration', 'Mengikuti Pelanggan')
@@ -723,20 +738,48 @@ class VoucherController extends Controller
         $vouchersByCode = collect();
         foreach ($allVouchers as $v) {
             if (!empty($v->username)) {
-                $vouchersByUsername->put($v->username, $v);
-                $vouchersByUsername->put(strtolower($v->username), $v);
+                $u = trim((string)$v->username);
+                $vouchersByUsername->put($u, $v);
+                $vouchersByUsername->put(strtolower($u), $v);
+                $vouchersByUsername->put(strtoupper($u), $v);
             }
             if (!empty($v->code)) {
-                $vouchersByCode->put($v->code, $v);
-                $vouchersByCode->put(strtolower($v->code), $v);
+                $c = trim((string)$v->code);
+                $vouchersByCode->put($c, $v);
+                $vouchersByCode->put(strtolower($c), $v);
+                $vouchersByCode->put(strtoupper($c), $v);
             }
         }
 
         $targetArea = !empty($areaId) ? \App\Models\Area::find($areaId) : null;
         $targetAreaName = $targetArea ? $targetArea->name : null;
 
+        // Helper untuk ekstrak info reseller & area secara akurat (baik customer maupun mitra user)
+        $getResellerInfo = function($voucher) {
+            $reseller = $voucher?->reseller;
+            if (!$reseller) {
+                return [
+                    'name' => 'Kantor / System',
+                    'type' => 'system',
+                    'phone' => null,
+                    'area' => $voucher?->customer?->areaModel?->name ?? ($voucher?->customer?->area ?: '-'),
+                ];
+            }
+            $customer = $reseller->customer;
+            $user = $reseller->user;
+            $name = $customer?->name ?? ($user?->name ?? ('Reseller #' . $reseller->id));
+            $phone = $customer?->phone ?? ($user?->phone ?? null);
+            $area = $customer?->areaModel?->name ?? ($customer?->area ?: ($voucher?->customer?->areaModel?->name ?? ($voucher?->customer?->area ?: '-')));
+            return [
+                'name' => $name,
+                'type' => $customer ? 'customer' : 'mitra_user',
+                'phone' => $phone,
+                'area' => $area,
+            ];
+        };
+
         // Helper filter matcher for a voucher/session item
-        $matchesFilter = function($voucher, $session, $search, $profileId, $resellerId, $areaId) use ($targetAreaName) {
+        $matchesFilter = function($voucher, $session, $search, $profileId, $resellerId, $areaId) use ($targetAreaName, $getResellerInfo) {
             // Filter Profile
             if (!empty($profileId)) {
                 if (!$voucher || (int)$voucher->voucher_profile_id !== (int)$profileId) {
@@ -760,7 +803,8 @@ class VoucherController extends Controller
             // Filter Area
             if (!empty($areaId)) {
                 $voucherAreaId = $voucher?->reseller?->customer?->area_id ?? $voucher?->customer?->area_id;
-                $voucherAreaName = $voucher?->reseller?->customer?->areaModel?->name ?? ($voucher?->reseller?->customer?->area ?? ($voucher?->customer?->areaModel?->name ?? ($voucher?->customer?->area ?? null)));
+                $resInfo = $getResellerInfo($voucher);
+                $voucherAreaName = $resInfo['area'];
 
                 $match = false;
                 if ($voucherAreaId && (int)$voucherAreaId === (int)$areaId) {
@@ -777,8 +821,9 @@ class VoucherController extends Controller
                 $code = strtolower($voucher?->code ?? '');
                 $username = strtolower($voucher?->username ?? ($session?->username ?? ''));
                 $profileName = strtolower($voucher?->profile?->name ?? '');
-                $resellerName = strtolower($voucher?->reseller?->customer?->name ?? 'kantor system');
-                $areaName = strtolower($voucher?->reseller?->customer?->areaModel?->name ?? ($voucher?->reseller?->customer?->area ?? ''));
+                $resInfo = $getResellerInfo($voucher);
+                $resellerName = strtolower($resInfo['name']);
+                $areaName = strtolower($resInfo['area']);
                 $ip = strtolower($session?->framedipaddress ?? '');
                 $mac = strtolower($session?->callingstationid ?? '');
 
@@ -807,11 +852,17 @@ class VoucherController extends Controller
         $onlineList = collect();
         $processedOnlineVoucherIds = [];
         foreach ($onlineSessionsRaw as $s) {
-            $u = trim((string)$s->username);
-            $v = $vouchersByUsername->get($u) 
-                ?? $vouchersByUsername->get(strtolower($u))
-                ?? $vouchersByCode->get($u)
-                ?? $vouchersByCode->get(strtolower($u));
+            $rawU = trim((string)$s->username);
+            $uClean = str_contains($rawU, '@') ? explode('@', $rawU)[0] : $rawU;
+
+            $v = $vouchersByUsername->get($rawU)
+                ?? $vouchersByUsername->get(strtolower($rawU))
+                ?? $vouchersByCode->get($rawU)
+                ?? $vouchersByCode->get(strtolower($rawU))
+                ?? $vouchersByUsername->get($uClean)
+                ?? $vouchersByUsername->get(strtolower($uClean))
+                ?? $vouchersByCode->get($uClean)
+                ?? $vouchersByCode->get(strtolower($uClean));
 
             if (!$v) {
                 // Bukan voucher hotspot terdaftar (misal PPPoE test / user luar)
@@ -829,18 +880,21 @@ class VoucherController extends Controller
                 continue;
             }
 
-            $resellerCustomer = $v->reseller?->customer;
-            $areaName = $resellerCustomer?->areaModel?->name ?? ($resellerCustomer?->area ?: ($v->customer?->areaModel?->name ?? ($v->customer?->area ?: '-')));
+            $resInfo = $getResellerInfo($v);
 
             $onlineList->push([
                 'id' => $v->id,
                 'voucher_id' => $v->id,
                 'code' => $v->code,
                 'username' => $s->username,
+                'password' => $v->password,
                 'profile' => $v->profile?->name ?? 'MikroTik Hotspot',
                 'profile_duration' => $v->profile?->duration,
-                'reseller' => $resellerCustomer?->name ?? 'Kantor / System',
-                'area' => $areaName,
+                'profile_price' => (int) ($v->profile?->price ?? 0),
+                'reseller' => $resInfo['name'],
+                'reseller_type' => $resInfo['type'],
+                'reseller_phone' => $resInfo['phone'],
+                'area' => $resInfo['area'],
                 'ip_address' => $s->framedipaddress ?? '-',
                 'mac_address' => $s->callingstationid ?? '-',
                 'nas_ip' => $s->nasipaddress ?? '-',
@@ -848,8 +902,12 @@ class VoucherController extends Controller
                 'download' => (int) ($s->acctoutputoctets ?? 0),
                 'upload' => (int) ($s->acctinputoctets ?? 0),
                 'login_time' => $s->acctstarttime ? $s->acctstarttime->toIso8601String() : null,
+                'buyer_name' => $v->buyer_name,
+                'buyer_phone' => $v->buyer_phone,
                 'is_active' => (bool) $v->is_active,
                 'status' => 'online',
+                'used_at' => $v->used_at ? $v->used_at->toIso8601String() : null,
+                'created_at' => $v->created_at ? $v->created_at->toIso8601String() : null,
             ]);
         }
 
@@ -960,18 +1018,21 @@ class VoucherController extends Controller
                 continue;
             }
 
-            $resellerCustomer = $v->reseller?->customer;
-            $areaName = $resellerCustomer?->areaModel?->name ?? ($resellerCustomer?->area ?: ($v->customer?->areaModel?->name ?? ($v->customer?->area ?: '-')));
+            $resInfo = $getResellerInfo($v);
 
             $offlineList->push([
                 'id' => $v->id,
                 'voucher_id' => $v->id,
                 'code' => $v->code,
                 'username' => $v->username,
+                'password' => $v->password,
                 'profile' => $v->profile?->name ?? 'Hotspot Profile',
                 'profile_duration' => $v->profile?->duration,
-                'reseller' => $resellerCustomer?->name ?? 'Kantor / System',
-                'area' => $areaName,
+                'profile_price' => (int) ($v->profile?->price ?? 0),
+                'reseller' => $resInfo['name'],
+                'reseller_type' => $resInfo['type'],
+                'reseller_phone' => $resInfo['phone'],
+                'area' => $resInfo['area'],
                 'ip_address' => $lastSession?->framedipaddress ?? '-',
                 'mac_address' => $lastSession?->callingstationid ?? '-',
                 'nas_ip' => $lastSession?->nasipaddress ?? '-',
@@ -981,8 +1042,12 @@ class VoucherController extends Controller
                 'download' => (int) $download,
                 'upload' => (int) $upload,
                 'terminate_cause' => $lastSession?->acctterminatecause ?? 'Selesai / Logout',
+                'buyer_name' => $v->buyer_name,
+                'buyer_phone' => $v->buyer_phone,
                 'is_active' => (bool) $v->is_active,
                 'status' => 'offline',
+                'used_at' => $v->used_at ? $v->used_at->toIso8601String() : null,
+                'created_at' => $v->created_at ? $v->created_at->toIso8601String() : null,
             ]);
         }
 
