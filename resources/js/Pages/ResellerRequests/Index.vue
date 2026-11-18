@@ -308,6 +308,14 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-xs font-medium">
                                         <div class="flex items-center justify-end gap-1.5">
                                             <button 
+                                                @click="openAddModal(tx.reseller_id)" 
+                                                class="inline-flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-800 px-2.5 py-1.5 rounded-lg border border-emerald-200 transition font-bold cursor-pointer shadow-xs active:scale-95"
+                                                title="Isi saldo manual untuk reseller ini"
+                                            >
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                                                <span>Isi Saldo</span>
+                                            </button>
+                                            <button 
                                                 @click="openCorrectionForTx(tx)" 
                                                 class="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-2.5 py-1.5 rounded-lg border border-indigo-200 transition font-bold cursor-pointer"
                                                 title="Koreksi nominal transaksi jika salah input"
@@ -472,6 +480,14 @@
                                         <!-- Status Approved (Termasuk Isi Saldo Manual) -->
                                         <div v-else-if="req.status === 'approved'" class="flex justify-end items-center gap-1.5">
                                             <button 
+                                                @click="openAddModal(req.reseller_id)" 
+                                                class="inline-flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-800 px-2.5 py-1.5 rounded-lg border border-emerald-200 transition font-bold cursor-pointer shadow-xs active:scale-95"
+                                                title="Isi saldo manual lagi untuk reseller ini"
+                                            >
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                                                <span>Isi Saldo</span>
+                                            </button>
+                                            <button 
                                                 @click="openCorrectionForReq(req)" 
                                                 class="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-2.5 py-1.5 rounded-lg border border-indigo-200 transition text-xs font-bold cursor-pointer"
                                                 title="Koreksi nominal saldo yang sudah masuk"
@@ -491,7 +507,15 @@
 
                                         <!-- Status Lainnya (Rejected / Dibatalkan) -->
                                         <div v-else class="flex justify-end items-center gap-1.5">
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] bg-gray-100 text-gray-500 font-semibold mr-1">
+                                            <button 
+                                                @click="openAddModal(req.reseller_id)" 
+                                                class="inline-flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-800 px-2.5 py-1.5 rounded-lg border border-emerald-200 transition font-bold cursor-pointer shadow-xs active:scale-95"
+                                                title="Isi saldo manual untuk reseller ini"
+                                            >
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                                                <span>Isi Saldo</span>
+                                            </button>
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] bg-gray-100 text-gray-500 font-semibold">
                                                 Dibatalkan
                                             </span>
                                             <button 
@@ -554,8 +578,14 @@
                     
                     <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-5 sm:px-6 py-4 sm:py-5 text-white flex items-center justify-between shrink-0">
                         <div class="min-w-0 pr-2">
-                            <h3 class="text-base sm:text-lg font-black tracking-tight" id="modal-title">Isi Saldo Dompet Reseller</h3>
-                            <p class="text-xs text-indigo-100 mt-0.5">Tambahkan saldo manual via Kasbon, Transfer, atau Tunai.</p>
+                            <h3 class="text-base sm:text-lg font-black tracking-tight flex items-center gap-2" id="modal-title">
+                                <span>💳</span>
+                                <span>Isi Saldo Dompet Reseller</span>
+                            </h3>
+                            <p class="text-xs text-indigo-100 mt-0.5">
+                                <span v-if="selectedReseller">Menambahkan saldo untuk <strong class="text-white">{{ selectedReseller.name }}</strong></span>
+                                <span v-else>Tambahkan saldo manual via Kasbon, Transfer, atau Tunai.</span>
+                            </p>
                         </div>
                         <button @click="showAddModal = false" class="text-white/80 hover:text-white p-1 rounded-xl hover:bg-white/10 transition shrink-0">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -565,11 +595,17 @@
                     <form @submit.prevent="submitTopup" class="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
                         <!-- Select Reseller -->
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                                Pilih Reseller <span class="text-rose-500">*</span>
-                            </label>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                    Pilih Reseller <span class="text-rose-500">*</span>
+                                </label>
+                                <span v-if="selectedReseller" class="text-[11px] font-bold px-2 py-0.5 rounded-full" :class="selectedReseller.has_customer ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-purple-50 text-purple-700 border border-purple-200'">
+                                    {{ selectedReseller.has_customer ? 'Tipe: Pelanggan' : 'Tipe: Mitra User' }}
+                                </span>
+                            </div>
                             <select 
                                 v-model="form.reseller_id" 
+                                @change="onResellerChange"
                                 class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium transition"
                                 required
                             >
@@ -589,7 +625,7 @@
                             <div class="text-right">
                                 <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-600">Estimasi Saldo Baru</span>
                                 <div class="text-base font-black font-mono text-emerald-600">
-                                    Rp {{ formatRupiah(Number(selectedReseller.balance) + (Number(form.amount) || 0)) }}
+                                    Rp {{ formatRupiah(Number(selectedReseller.balance || 0) + (Number(form.amount) || 0)) }}
                                 </div>
                             </div>
                         </div>
@@ -600,9 +636,10 @@
                                 Nominal Tambah Saldo (Rp) <span class="text-rose-500">*</span>
                             </label>
                             <input 
+                                ref="amountInputRef"
                                 type="number" 
                                 v-model.number="form.amount" 
-                                class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-mono font-bold" 
+                                class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-mono font-bold text-gray-900" 
                                 required 
                                 min="1000"
                                 step="1000"
@@ -631,10 +668,19 @@
                             </label>
                             <div class="grid grid-cols-3 gap-2">
                                 <label 
-                                    class="flex flex-col items-center justify-center p-3 rounded-2xl border-2 cursor-pointer transition text-center"
-                                    :class="form.payment_method === 'kasbon' ? 'border-indigo-600 bg-indigo-50/50 text-indigo-900 font-black' : 'border-gray-200 hover:border-gray-300 text-gray-600'"
+                                    class="flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition text-center"
+                                    :class="[
+                                        form.payment_method === 'kasbon' ? 'border-indigo-600 bg-indigo-50/50 text-indigo-900 font-black' : 'border-gray-200 hover:border-gray-300 text-gray-600',
+                                        selectedReseller && !selectedReseller.has_customer ? 'opacity-40 cursor-not-allowed bg-gray-50' : 'cursor-pointer'
+                                    ]"
                                 >
-                                    <input type="radio" v-model="form.payment_method" value="kasbon" class="sr-only" />
+                                    <input 
+                                        type="radio" 
+                                        v-model="form.payment_method" 
+                                        value="kasbon" 
+                                        :disabled="selectedReseller && !selectedReseller.has_customer" 
+                                        class="sr-only" 
+                                    />
                                     <span class="text-base mb-1">📝</span>
                                     <span class="text-xs">Kasbon</span>
                                     <span class="text-[9px] text-gray-400 mt-0.5">Tagihan Besok</span>
@@ -660,6 +706,9 @@
                             </div>
                             <p v-if="form.payment_method === 'kasbon'" class="text-[11px] text-purple-700 bg-purple-50 p-2.5 rounded-xl border border-purple-200/70 mt-2">
                                 ℹ️ <strong>Mode Kasbon:</strong> Saldo langsung bertambah dan otomatis diterbitkan Invoice Penagihan Kasbon di menu <em>Penagihan Kasbon</em>.
+                            </p>
+                            <p v-else-if="selectedReseller && !selectedReseller.has_customer" class="text-[11px] text-amber-700 bg-amber-50 p-2 rounded-xl border border-amber-200/70 mt-2">
+                                💡 <em>Reseller tipe Mitra User hanya dapat diisi via Transfer atau Tunai (Kasbon khusus akun reseller bertipe pelanggan).</em>
                             </p>
                         </div>
 
@@ -962,14 +1011,33 @@ const selectedReseller = computed(() => {
     return props.resellers.find(r => r.id === form.reseller_id);
 });
 
-const openAddModal = () => {
+const amountInputRef = ref(null);
+
+const onResellerChange = () => {
+    if (selectedReseller.value && !selectedReseller.value.has_customer && form.payment_method === 'kasbon') {
+        form.payment_method = 'transfer';
+    }
+};
+
+const openAddModal = (resellerId = null) => {
     form.reset();
     form.payment_method = 'kasbon';
     form.notes = 'Permintaan manual via Admin';
-    if (props.resellers.length > 0 && !form.reseller_id) {
+    
+    if (resellerId) {
+        form.reseller_id = resellerId;
+    } else if (props.resellers.length > 0 && !form.reseller_id) {
         form.reseller_id = props.resellers[0].id;
     }
+
+    if (selectedReseller.value && !selectedReseller.value.has_customer) {
+        form.payment_method = 'transfer';
+    }
+
     showAddModal.value = true;
+    setTimeout(() => {
+        amountInputRef.value?.focus();
+    }, 150);
 };
 
 const submitTopup = () => {
