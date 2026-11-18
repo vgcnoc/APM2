@@ -158,6 +158,18 @@
                         @if(!empty($filters['status']))
                             | Status: <b style="text-transform: uppercase; color: #2563eb;">{{ $filters['status'] }}</b>
                         @endif
+                        @if(!empty($filters['bank']))
+                            @php
+                                $bankLabels = [
+                                    'cash' => 'Tunai / Cash',
+                                    'reseller_balance' => 'Loket Reseller',
+                                    'payment_gateway' => 'Payment Gateway',
+                                    'transfer_unspecified' => 'Transfer Lainnya'
+                                ];
+                                $bankDisplay = $bankLabels[$filters['bank']] ?? ('Bank ' . $filters['bank']);
+                            @endphp
+                            | Bank/Metode: <b style="color: #2563eb;">{{ $bankDisplay }}</b>
+                        @endif
                     </div>
                 </td>
                 <td style="text-align: right;">
@@ -285,9 +297,13 @@
                                             $cName = 'Loket ' . trim($m[1]);
                                         }
                                     }
+                                    $pMethod = strtoupper($lastPayment->payment_method);
+                                    if ($lastPayment->payment_method === 'transfer' && preg_match('/\[Transfer ke:\s*(.*?)\s*-/i', $lastPayment->notes ?? '', $bm)) {
+                                        $pMethod = 'TRANSFER - ' . trim($bm[1]);
+                                    }
                                 @endphp
                                 <div>{{ \Carbon\Carbon::parse($lastPayment->payment_date)->format('d/m/Y') }}</div>
-                                <div style="font-size: 7.5px; color: #64748b;">{{ strtoupper($lastPayment->payment_method) }} | {{ $cName ?? '-' }}</div>
+                                <div style="font-size: 7.5px; color: #64748b;">{{ $pMethod }} | {{ $cName ?? '-' }}</div>
                             @else
                                 <span style="color: #94a3b8;">-</span>
                             @endif

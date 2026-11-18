@@ -164,6 +164,8 @@ class InvoiceController extends Controller
 
         $this->applyFlexibleDateFilter($query, $request);
 
+        $this->applyBankFilter($query, $request);
+
         // Get counts for tabs
         $baseQuery = Invoice::where('is_reseller_balance', false)
             ->where('invoice_number', 'not like', 'INV-MIG-%')
@@ -191,6 +193,8 @@ class InvoiceController extends Controller
 
         $this->applyFlexibleDateFilter($baseQuery, $request);
 
+        $this->applyBankFilter($baseQuery, $request);
+
         // Active base excludes terminated customers for regular operational cards
         $activeBaseQuery = (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', '!=', 'terminated'));
 
@@ -212,6 +216,7 @@ class InvoiceController extends Controller
             $prorataBaseQuery->whereHas('customer', fn($q) => $q->where('package_id', $request->package_id));
         }
         $this->applyBillingTypeFilter($prorataBaseQuery, $request);
+        $this->applyBankFilter($prorataBaseQuery, $request);
 
         // Paid query respects area, package, billing_type, and date filter
         $paidQuery = \App\Models\Payment::where('status', 'verified')
@@ -238,6 +243,7 @@ class InvoiceController extends Controller
         } else {
             $paidQuery->whereMonth('payment_date', now()->month)->whereYear('payment_date', now()->year);
         }
+        $this->applyBankFilterToPaidQuery($paidQuery, $request);
         $totalPaidAmount = (float) $paidQuery->sum('amount');
 
         $partialIdsSubquery = (clone $activeBaseQuery)->where('status', 'partial')->select('id');
@@ -411,7 +417,8 @@ class InvoiceController extends Controller
                 ? \App\Models\Area::whereIn('id', $userAreaIds)->orderBy('name')->get(['id', 'name'])
                 : \App\Models\Area::orderBy('name')->get(['id', 'name']),
             'lead_technicians' => $leadTechnicians,
-            'filters' => $request->only(['search', 'status', 'start_date', 'end_date', 'area_id', 'package_id', 'billing_type', 'tab']),
+            'filters' => $request->only(['search', 'status', 'start_date', 'end_date', 'area_id', 'package_id', 'billing_type', 'tab', 'bank']),
+            'available_banks' => fn () => $this->getAvailableBanks(),
             'payment_banks' => function () {
                 $userCompanyId = auth()->user()?->company_id;
                 if ($userCompanyId && $userCompanyId > 1) {
@@ -1478,6 +1485,8 @@ class InvoiceController extends Controller
 
         $this->applyFlexibleDateFilter($query, $request);
 
+        $this->applyBankFilter($query, $request);
+
         $invoices = $query->latest('id')->get();
         $filename = "Laporan_Tagihan_Invoice_" . date('Ymd_His') . ".csv";
 
@@ -1526,6 +1535,15 @@ class InvoiceController extends Controller
                         $cName = 'Loket ' . trim($m[1]);
                     }
                 }
+                $payMethod = '-';
+                if ($lastPayment) {
+                    if ($lastPayment->payment_method === 'transfer' && preg_match('/\[Transfer ke:\s*(.*?)\s*-/i', $lastPayment->notes ?? '', $bm)) {
+                        $payMethod = 'TRANSFER (' . trim($bm[1]) . ')';
+                    } else {
+                        $payMethod = strtoupper($lastPayment->payment_method);
+                    }
+                }
+
                 fputcsv($handle, [
                     $idx + 1,
                     $inv->invoice_number,
@@ -1545,7 +1563,7 @@ class InvoiceController extends Controller
                     strtoupper($inv->status),
                     strtoupper($inv->customer?->status ?? 'ACTIVE'),
                     $lastPayment ? \Carbon\Carbon::parse($lastPayment->payment_date)->format('d/m/Y H:i') : '-',
-                    $lastPayment?->payment_method ?? '-',
+                    $payMethod,
                     $cName ?? '-'
                 ]);
             }
@@ -1608,6 +1626,8 @@ class InvoiceController extends Controller
         $this->applyBillingTypeFilter($query, $request);
 
         $this->applyFlexibleDateFilter($query, $request);
+
+        $this->applyBankFilter($query, $request);
 
         $invoices = $query->latest('id')->get();
         $isPdf = ($request->query('mode') === 'pdf');
@@ -1786,5 +1806,110 @@ class InvoiceController extends Controller
                     );
             });
         }
+    }
+
+    /**
+     * Filter berdasarkan bank / metode transfer pembayaran.
+     */
+    private function applyBankFilter($targetQuery, Request $request): void
+    {
+        if ($request->filled('bank')) {
+            $bank = trim($request->bank);
+            if ($bank === 'cash') {
+                $targetQuery->whereHas('payments', fn($pq) => $pq->where('payment_method', 'cash'));
+            } elseif ($bank === 'reseller_balance') {
+                $targetQuery->whereHas('payments', fn($pq) => $pq->where('payment_method', 'reseller_balance'));
+            } elseif ($bank === 'payment_gateway') {
+                $targetQuery->whereHas('payments', fn($pq) => $pq->where('payment_method', 'payment_gateway'));
+            } elseif ($bank === 'transfer_unspecified') {
+                $targetQuery->whereHas('payments', fn($pq) => $pq->where('payment_method', 'transfer')->where(function($sub) {
+                    $sub->whereNull('notes')->orWhere('notes', 'not like', '%[Transfer ke:%');
+                }));
+            } else {
+                $targetQuery->whereHas('payments', function ($pq) use ($bank) {
+                    $pq->where('payment_method', 'transfer')
+                       ->where(function ($sub) use ($bank) {
+                           $sub->where('notes', 'like', "%[Transfer ke: {$bank}%")
+                               ->orWhere('notes', 'like', "%{$bank}%")
+                               ->orWhere('payment_channel', 'like', "%{$bank}%");
+                       });
+                });
+            }
+        }
+    }
+
+    /**
+     * Filter bank pada query rekap pendapatan verified.
+     */
+    private function applyBankFilterToPaidQuery($paidQuery, Request $request): void
+    {
+        if ($request->filled('bank')) {
+            $bank = trim($request->bank);
+            if ($bank === 'cash') {
+                $paidQuery->where('payment_method', 'cash');
+            } elseif ($bank === 'reseller_balance') {
+                $paidQuery->where('payment_method', 'reseller_balance');
+            } elseif ($bank === 'payment_gateway') {
+                $paidQuery->where('payment_method', 'payment_gateway');
+            } elseif ($bank === 'transfer_unspecified') {
+                $paidQuery->where('payment_method', 'transfer')->where(function($sub) {
+                    $sub->whereNull('notes')->orWhere('notes', 'not like', '%[Transfer ke:%');
+                });
+            } else {
+                $paidQuery->where('payment_method', 'transfer')
+                    ->where(function ($sub) use ($bank) {
+                        $sub->where('notes', 'like', "%[Transfer ke: {$bank}%")
+                            ->orWhere('notes', 'like', "%{$bank}%")
+                            ->orWhere('payment_channel', 'like', "%{$bank}%");
+                    });
+            }
+        }
+    }
+
+    /**
+     * Ambil daftar nama bank yang tersedia secara dinamis (dari Setting & riwayat Payments).
+     */
+    private function getAvailableBanks(): array
+    {
+        $banksList = [];
+
+        // 1. Ambil dari setting payment_banks
+        $userCompanyId = auth()->user()?->company_id;
+        $rawBanks = [];
+        if ($userCompanyId && $userCompanyId > 1) {
+            $c = \App\Models\Company::find($userCompanyId);
+            $rawBanks = $c ? json_decode($c->getSetting('payment_banks', '[]') ?: '[]', true) : [];
+        }
+        if (empty($rawBanks)) {
+            $rawBanks = json_decode(\App\Models\Setting::get('payment_banks', '[]'), true) ?: [];
+        }
+        foreach ($rawBanks as $b) {
+            if (!empty($b['bank_name'])) {
+                $banksList[] = trim($b['bank_name']);
+            }
+        }
+
+        // 2. Ambil bank yang pernah dicatat di riwayat transfer payments
+        $paymentNotes = \App\Models\Payment::where('payment_method', 'transfer')
+            ->whereNotNull('notes')
+            ->select('notes')
+            ->distinct()
+            ->limit(200)
+            ->pluck('notes');
+
+        foreach ($paymentNotes as $note) {
+            if (preg_match('/\[Transfer ke:\s*(.*?)\s*-/i', $note, $m)) {
+                $banksList[] = trim($m[1]);
+            }
+        }
+
+        if (empty($banksList)) {
+            $banksList = ['BNI', 'BRI', 'DANA', 'Seabank'];
+        }
+
+        $banksList = array_values(array_unique(array_filter($banksList)));
+        sort($banksList);
+
+        return $banksList;
     }
 }

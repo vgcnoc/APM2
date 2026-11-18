@@ -217,6 +217,27 @@
                         </select>
                     </div>
 
+                    <!-- 6. Filter Bank / Rekening Tujuan -->
+                    <div>
+                        <select 
+                            v-model="filterBankVal" 
+                            @change="applyFilters"
+                            class="form-select text-xs rounded-xl border-gray-200 bg-white text-gray-700 py-1.5 pl-3 pr-8 font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-200 shadow-2xs cursor-pointer w-auto min-w-[135px]"
+                            title="Filter berdasarkan rekening bank tujuan transfer atau metode pembayaran"
+                        >
+                            <option value="">Semua Bank</option>
+                            <optgroup label="Rekening Bank Tujuan">
+                                <option v-for="b in availableBanks" :key="b" :value="b">Bank {{ b }}</option>
+                            </optgroup>
+                            <optgroup label="Metode Lainnya">
+                                <option value="cash">Tunai / Cash</option>
+                                <option value="reseller_balance">Loket Reseller</option>
+                                <option value="payment_gateway">Payment Gateway</option>
+                                <option value="transfer_unspecified">Transfer Lainnya</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
                     <!-- 6. Action: Terapkan & Reset (Sejajar ke Samping) -->
                     <div class="flex items-center gap-1.5 ml-auto">
                         <span v-if="activeFiltersCount > 0" class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-700 border border-blue-200">
@@ -2164,6 +2185,7 @@ const props = defineProps({
     lead_technicians: Array,
     filters: Object,
     payment_banks: Array,
+    available_banks: Array,
     invoice_issue_date: Number,
 });
 
@@ -2223,8 +2245,19 @@ const filterStatusVal = ref(props.filters?.status || '');
 const filterAreaVal = ref(props.filters?.area_id || '');
 const filterPackageVal = ref(props.filters?.package_id || '');
 const filterBillingTypeVal = ref(props.filters?.billing_type || '');
+const filterBankVal = ref(props.filters?.bank || '');
 const filterStartDate = ref(props.filters?.start_date || '');
 const filterEndDate = ref(props.filters?.end_date || '');
+
+const availableBanks = computed(() => {
+    if (props.available_banks && Array.isArray(props.available_banks) && props.available_banks.length > 0) {
+        return props.available_banks;
+    }
+    if (props.payment_banks && Array.isArray(props.payment_banks) && props.payment_banks.length > 0) {
+        return [...new Set(props.payment_banks.map(b => b.bank_name).filter(Boolean))].sort();
+    }
+    return ['BNI', 'BRI', 'DANA', 'Seabank'];
+});
 
 const hasActiveFilters = computed(() => {
     return !!(
@@ -2232,6 +2265,7 @@ const hasActiveFilters = computed(() => {
         filterAreaVal.value ||
         filterPackageVal.value ||
         filterBillingTypeVal.value ||
+        filterBankVal.value ||
         filterStartDate.value ||
         filterEndDate.value
     );
@@ -2243,6 +2277,7 @@ const activeFiltersCount = computed(() => {
     if (filterAreaVal.value) count++;
     if (filterPackageVal.value) count++;
     if (filterBillingTypeVal.value) count++;
+    if (filterBankVal.value) count++;
     if (filterStartDate.value || filterEndDate.value) count++;
     return count;
 });
@@ -2255,6 +2290,7 @@ function applyFilters() {
         area_id: filterAreaVal.value || undefined,
         package_id: filterPackageVal.value || undefined,
         billing_type: filterBillingTypeVal.value || undefined,
+        bank: filterBankVal.value || undefined,
         start_date: filterStartDate.value || undefined,
         end_date: filterEndDate.value || undefined,
     }, { preserveState: true, preserveScroll: true, replace: true });
@@ -2265,6 +2301,7 @@ function resetFilters() {
     filterAreaVal.value = '';
     filterPackageVal.value = '';
     filterBillingTypeVal.value = '';
+    filterBankVal.value = '';
     filterStartDate.value = '';
     filterEndDate.value = '';
     applyFilters();
@@ -2303,6 +2340,7 @@ function exportExcel() {
     if (filterAreaVal.value) params.set('area_id', filterAreaVal.value);
     if (filterPackageVal.value) params.set('package_id', filterPackageVal.value);
     if (filterBillingTypeVal.value) params.set('billing_type', filterBillingTypeVal.value);
+    if (filterBankVal.value) params.set('bank', filterBankVal.value);
     if (filterStartDate.value) params.set('start_date', filterStartDate.value);
     if (filterEndDate.value) params.set('end_date', filterEndDate.value);
     
@@ -2318,6 +2356,7 @@ function printList(mode = 'print') {
     if (filterAreaVal.value) params.set('area_id', filterAreaVal.value);
     if (filterPackageVal.value) params.set('package_id', filterPackageVal.value);
     if (filterBillingTypeVal.value) params.set('billing_type', filterBillingTypeVal.value);
+    if (filterBankVal.value) params.set('bank', filterBankVal.value);
     if (filterStartDate.value) params.set('start_date', filterStartDate.value);
     if (filterEndDate.value) params.set('end_date', filterEndDate.value);
     
@@ -2330,6 +2369,7 @@ watch(() => props.filters, (newFilters) => {
     filterAreaVal.value = newFilters?.area_id || '';
     filterPackageVal.value = newFilters?.package_id || '';
     filterBillingTypeVal.value = newFilters?.billing_type || '';
+    filterBankVal.value = newFilters?.bank || '';
     filterStartDate.value = newFilters?.start_date || '';
     filterEndDate.value = newFilters?.end_date || '';
 }, { deep: true });
