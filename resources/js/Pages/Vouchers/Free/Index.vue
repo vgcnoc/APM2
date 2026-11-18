@@ -480,33 +480,37 @@
             </div>
 
             <!-- VISUAL COLOR INDICATOR LEGEND (Hanya jika di tab vouchers) -->
-            <div v-if="currentTab === 'vouchers' && can('voucher_free_color_indicator')" class="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 bg-gray-50/90 rounded-xl border border-gray-200 text-xs shadow-2xs">
+            <div v-if="currentTab === 'vouchers' && can('voucher_free_color_indicator')" class="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 bg-gray-50/90 dark:bg-slate-800/80 rounded-xl border border-gray-200 dark:border-slate-700 text-xs shadow-2xs">
                 <div class="flex items-center gap-3 flex-wrap">
-                    <span class="font-bold text-gray-700 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-                        <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
+                    <span class="font-bold text-gray-700 dark:text-gray-300 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
                         Indikator Barisan:
                     </span>
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold text-[11px]">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-bold text-[11px]">
+                        <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                        Barisan Biru/Netral = Tersedia ({{ stats?.available || 0 }})
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/40 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-bold text-[11px]">
                         <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                         Barisan Hijau = Sesi Online ({{ stats?.online || 0 }})
                     </span>
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-rose-100 text-rose-900 border border-rose-300 font-bold text-[11px]">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-rose-100 dark:bg-rose-900/40 text-rose-900 dark:text-rose-300 border border-rose-300 dark:border-rose-800 font-bold text-[11px]">
                         <span class="w-2 h-2 rounded-full bg-rose-500"></span>
                         Barisan Merah = Sesi Offline ({{ stats?.offline || 0 }})
                     </span>
                 </div>
-                <div class="text-[11px] text-gray-500">
+                <div class="text-[11px] text-gray-500 dark:text-gray-400">
                     Status sesi voucher real-time FreeRADIUS
                 </div>
             </div>
 
             <!-- TABLE OF GENERATED FREE VOUCHERS / EXPIRED VOUCHERS -->
-            <div class="bg-white rounded-2xl shadow-xs border border-gray-200 overflow-hidden">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xs border border-gray-200 dark:border-slate-700 overflow-hidden">
                 <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50/80">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+                        <thead class="bg-gray-50/80 dark:bg-slate-900/50">
                             <tr>
-                                <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-10">
+                                <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider w-10">
                                     <input 
                                         type="checkbox" 
                                         @change="toggleSelectAll" 
@@ -514,27 +518,27 @@
                                         class="rounded border-gray-300 text-emerald-600 shadow-xs focus:ring-emerald-500"
                                     >
                                 </th>
-                                <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Kode / User</th>
-                                <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Password</th>
-                                <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Profil Hotspot</th>
-                                <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Penerima / Pelanggan</th>
-                                <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status & Sesi</th>
-                                <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Masa Aktif & Kedaluwarsa</th>
-                                <th class="px-5 py-3.5 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
+                                <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Kode / User</th>
+                                <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Password</th>
+                                <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Profil Hotspot</th>
+                                <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Penerima / Pelanggan</th>
+                                <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Status & Sesi</th>
+                                <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Masa Aktif & Kedaluwarsa</th>
+                                <th class="px-5 py-3.5 text-right text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody class="bg-white divide-y divide-gray-100">
+                        <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-100 dark:divide-slate-700/50">
                             <tr 
                                 v-for="voucher in vouchers.data" 
                                 :key="voucher.id" 
                                 :class="[
                                     voucher.status === 'expired'
-                                        ? 'bg-rose-50/40 hover:bg-rose-100/60 border-l-4 border-l-rose-500'
-                                        : can('voucher_free_color_indicator') 
+                                        ? 'bg-rose-50/40 dark:bg-rose-950/20 hover:bg-rose-100/60 dark:hover:bg-rose-950/40 border-l-4 border-l-rose-500'
+                                        : voucher.status === 'used'
                                             ? (isVoucherOnline(voucher) 
-                                                ? 'bg-emerald-50/80 hover:bg-emerald-100/90 border-l-4 border-l-emerald-500' 
-                                                : 'bg-rose-50/75 hover:bg-rose-100/80 border-l-4 border-l-rose-500')
-                                            : 'hover:bg-emerald-50/20'
+                                                ? 'bg-emerald-50/80 dark:bg-emerald-950/40 hover:bg-emerald-100/90 dark:hover:bg-emerald-950/60 border-l-4 border-l-emerald-500' 
+                                                : 'bg-rose-50/75 dark:bg-rose-950/40 hover:bg-rose-100/80 dark:hover:bg-rose-950/60 border-l-4 border-l-rose-500')
+                                            : 'bg-white dark:bg-slate-800 hover:bg-blue-50/30 dark:hover:bg-slate-750 border-l-4 border-l-blue-400'
                                 ]"
                                 class="transition-colors"
                             >
@@ -645,7 +649,7 @@
                                         </div>
 
                                         <!-- RADIUS Live Sesi Online Mandiri -->
-                                        <div v-if="voucher.status !== 'expired'" class="w-full">
+                                        <div v-if="voucher.status !== 'expired'" class="w-full mt-0.5">
                                             <div v-if="isVoucherOnline(voucher)" class="flex flex-col gap-1 bg-emerald-50/90 border border-emerald-300 rounded-xl p-2 shadow-2xs min-w-[210px]">
                                                 <div class="flex items-center justify-between gap-2">
                                                     <span class="inline-flex items-center gap-1.5 text-xs font-extrabold text-emerald-800">
@@ -672,9 +676,13 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div v-else class="inline-flex items-center gap-1.5 text-xs font-bold text-rose-800 bg-rose-100/80 px-2.5 py-1 rounded-xl border border-rose-200 shadow-2xs">
+                                            <div v-else-if="voucher.status === 'used'" class="inline-flex items-center gap-1.5 text-xs font-bold text-rose-800 bg-rose-100/80 px-2.5 py-1 rounded-xl border border-rose-200 shadow-2xs">
                                                 <span class="w-2 h-2 rounded-full bg-rose-500"></span>
-                                                <span>🔴 Sesi Offline</span>
+                                                <span>🔴 Sesi Terputus (Offline)</span>
+                                            </div>
+                                            <div v-else class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200 shadow-2xs">
+                                                <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+                                                <span>⚪ Standby (Belum Login)</span>
                                             </div>
                                         </div>
                                     </div>
@@ -719,6 +727,15 @@
                                 </td>
                                 <td class="px-5 py-4 whitespace-nowrap text-right text-xs font-semibold">
                                     <div class="flex items-center justify-end gap-1.5">
+                                        <!-- 0. Detail / View Voucher Modal -->
+                                        <button 
+                                            @click="openDetailModal(voucher)" 
+                                            class="p-1.5 text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg shadow-2xs transition-all hover:scale-105 active:scale-95 cursor-pointer" 
+                                            title="Lihat Detail Lengkap Voucher & Sesi"
+                                        >
+                                            <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                        </button>
+
                                         <!-- 1. Putuskan Sesi / Kick CoA (Hanya muncul jika voucher sedang ONLINE) -->
                                         <button 
                                             v-if="isVoucherOnline(voucher)"
@@ -1544,6 +1561,205 @@
             </div>
         </Teleport>
 
+        <!-- ========================================================================= -->
+        <!-- MODAL DETAIL / VIEW VOUCHER GRATIS                                        -->
+        <!-- ========================================================================= -->
+        <Teleport to="body">
+            <div 
+                v-if="showDetailModal && detailVoucher" 
+                class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-xs animate-fade-in"
+                @click.self="closeDetailModal"
+            >
+                <div 
+                    class="bg-white dark:bg-slate-800 rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden transform transition-all animate-scale-up flex flex-col max-h-[90vh]"
+                    @click.stop
+                >
+                    <!-- Header Modal Detail -->
+                    <div class="flex justify-between items-center pb-4 border-b border-gray-100 dark:border-slate-700">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2.5 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 rounded-2xl border border-emerald-200 dark:border-emerald-800 shadow-2xs">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h3 class="text-base font-bold text-gray-900 dark:text-white">Detail Voucher Gratis</h3>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                        🎁 Gratis (Rp 0)
+                                    </span>
+                                </div>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 font-mono mt-0.5">Kode: <span class="font-bold text-emerald-600 dark:text-emerald-400">{{ detailVoucher.code }}</span></p>
+                            </div>
+                        </div>
+                        <button 
+                            type="button" 
+                            @click="closeDetailModal" 
+                            class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-xl transition-colors cursor-pointer"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Scrollable Modal Body -->
+                    <div class="mt-4 space-y-4 overflow-y-auto pr-1">
+                        <!-- 1. Kredensial Login Card -->
+                        <div class="bg-gradient-to-br from-slate-50 to-slate-100/70 dark:from-slate-900/60 dark:to-slate-800/60 rounded-2xl p-4 border border-slate-200 dark:border-slate-700">
+                            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 flex items-center justify-between">
+                                <span>Kredensial Akses Hotspot</span>
+                                <span class="text-[10px] lowercase text-slate-400 dark:text-slate-500">(klik icon untuk salin)</span>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div class="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                                    <div>
+                                        <div class="text-[10px] text-slate-400 uppercase font-semibold">Username / Kode</div>
+                                        <div class="text-sm font-mono font-bold text-slate-900 dark:text-white mt-0.5">{{ detailVoucher.username || detailVoucher.code }}</div>
+                                    </div>
+                                    <button 
+                                        type="button" 
+                                        @click="copyText(detailVoucher.username || detailVoucher.code, 'Username')" 
+                                        class="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 rounded-lg transition-colors cursor-pointer"
+                                        title="Salin Username"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                    </button>
+                                </div>
+                                <div class="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                                    <div>
+                                        <div class="text-[10px] text-slate-400 uppercase font-semibold">Password</div>
+                                        <div class="text-sm font-mono font-bold text-slate-900 dark:text-white mt-0.5">{{ detailVoucher.password || '-' }}</div>
+                                    </div>
+                                    <button 
+                                        type="button" 
+                                        @click="copyText(detailVoucher.password, 'Password')" 
+                                        class="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 rounded-lg transition-colors cursor-pointer"
+                                        title="Salin Password"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. Profil & Status Live Radius -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div class="bg-gray-50 dark:bg-slate-900/40 p-3.5 rounded-2xl border border-gray-200 dark:border-slate-700 space-y-2">
+                                <div class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Profil & Durasi</div>
+                                <div>
+                                    <div class="text-sm font-bold text-gray-900 dark:text-white">{{ detailVoucher.profile?.name || 'Paket Hotspot' }}</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-2">
+                                        <span>⏱️ Durasi: <b>{{ detailVoucher.profile?.duration || '-' }}</b></span>
+                                        <span v-if="detailVoucher.profile?.limit_bandwidth">⚡ {{ detailVoucher.profile.limit_bandwidth }}</span>
+                                    </div>
+                                </div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400 pt-1 border-t border-gray-200/60 dark:border-slate-700/60">
+                                    Dibuat: <span class="font-medium text-gray-700 dark:text-gray-300">{{ formatDate(detailVoucher.created_at) }}</span>
+                                </div>
+                            </div>
+
+                            <div class="bg-gray-50 dark:bg-slate-900/40 p-3.5 rounded-2xl border border-gray-200 dark:border-slate-700 space-y-2">
+                                <div class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status Sesi Saat Ini</div>
+                                <div>
+                                    <div v-if="detailVoucher.status === 'available'" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-blue-50 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-bold">
+                                        <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                                        <span>Tersedia (Belum Login)</span>
+                                    </div>
+                                    <div v-else-if="detailVoucher.status === 'used' && isVoucherOnline(detailVoucher)" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-xs font-bold">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                        <span>Online (Sedang Aktif)</span>
+                                    </div>
+                                    <div v-else-if="detailVoucher.status === 'used'" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-rose-100 dark:bg-rose-900/40 text-rose-900 dark:text-rose-300 border border-rose-300 dark:border-rose-800 text-xs font-bold">
+                                        <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                                        <span>Sesi Terputus (Offline)</span>
+                                    </div>
+                                    <div v-else-if="detailVoucher.status === 'expired'" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 text-xs font-bold">
+                                        <span class="w-2 h-2 rounded-full bg-gray-500"></span>
+                                        <span>Masa Aktif Berakhir (Expired)</span>
+                                    </div>
+                                </div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400 pt-1 border-t border-gray-200/60 dark:border-slate-700/60">
+                                    Login Pertama: <span class="font-medium text-gray-700 dark:text-gray-300">{{ detailVoucher.used_at ? formatDate(detailVoucher.used_at) : 'Belum pernah login' }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Detail Session RADIUS (Jika Sedang Online) -->
+                        <div v-if="detailVoucher.is_online && detailVoucher.online_session" class="bg-emerald-50/70 dark:bg-emerald-950/30 rounded-2xl p-4 border border-emerald-200 dark:border-emerald-800 space-y-3">
+                            <div class="text-[11px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
+                                <span class="flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    Data Sesi Live FreeRADIUS
+                                </span>
+                                <span class="font-mono text-[10px] text-emerald-700 dark:text-emerald-400">Acct ID: #{{ detailVoucher.online_session.radacctid }}</span>
+                            </div>
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                                <div class="bg-white/80 dark:bg-slate-800/80 p-2 rounded-xl border border-emerald-100 dark:border-emerald-900">
+                                    <div class="text-[10px] text-gray-500 dark:text-gray-400 font-semibold">IP Address</div>
+                                    <div class="font-mono font-bold text-gray-800 dark:text-gray-200 truncate mt-0.5">{{ detailVoucher.online_session.ip_address }}</div>
+                                </div>
+                                <div class="bg-white/80 dark:bg-slate-800/80 p-2 rounded-xl border border-emerald-100 dark:border-emerald-900">
+                                    <div class="text-[10px] text-gray-500 dark:text-gray-400 font-semibold">MAC Address</div>
+                                    <div class="font-mono font-bold text-gray-800 dark:text-gray-200 truncate mt-0.5" :title="detailVoucher.online_session.mac_address">{{ detailVoucher.online_session.mac_address }}</div>
+                                </div>
+                                <div class="bg-white/80 dark:bg-slate-800/80 p-2 rounded-xl border border-emerald-100 dark:border-emerald-900">
+                                    <div class="text-[10px] text-gray-500 dark:text-gray-400 font-semibold">Uptime Sesi</div>
+                                    <div class="font-bold text-emerald-700 dark:text-emerald-400 truncate mt-0.5">{{ detailVoucher.online_session.uptime }}</div>
+                                </div>
+                                <div class="bg-white/80 dark:bg-slate-800/80 p-2 rounded-xl border border-emerald-100 dark:border-emerald-900">
+                                    <div class="text-[10px] text-gray-500 dark:text-gray-400 font-semibold">Trafik Data</div>
+                                    <div class="font-bold text-gray-800 dark:text-gray-200 truncate mt-0.5">
+                                        ↓{{ formatBytes(detailVoucher.online_session.download) }} ↑{{ formatBytes(detailVoucher.online_session.upload) }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4. Penerima / Pembeli & WhatsApp -->
+                        <div class="bg-gray-50 dark:bg-slate-900/40 rounded-2xl p-4 border border-gray-200 dark:border-slate-700 space-y-2">
+                            <div class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Penerima / Data Pembeli</div>
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                                <div>
+                                    <div class="text-sm font-bold text-gray-900 dark:text-white">
+                                        {{ detailVoucher.buyer_name || (detailVoucher.customer ? detailVoucher.customer.name : 'Bebas (Promosi/Trial)') }}
+                                    </div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-2">
+                                        <span v-if="detailVoucher.customer" class="font-mono text-emerald-600 font-semibold">({{ detailVoucher.customer.customer_code }})</span>
+                                        <span>No WA: <b>{{ detailVoucher.buyer_phone || detailVoucher.customer?.phone || '-' }}</b></span>
+                                    </div>
+                                </div>
+                                <button 
+                                    v-if="detailVoucher.buyer_phone || detailVoucher.customer?.phone"
+                                    type="button" 
+                                    @click="sendWhatsAppVoucher(detailVoucher)"
+                                    class="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer shrink-0"
+                                >
+                                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                                    <span>Kirim ke WA</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer Action Modal -->
+                    <div class="mt-5 pt-4 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between gap-3">
+                        <button 
+                            type="button" 
+                            @click="printSingle(detailVoucher.id)" 
+                            class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-2 cursor-pointer"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                            <span>Cetak Voucher</span>
+                        </button>
+                        <button 
+                            type="button" 
+                            @click="closeDetailModal" 
+                            class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                        >
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
+
     </AppLayout>
 </template>
 
@@ -2183,5 +2399,54 @@ const submitBulkForm = () => {
             });
         }
     });
+};
+
+// ==========================================
+// Detail Modal & WhatsApp Actions
+// ==========================================
+const showDetailModal = ref(false);
+const detailVoucher = ref(null);
+
+const openDetailModal = (voucher) => {
+    detailVoucher.value = voucher;
+    showDetailModal.value = true;
+};
+
+const closeDetailModal = () => {
+    showDetailModal.value = false;
+    detailVoucher.value = null;
+};
+
+const formatWaPhone = (phone) => {
+    if (!phone) return '';
+    let cleaned = phone.toString().replace(/\D/g, '');
+    if (cleaned.startsWith('0')) {
+        cleaned = '62' + cleaned.substring(1);
+    } else if (cleaned.startsWith('8')) {
+        cleaned = '62' + cleaned;
+    }
+    return cleaned;
+};
+
+const sendWhatsAppVoucher = (voucher) => {
+    if (!voucher) return;
+    const phone = voucher.buyer_phone || voucher.customer?.phone;
+    const cleanPhone = formatWaPhone(phone);
+    if (!cleanPhone) return;
+
+    const buyerName = voucher.buyer_name || voucher.customer?.name || 'Kak';
+    const profileName = voucher.profile?.name || 'Paket Hotspot Gratis';
+    const duration = voucher.profile?.duration ? ` (${voucher.profile.duration})` : '';
+
+    let credText = '';
+    if (voucher.password && voucher.password !== voucher.username && voucher.password !== voucher.code) {
+        credText = `🔑 *Username:* ${voucher.username}\n🔒 *Password:* ${voucher.password}`;
+    } else {
+        credText = `🔑 *Kode Voucher:* ${voucher.code || voucher.username}\n_(Username dan Password sama)_`;
+    }
+
+    const message = `Halo Kak *${buyerName}*,\nBerikut detail voucher internet WiFi gratis Anda:\n\n🎁 *Paket:* ${profileName}${duration}\n💰 *Tarif:* Gratis (Rp 0)\n\n${credText}\n\n🌐 *Cara Login:*\n1. Hubungkan HP/Laptop ke WiFi Hotspot\n2. Buka browser dan masukkan Kode Login di atas\n3. Klik Login untuk mulai berselancar internet\n\nTerima kasih! 🙏`;
+    const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
 };
 </script>

@@ -73,13 +73,13 @@ class VoucherController extends Controller
 
         if ($request->filled('status')) {
             if ($request->status === 'online') {
-                $voucherQuery->where('status', '!=', 'expired')
+                $voucherQuery->where('status', 'used')
                     ->where(function($q) use ($onlineUsernames) {
                         $q->whereIn('username', $onlineUsernames)
                           ->orWhereIn('code', $onlineUsernames);
                     });
             } elseif ($request->status === 'offline') {
-                $voucherQuery->where('status', '!=', 'expired')
+                $voucherQuery->where('status', 'used')
                     ->where(function($q) use ($onlineUsernames) {
                         $q->whereNotIn('username', $onlineUsernames)
                           ->whereNotIn('code', $onlineUsernames);
@@ -185,9 +185,11 @@ class VoucherController extends Controller
         $availableFree = (clone $statsBase)->where('status', 'available')->count();
         $usedFree = (clone $statsBase)->where('status', 'used')->count();
         $expiredFree = (clone $statsBase)->where('status', 'expired')->count();
-        $allFreeUsernames = (clone $statsBase)->pluck('username')->filter()->toArray();
-        $onlineFree = count(array_intersect($onlineUsernames, $allFreeUsernames));
-        $offlineFree = max(0, $totalFree - $onlineFree);
+        
+        // HANYA hitung sesi online & offline untuk voucher yang berstatus 'used' (pernah/sedang login)
+        $usedUsernames = (clone $statsBase)->where('status', 'used')->pluck('username')->filter()->toArray();
+        $onlineFree = count(array_intersect($onlineUsernames, $usedUsernames));
+        $offlineFree = max(0, $usedFree - $onlineFree);
 
         // Statistik Pelanggan ONT
         $baseCustQuery = Customer::whereHas('ont', fn($q) => $q->where('free_hotspot', true));
