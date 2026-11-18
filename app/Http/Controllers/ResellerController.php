@@ -27,44 +27,67 @@ class ResellerController extends Controller
             'downlines.customer',
             'downlines.user',
         ])
-        ->withCount('downlines')
-        ->where(function($q) {
-            $q->whereNull('customer_id')
-              ->orWhere(function ($sub) {
-                  $sub->where('is_active', true)
-                      ->whereHas('customer', function($cq) {
-                          $cq->where('status', 'active');
-                      });
-              });
-        });
+        ->withCount('downlines');
 
         if ($request->filled('tier') && in_array($request->tier, ['master', 'regular'])) {
             $query->where('tier', $request->tier);
         }
 
+        if ($request->filled('status')) {
+            if ($request->status === 'active') {
+                $query->where('is_active', true);
+            } elseif ($request->status === 'inactive') {
+                $query->where('is_active', false);
+            }
+        }
+
+        if ($request->filled('balance_filter')) {
+            if ($request->balance_filter === 'positive') {
+                $query->where('balance', '>', 0);
+            } elseif ($request->balance_filter === 'zero') {
+                $query->where('balance', '<=', 0);
+            }
+        }
+
+        if ($request->filled('area_id')) {
+            $areaId = $request->area_id;
+            $query->whereHas('customer', function($cq) use ($areaId) {
+                $cq->where('area_id', $areaId);
+            });
+        }
+
         if ($request->filled('search')) {
             $search = trim($request->search);
-            $query->where(function($q) use ($search) {
+            $cleanPhone = preg_replace('/\D/', '', $search);
+            $query->where(function($q) use ($search, $cleanPhone) {
                 $q->where('referral_code', 'like', "%{$search}%")
-                  ->orWhereHas('customer', function($cq) use ($search) {
+                  ->orWhereHas('customer', function($cq) use ($search, $cleanPhone) {
                       $cq->where('name', 'like', "%{$search}%")
                         ->orWhere('phone', 'like', "%{$search}%")
-                        ->orWhere('customer_code', 'like', "%{$search}%");
+                        ->orWhere('customer_code', 'like', "%{$search}%")
+                        ->when(!empty($cleanPhone), function($pq) use ($cleanPhone) {
+                            $pq->orWhere('phone', 'like', "%{$cleanPhone}%");
+                        });
                   })
-                  ->orWhereHas('user', function($uq) use ($search) {
+                  ->orWhereHas('user', function($uq) use ($search, $cleanPhone) {
                       $uq->where('name', 'like', "%{$search}%")
                         ->orWhere('phone', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->when(!empty($cleanPhone), function($pq) use ($cleanPhone) {
+                            $pq->orWhere('phone', 'like', "%{$cleanPhone}%");
+                        });
                   });
             });
         }
 
-        $resellers = $query->latest()->paginate(15)->withQueryString();
+        $resellers = $query->latest('resellers.id')->paginate(15)->withQueryString();
 
         $stats = [
             'total' => Reseller::count(),
             'master' => Reseller::where('tier', 'master')->count(),
             'regular' => Reseller::where('tier', 'regular')->count(),
+            'active' => Reseller::where('is_active', true)->count(),
+            'inactive' => Reseller::where('is_active', false)->count(),
             'total_balance' => (float) Reseller::sum('balance'),
         ];
 
@@ -74,16 +97,19 @@ class ResellerController extends Controller
             ->map(function ($m) {
                 return [
                     'id' => $m->id,
-                    'name' => $m->customer?->name ?: $m->user?->name,
+                    'name' => $m->customer?->name ?: ($m->user?->name ?: ('Master #' . $m->id)),
                     'referral_code' => $m->referral_code,
                 ];
             });
+
+        $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('Resellers/Index', [
             'resellers' => $resellers,
             'stats' => $stats,
             'masterOptions' => $masterOptions,
-            'filters' => $request->only(['search', 'tier'])
+            'areas' => $areas,
+            'filters' => $request->only(['search', 'tier', 'status', 'balance_filter', 'area_id'])
         ]);
     }
 
@@ -106,16 +132,30 @@ class ResellerController extends Controller
             'tier' => 'nullable|in:regular,master',
             'parent_id' => 'nullable|exists:resellers,id',
             'override_fee' => 'nullable|numeric|min:0',
+            'can_sell_vouchers' => 'nullable|boolean',
+            'can_pay_bills' => 'nullable|boolean',
+            'notes' => 'nullable|string|max:255',
         ]);
+
+        if (isset($validated['parent_id']) && (int)$validated['parent_id'] === (int)$reseller->id) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'parent_id' => 'Mitra tidak dapat memilih dirinya sendiri sebagai sponsor/master.'
+            ]);
+        }
+
+        if (isset($validated['tier']) && $validated['tier'] === 'master') {
+            $validated['parent_id'] = null;
+            if (empty($reseller->referral_code)) {
+                $validated['referral_code'] = Reseller::generateReferralCode();
+            }
+        }
 
         $oldBalance = (float)$reseller->balance;
         $newBalance = (float)$validated['balance'];
         $diff = $newBalance - $oldBalance;
 
-        // Jika diubah menjadi master tapi belum punya referral code, buatkan otomatis
-        if (isset($validated['tier']) && $validated['tier'] === 'master' && empty($reseller->referral_code)) {
-            $validated['referral_code'] = Reseller::generateReferralCode();
-        }
+        $notes = !empty($validated['notes']) ? ' (' . trim($validated['notes']) . ')' : '';
+        unset($validated['notes']);
 
         $reseller->update($validated);
 
@@ -124,7 +164,7 @@ class ResellerController extends Controller
                 'reseller_id' => $reseller->id,
                 'type' => $diff > 0 ? 'credit' : 'debit',
                 'amount' => abs($diff),
-                'description' => 'Penyesuaian Saldo via Admin (' . ($diff > 0 ? '+' : '-') . 'Rp ' . number_format(abs($diff), 0, ',', '.') . ')',
+                'description' => 'Penyesuaian Saldo via Admin (' . ($diff > 0 ? '+' : '-') . 'Rp ' . number_format(abs($diff), 0, ',', '.') . ')' . $notes,
                 'reference_id' => 'ADJ-' . time(),
             ]);
         }

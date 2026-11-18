@@ -25,13 +25,16 @@ class RegisterResellerController extends Controller
      */
     public function create(Request $request)
     {
-        // Jika sudah login, redirect sesuai role
+        // Jika sudah login, redirect reseller ke portalnya, namun izinkan admin untuk preview
         if (Auth::check()) {
             $user = Auth::user();
             if ($user->role === 'reseller' || (method_exists($user, 'hasRole') && $user->hasRole('reseller'))) {
                 return redirect()->route('client-area.dashboard');
             }
-            return redirect()->route('dashboard');
+            if ($user->role === 'customer' || (method_exists($user, 'hasRole') && $user->hasRole('customer'))) {
+                return redirect()->route('customer-area.dashboard');
+            }
+            // Admin & Super Admin diizinkan melihat / preview form
         }
 
         $areas = Area::orderBy('name')->get(['id', 'name']);
