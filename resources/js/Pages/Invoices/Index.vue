@@ -115,6 +115,41 @@
             @select-tab="filterTab"
         />
 
+        <!-- Smart Info Banner for Bank Filter on Unpaid Tabs -->
+        <div 
+            v-if="filterBankVal && ['jatuh_tempo', 'belum_lunas', 'terisolir', 'janji_bayar', 'stop_sementara', 'stop_permanen'].includes(filterTabVal)" 
+            class="mb-3 px-4 py-3 bg-amber-50/95 border border-amber-200/90 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-amber-900 shadow-2xs"
+        >
+            <div class="flex items-center gap-2.5">
+                <div class="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <div>
+                    <span class="font-bold">Info Filter {{ currentBankLabel }}:</span>
+                    <span class="text-amber-800 ml-1">
+                        Pelanggan di tab <b>{{ getTabTitle(filterTabVal) }}</b> berstatus belum lunas, sehingga belum tercatat di mutasi bank. Data pelanggan yang sudah membayar melalui metode ini tercatat di tab <b>Lunas</b> ({{ stats?.lunas ?? 0 }} data) atau <b>Piutang</b> ({{ stats?.piutang ?? 0 }} data).
+                    </span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                <button 
+                    type="button" 
+                    @click="filterTab('lunas')" 
+                    class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition shadow-2xs flex items-center gap-1 cursor-pointer"
+                >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <span>Buka Tab Lunas ({{ stats?.lunas ?? 0 }})</span>
+                </button>
+                <button 
+                    type="button" 
+                    @click="clearBankFilter" 
+                    class="px-2.5 py-1.5 bg-white hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl font-medium transition cursor-pointer"
+                >
+                    Reset Filter Bank
+                </button>
+            </div>
+        </div>
+
         <DataTable
             :columns="columns"
             :data="invoices.data"
@@ -222,7 +257,7 @@
                     <div>
                         <select 
                             v-model="filterBankVal" 
-                            @change="applyFilters"
+                            @change="onBankFilterChange"
                             class="form-select text-xs rounded-xl border-gray-200 bg-white text-gray-700 py-1.5 pl-3 pr-8 font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-200 shadow-2xs cursor-pointer w-auto min-w-[135px]"
                             title="Filter berdasarkan rekening bank tujuan transfer atau metode pembayaran"
                         >
@@ -564,6 +599,48 @@
                     </button>
                     <span v-else class="text-gray-400 text-xs">-</span>
                 </td>
+            </template>
+
+            <!-- Custom Smart Empty State -->
+            <template #empty>
+                <div v-if="filterBankVal && ['jatuh_tempo', 'belum_lunas', 'terisolir', 'janji_bayar', 'stop_sementara', 'stop_permanen'].includes(filterTabVal)" class="flex flex-col items-center gap-3 py-8 max-w-lg mx-auto">
+                    <div class="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center shadow-xs">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div class="space-y-1.5 text-center">
+                        <p class="text-slate-800 text-sm font-bold">Tidak Ada Transaksi Masuk di Tab {{ getTabTitle(filterTabVal) }}</p>
+                        <p class="text-slate-500 text-xs leading-relaxed">
+                            Tagihan pada tab ini berstatus <b>Belum Lunas</b> sehingga belum ada catatan transaksi pembayaran bank. Riwayat pembayaran melalui <b>{{ currentBankLabel }}</b> tercatat pada tab <b>Lunas</b> ({{ stats?.lunas ?? 0 }} data) atau <b>Piutang</b> ({{ stats?.piutang ?? 0 }} data).
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 mt-2">
+                        <button 
+                            type="button" 
+                            @click="filterTab('lunas')" 
+                            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            <span>Buka Tab Lunas ({{ stats?.lunas ?? 0 }} Pelanggan)</span>
+                        </button>
+                        <button 
+                            type="button" 
+                            @click="clearBankFilter" 
+                            class="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold transition cursor-pointer"
+                        >
+                            Reset Filter Bank
+                        </button>
+                    </div>
+                </div>
+                <div v-else class="flex flex-col items-center gap-3">
+                    <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                        </svg>
+                    </div>
+                    <div class="space-y-0.5">
+                        <p class="text-slate-700 text-sm font-bold">Tidak ada data ditemukan</p>
+                    </div>
+                </div>
             </template>
         </DataTable>
 
@@ -2293,6 +2370,51 @@ const activeFiltersCount = computed(() => {
     if (filterStartDate.value || filterEndDate.value) count++;
     return count;
 });
+
+const currentBankLabel = computed(() => {
+    if (!filterBankVal.value) return '';
+    const map = {
+        cash: 'Tunai / Cash',
+        reseller_balance: 'Loket Reseller',
+        payment_gateway: 'Payment Gateway',
+        transfer_unspecified: 'Transfer Lainnya'
+    };
+    return map[filterBankVal.value] || ('Bank ' + filterBankVal.value);
+});
+
+const getTabTitle = (tab) => {
+    const titles = {
+        jatuh_tempo: 'Tagihan Jatuh Tempo',
+        belum_lunas: 'Belum Lunas (Menunggak)',
+        terisolir: 'Terisolir',
+        janji_bayar: 'Janji Bayar',
+        stop_sementara: 'Stop Sementara (Cuti)',
+        stop_permanen: 'Stop Permanen',
+        piutang: 'Piutang (Bayar Sebagian)',
+        lunas: 'Lunas',
+        prorata: 'Pelanggan Prorata',
+        upgrade: 'Upgrade / Downgrade',
+        semua: 'Daftar Tagihan'
+    };
+    return titles[tab] || tab;
+};
+
+const onBankFilterChange = () => {
+    // Jika memilih filter bank/metode bayar tertentu dan saat ini sedang di tab tagihan belum bayar:
+    // Tab belum bayar (jatuh_tempo, belum_lunas, terisolir, janji_bayar, stop_sementara, stop_permanen)
+    // tentu belum memiliki transaksi masuk ke bank.
+    // Otomatis pindahkan ke tab 'lunas' agar data pelanggan yang membayar via bank tersebut langsung tampil!
+    const unpaidTabs = ['jatuh_tempo', 'belum_lunas', 'terisolir', 'janji_bayar', 'stop_sementara', 'stop_permanen'];
+    if (filterBankVal.value && unpaidTabs.includes(filterTabVal.value)) {
+        filterTabVal.value = 'lunas';
+    }
+    applyFilters();
+};
+
+const clearBankFilter = () => {
+    filterBankVal.value = '';
+    applyFilters();
+};
 
 function applyFilters() {
     router.get('/invoices', {
