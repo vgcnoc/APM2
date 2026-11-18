@@ -467,6 +467,8 @@ Route::middleware(['auth'])->group(function () {
     // ── Vouchers & Profil Voucher ─────────────────────────────
     Route::get('/vouchers/profiles', [\App\Http\Controllers\VoucherProfileController::class, 'index'])->name('vouchers.profiles.index');
     Route::post('/vouchers/profiles', [\App\Http\Controllers\VoucherProfileController::class, 'store'])->name('vouchers.profiles.store');
+    Route::post('/vouchers/profiles/sync-all', [\App\Http\Controllers\VoucherProfileController::class, 'syncAll'])->name('vouchers.profiles.sync-all');
+    Route::post('/vouchers/profiles/{voucherProfile}/sync', [\App\Http\Controllers\VoucherProfileController::class, 'syncSingle'])->name('vouchers.profiles.sync');
     Route::post('/vouchers/profiles/{voucherProfile}/update', [\App\Http\Controllers\VoucherProfileController::class, 'update'])->name('vouchers.profiles.update.post');
     Route::post('/vouchers/profiles/{voucherProfile}/delete', [\App\Http\Controllers\VoucherProfileController::class, 'destroy'])->name('vouchers.profiles.destroy.post');
 
