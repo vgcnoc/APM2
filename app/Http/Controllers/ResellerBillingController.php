@@ -27,7 +27,12 @@ class ResellerBillingController extends Controller
         // Helper untuk membangun query dengan filter area, tanggal, dan search
         $buildFilteredQuery = function ($tabType) use ($request, $userAccessibleAreaIds) {
             $q = Invoice::where('is_reseller_balance', true)
-                ->whereHas('customer', fn($c) => $c->where('is_reseller', true));
+                ->where(function($sub) {
+                    $sub->whereHas('customer', function($cq) {
+                        $cq->where('is_reseller', true)
+                           ->orWhereHas('reseller');
+                    })->orWhereDoesntHave('customer');
+                });
 
             if (!empty($userAccessibleAreaIds)) {
                 $q->whereHas('customer', fn($c) => $c->whereIn('area_id', $userAccessibleAreaIds));
@@ -42,10 +47,15 @@ class ResellerBillingController extends Controller
                 $search = trim($request->search);
                 $q->where(function($sq) use ($search) {
                     $sq->where('invoice_number', 'like', "%{$search}%")
+                       ->orWhere('notes', 'like', "%{$search}%")
                        ->orWhereHas('customer', function($cq) use ($search) {
                            $cq->where('name', 'like', "%{$search}%")
                               ->orWhere('phone', 'like', "%{$search}%")
-                              ->orWhere('customer_code', 'like', "%{$search}%");
+                              ->orWhere('customer_code', 'like', "%{$search}%")
+                              ->orWhereHas('reseller.user', function($ruq) use ($search) {
+                                  $ruq->where('name', 'like', "%{$search}%")
+                                      ->orWhere('phone', 'like', "%{$search}%");
+                              });
                        });
                 });
             }
@@ -149,7 +159,7 @@ class ResellerBillingController extends Controller
 
         // Data Invoice dengan pagination
         $invoices = $buildFilteredQuery($activeTab)
-            ->with(['customer.areaModel', 'payments'])
+            ->with(['customer.areaModel', 'customer.reseller.user', 'payments.collector'])
             ->latest('id')
             ->paginate(15)
             ->withQueryString()
@@ -228,8 +238,16 @@ class ResellerBillingController extends Controller
             'is_direct_payment' => 'nullable|boolean'
         ]);
 
-        if ($validated['amount'] > $invoice->remaining) {
-            return back()->with('error', 'Nominal melebihi sisa tagihan.');
+        $verifiedPaid = (float) $invoice->payments()->where('status', 'verified')->sum('amount');
+        $pendingPaid = (float) $invoice->payments()->where('status', 'pending')->sum('amount');
+        $effectiveRemaining = max(0, (float) $invoice->amount - $verifiedPaid - $pendingPaid);
+
+        if ($validated['amount'] > $effectiveRemaining) {
+            $msg = 'Nominal melebihi sisa tagihan yang dapat diterima (Rp ' . number_format($effectiveRemaining, 0, ',', '.') . ').';
+            if ($pendingPaid > 0) {
+                $msg .= ' Ada setoran pending sebesar Rp ' . number_format($pendingPaid, 0, ',', '.') . ' yang menunggu validasi.';
+            }
+            return back()->with('error', $msg);
         }
 
         $isDirect = !empty($validated['is_direct_payment']);
@@ -483,7 +501,7 @@ class ResellerBillingController extends Controller
                     $reseller->save();
 
                     // Hapus transaksi mutasi kredit terkait kasbon jika ada
-                    if (preg_match('/REQ-(\d+)/', $invoice->notes ?? '', $matches)) {
+                    if (preg_match('/(?:REQ|TOPUP)-(\d+)/', $invoice->notes ?? '', $matches)) {
                         $reqId = $matches[1];
                         \App\Models\ResellerTransaction::where('reseller_id', $reseller->id)
                             ->where(function($q) use ($reqId) {
