@@ -1095,7 +1095,7 @@ class VoucherController extends Controller
         $user = auth()->user();
         $isResellerPortal = $user && (strtolower($user->role ?? '') === 'reseller' || session('login_portal') === 'reseller');
 
-        $vQuery = Voucher::with(['profile', 'reseller.customer.areaModel', 'customer.areaModel'])
+        $vQuery = Voucher::with(['profile', 'reseller.customer.areaModel', 'reseller.user', 'customer.areaModel'])
             ->where('status', 'expired')
             ->whereDoesntHave('profile', function($pq) {
                 $pq->where('is_customer_free', true)
@@ -1122,15 +1122,41 @@ class VoucherController extends Controller
             }
         }
 
-        $rows = $vouchers->map(function ($v) use ($accts) {
-            $resellerCust = $v->reseller?->customer;
-            $areaName = $resellerCust?->areaModel?->name ?? ($resellerCust?->area ?: ($v->customer?->areaModel?->name ?? ($v->customer?->area ?: '')));
+        // Helper untuk ekstrak info reseller & area secara akurat (baik customer maupun mitra user)
+        $getResellerInfo = function($voucher) {
+            $reseller = $voucher?->reseller;
+            if (!$reseller) {
+                return [
+                    'name' => 'Kantor / System',
+                    'type' => 'system',
+                    'phone' => null,
+                    'area' => $voucher?->customer?->areaModel?->name ?? ($voucher?->customer?->area ?: '-'),
+                ];
+            }
+            $customer = $reseller->customer;
+            $user = $reseller->user;
+            $name = $customer?->name ?? ($user?->name ?? ('Reseller #' . $reseller->id));
+            $phone = $customer?->phone ?? ($user?->phone ?? null);
+            $area = $customer?->areaModel?->name ?? ($customer?->area ?: ($voucher?->customer?->areaModel?->name ?? ($voucher?->customer?->area ?: '-')));
+            return [
+                'name' => $name,
+                'type' => $customer ? 'customer' : 'mitra_user',
+                'phone' => $phone,
+                'area' => $area,
+            ];
+        };
+
+        $rows = $vouchers->map(function ($v) use ($accts, $getResellerInfo) {
+            $resInfo = $getResellerInfo($v);
             $uKey = strtolower(trim((string)$v->username));
             $cKey = strtolower(trim((string)$v->code));
             $userAccts = $accts->get($uKey) ?? $accts->get($cKey);
             $totalTime = $userAccts ? (int) $userAccts->sum('acctsessiontime') : 0;
             $firstLogin = $userAccts ? $userAccts->min('acctstarttime') : null;
             $expiredAt = $v->used_at ?: ($userAccts ? $userAccts->max('acctstoptime') : null);
+            $download = $userAccts ? (int) $userAccts->sum('acctoutputoctets') : 0;
+            $upload = $userAccts ? (int) $userAccts->sum('acctinputoctets') : 0;
+            $lastAcct = $userAccts?->last();
 
             return [
                 'id' => $v->id,
@@ -1138,14 +1164,28 @@ class VoucherController extends Controller
                 'username' => $v->username,
                 'password' => $v->password,
                 'profile' => $v->profile?->name ?? 'Hotspot Profile',
+                'profile_id' => $v->voucher_profile_id,
                 'duration' => $v->profile?->duration ?? '',
-                'reseller' => $resellerCust?->name ?? 'Kantor / System',
-                'area' => $areaName,
+                'price' => (int) ($v->profile?->price ?? 0),
+                'reseller' => $resInfo['name'],
+                'reseller_id' => $v->reseller_id,
+                'reseller_type' => $resInfo['type'],
+                'reseller_phone' => $resInfo['phone'],
+                'area' => $resInfo['area'],
+                'area_id' => $v->reseller?->customer?->area_id ?? $v->customer?->area_id,
                 'is_free' => (bool) $v->is_free,
                 'first_login' => $firstLogin ? \Carbon\Carbon::parse($firstLogin)->toIso8601String() : null,
                 'expired_at' => $expiredAt ? \Carbon\Carbon::parse($expiredAt)->toIso8601String() : null,
                 'used_at' => $v->used_at ? $v->used_at->toIso8601String() : null,
                 'total_time' => $totalTime,
+                'download' => $download,
+                'upload' => $upload,
+                'ip_address' => $lastAcct?->framedipaddress ?? '-',
+                'mac_address' => $lastAcct?->callingstationid ?? '-',
+                'nas_ip' => $lastAcct?->nasipaddress ?? '-',
+                'terminate_cause' => $lastAcct?->acctterminatecause ?? 'Masa Aktif Habis',
+                'buyer_name' => $v->buyer_name,
+                'buyer_phone' => $v->buyer_phone,
                 'is_active' => (bool) $v->is_active,
             ];
         });
@@ -1154,27 +1194,48 @@ class VoucherController extends Controller
             $profiles = $user->voucherProfiles()->where('voucher_profiles.is_customer_free', false)
                 ->where('voucher_profiles.duration', '!=', 'Mengikuti Pelanggan')
                 ->where('voucher_profiles.name', '!=', 'Hotspot Gratis Pelanggan')
-                ->select('voucher_profiles.id', 'voucher_profiles.name')
+                ->select('voucher_profiles.id', 'voucher_profiles.name', 'voucher_profiles.duration', 'voucher_profiles.price')
                 ->get();
             if ($profiles->isEmpty()) {
                 $profiles = VoucherProfile::where('is_customer_free', false)
                     ->where('duration', '!=', 'Mengikuti Pelanggan')
                     ->where('name', '!=', 'Hotspot Gratis Pelanggan')
-                    ->orderBy('name')->get(['id', 'name']);
+                    ->orderBy('name')->get(['id', 'name', 'duration', 'price']);
             }
         } else {
             $profiles = VoucherProfile::where('is_customer_free', false)
                 ->where('duration', '!=', 'Mengikuti Pelanggan')
                 ->where('name', '!=', 'Hotspot Gratis Pelanggan')
-                ->orderBy('name')->get(['id', 'name']);
+                ->orderBy('name')->get(['id', 'name', 'duration', 'price']);
         }
 
-        $resellers = \App\Models\Reseller::with('customer.areaModel')->get();
+        $resellers = \App\Models\Reseller::with(['customer.areaModel', 'user'])->get()->map(function($r) {
+            $name = $r->customer?->name ?? ($r->user?->name ?? ('Reseller #' . $r->id));
+            $area = $r->customer?->areaModel?->name ?? ($r->customer?->area ?? null);
+            return [
+                'id' => $r->id,
+                'name' => $name,
+                'area' => $area,
+                'is_mitra_user' => !empty($r->user_id),
+            ];
+        })->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)->values();
+
+        $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
+
+        $stats = [
+            'total_expired' => $rows->count(),
+            'total_time' => (int) $rows->sum('total_time'),
+            'total_download' => (int) $rows->sum('download'),
+            'total_upload' => (int) $rows->sum('upload'),
+            'total_value' => (int) $rows->sum('price'),
+        ];
 
         return Inertia::render('Vouchers/Expired', [
             'expiredUsers' => $rows->values(),
+            'stats' => $stats,
             'profiles' => $profiles,
             'resellers' => $resellers,
+            'areas' => $areas,
             'isResellerPortal' => $isResellerPortal,
         ]);
     }
