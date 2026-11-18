@@ -1199,6 +1199,13 @@ class VoucherController extends Controller
         }
 
         // â”€â”€ Single Voucher â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Tentukan active company_id agar konsisten di single maupun bulk
+        $activeCompanyId = session('active_company_id');
+        if (!$activeCompanyId || $activeCompanyId === 'all') {
+            $activeCompanyId = $user?->company_id ?: 1;
+        }
+        $activeCompanyId = (int) $activeCompanyId;
+
         if ($mode === 'single') {
             $validated = $request->validate([
                 'voucher_profile_id' => 'required|exists:voucher_profiles,id',
@@ -1226,9 +1233,14 @@ class VoucherController extends Controller
 
             // Generate or use custom username
             if (!empty($validated['username'])) {
-                $username = strtoupper(trim($validated['username']));
-                // Validasi agar custom username tidak menduplikasi voucher yang sudah ada
-                if (Voucher::where('code', $username)->orWhere('username', $username)->exists()) {
+                // Bersihkan spasi dan ubah ke uppercase agar tidak error di captive portal mikrotik
+                $username = strtoupper(preg_replace('/\s+/', '', $validated['username']));
+                // Validasi agar custom username tidak menduplikasi voucher yang sudah ada secara global
+                $exists = Voucher::withoutGlobalScopes()->where(function ($q) use ($username) {
+                    $q->where('code', $username)->orWhere('username', $username);
+                })->exists();
+
+                if ($exists) {
                     return redirect()->back()->withErrors([
                         'username' => "Username/Kode '{$username}' sudah digunakan oleh voucher lain. Silakan gunakan username lain."
                     ])->withInput();
@@ -1247,7 +1259,9 @@ class VoucherController extends Controller
                 $prefix = $isFree ? 'FREE-' : 'V-';
                 do {
                     $username = $prefix . strtoupper(Str::random(6));
-                } while (Voucher::where('code', $username)->orWhere('username', $username)->exists());
+                } while (Voucher::withoutGlobalScopes()->where(function ($q) use ($username) {
+                    $q->where('code', $username)->orWhere('username', $username);
+                })->exists());
             }
 
             if (($validated['login_type'] ?? '') === 'username_only' || empty($validated['password'])) {
@@ -1280,7 +1294,7 @@ class VoucherController extends Controller
             $voucher = null;
 
             try {
-                \DB::transaction(function () use ($validated, $profile, $targetResellerId, $isFree, $resellerPayment, $username, $password, $buyerPhone, &$voucher) {
+                \DB::transaction(function () use ($validated, $profile, $targetResellerId, $isFree, $resellerPayment, $username, $password, $buyerPhone, $activeCompanyId, &$voucher) {
                     if (!empty($targetResellerId) && !$isFree) {
                         $reseller = Reseller::lockForUpdate()->find($targetResellerId);
                         $costPerVoucher = max(0, (float)$profile->price - (float)($profile->fee_reseller ?? 0));
@@ -1301,6 +1315,7 @@ class VoucherController extends Controller
                     }
 
                     $voucher = Voucher::create([
+                        'company_id' => $activeCompanyId,
                         'voucher_profile_id' => $profile->id,
                         'reseller_id' => !empty($targetResellerId) ? $targetResellerId : null,
                         'customer_id' => !empty($validated['customer_id']) ? $validated['customer_id'] : null,
@@ -1419,11 +1434,12 @@ class VoucherController extends Controller
                 case 'words_numeric':
                     $words = ['KOPI', 'CERIA', 'MAJU', 'SUKSES', 'KILAT', 'SUPER', 'MANTAP', 'HEBAT', 'BINTANG', 'PINTAR', 'BERKAH', 'JAYA', 'CEPAT', 'ASIK', 'NET', 'HOT', 'SPEED'];
                     $word = $words[array_rand($words)];
-                    $numLen = max(2, $len - strlen($word));
-                    if ($numLen < 2) {
-                        $word = substr($word, 0, max(2, $len - 2));
-                        $numLen = $len - strlen($word);
+                    $minDigits = 2;
+                    $maxWordLen = max(2, $len - $minDigits);
+                    if (strlen($word) > $maxWordLen) {
+                        $word = substr($word, 0, $maxWordLen);
                     }
+                    $numLen = max($minDigits, $len - strlen($word));
                     $num = '';
                     for ($k = 0; $k < $numLen; $k++) {
                         $num .= mt_rand(0, 9);
@@ -1440,9 +1456,11 @@ class VoucherController extends Controller
                         $pool = ($k % 2 === 0) ? $consonants : $vowels;
                         $res .= $pool[mt_rand(0, strlen($pool) - 1)];
                     }
+                    $num = '';
                     for ($k = 0; $k < $numDigits; $k++) {
-                        $res .= mt_rand(0, 9);
+                        $num .= mt_rand(0, 9);
                     }
+                    $res .= $num;
                     return substr($res, 0, $len);
 
                 case 'alphanumeric':
@@ -1455,7 +1473,7 @@ class VoucherController extends Controller
         $batchCodes = [];
 
         for ($i = 0; $i < $validated['amount']; $i++) {
-            $prefix = $validated['prefix'] ?? ($isFree ? 'FREE-' : '');
+            $prefix = !empty($validated['prefix']) ? trim($validated['prefix']) : ($isFree ? 'FREE-' : '');
             $len = $validated['length'];
 
             $rawRandom = $generateString($len, $combination);
@@ -1465,7 +1483,9 @@ class VoucherController extends Controller
             }
 
             $attempts = 0;
-            while ((isset($batchCodes[$code]) || Voucher::where('code', $code)->exists()) && $attempts < 20) {
+            while ((isset($batchCodes[$code]) || Voucher::withoutGlobalScopes()->where(function ($q) use ($code) {
+                $q->where('code', $code)->orWhere('username', $code);
+            })->exists()) && $attempts < 25) {
                 $rawRandom = $generateString($len, $combination);
                 $code = $prefix . $rawRandom;
                 if (!in_array($combination, ['alphanumeric_lower', 'alpha_lower', 'clean_readable_lower', 'alphanumeric_mixed'])) {
@@ -1488,6 +1508,7 @@ class VoucherController extends Controller
             }
 
             $vouchers[] = [
+                'company_id' => $activeCompanyId,
                 'voucher_profile_id' => $profile->id,
                 'reseller_id' => !empty($targetResellerId) ? $targetResellerId : null,
                 'customer_id' => !empty($validated['customer_id']) ? $validated['customer_id'] : null,
@@ -1535,7 +1556,10 @@ class VoucherController extends Controller
         }
 
         if (!empty($vouchers)) {
-            $createdVouchers = Voucher::whereIn('code', array_keys($batchCodes))->get();
+            $createdVouchers = Voucher::withoutGlobalScopes()
+                ->where('company_id', $activeCompanyId)
+                ->whereIn('code', array_keys($batchCodes))
+                ->get();
             try {
                 app(RadiusService::class)->syncVouchers($createdVouchers);
             } catch (\Throwable $e) {
