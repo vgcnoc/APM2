@@ -5,6 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Reseller;
+use App\Models\ResellerTransaction;
+use App\Models\ResellerBalanceRequest;
+use App\Models\Expense;
+use App\Models\ExpenseCategory;
+use App\Models\Area;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -13,61 +18,112 @@ class ResellerReportController extends Controller
 {
     public function index(Request $request)
     {
-        // 1. Total Saldo Beredar (Saldo yang dimiliki reseller saat ini)
-        $totalSaldoBeredar = Reseller::sum('balance');
+        // 1. Total Saldo Beredar (Saldo aktif yang dimiliki reseller saat ini)
+        $totalSaldoBeredar = (float) Reseller::sum('balance');
 
-        // 2. Total Pemasukan (Uang Kasbon yang sudah Lunas/Diterima & Tunai)
-        $totalPemasukan = Payment::where('status', 'verified')
-            ->whereHas('invoice', function ($q) {
-                $q->where('is_reseller_balance', true)
-                  ->whereHas('customer', fn($c) => $c->where('is_reseller', true));
-            })->sum('amount');
+        // 2. Data Invoices Kasbon Reseller
+        $invoices = Invoice::where('is_reseller_balance', true)->get();
+        $totalKasbonInvoices = (float) $invoices->sum('amount');
+        
+        $verifiedPayments = Payment::where('status', 'verified')
+            ->whereIn('invoice_id', $invoices->pluck('id'))
+            ->sum('amount');
+            
+        $totalPiutangInvoices = max(0, $totalKasbonInvoices - (float)$verifiedPayments);
 
-        // 3. Total Piutang (Kasbon yang belum dibayar / belum divalidasi)
-        // Cara hitung: (Total Amount Invoice Kasbon) - (Total Verified Payments)
-        $invoices = Invoice::where('is_reseller_balance', true)
-            ->whereHas('customer', fn($c) => $c->where('is_reseller', true))
-            ->get();
-        $totalKasbon = $invoices->sum('amount');
-        $totalPiutang = $totalKasbon - $totalPemasukan;
+        // 3. Topup Tunai & Transfer via ResellerBalanceRequest (termasuk untuk Mitra User / direct topup)
+        $cashTransferTopups = (float) ResellerBalanceRequest::where('status', 'approved')
+            ->whereIn('payment_method', ['transfer', 'cash'])
+            ->sum('amount');
+
+        // Total Pemasukan Riil dari Reseller (Setoran Kasbon Lunas + Topup Tunai/Transfer)
+        $totalPemasukan = (float)$verifiedPayments + $cashTransferTopups;
+        $totalKasbon = $totalKasbonInvoices;
+        $totalPiutang = $totalPiutangInvoices;
 
         // 4. Data per Reseller untuk tabel
-        $resellers = Reseller::with(['customer', 'user'])->get()->map(function ($reseller) {
-            $customerInvoices = Invoice::where('is_reseller_balance', true)
-                ->where('customer_id', $reseller->customer_id)
-                ->get();
-            
-            $totalKasbonReseller = $customerInvoices->sum('amount');
-            $verifiedPaid = Payment::where('status', 'verified')
-                ->whereIn('invoice_id', $customerInvoices->pluck('id'))
-                ->sum('amount');
-                
-            $piutangReseller = $totalKasbonReseller - $verifiedPaid;
+        $resellers = Reseller::with(['customer', 'user'])
+            ->orderByDesc('balance')
+            ->get()
+            ->map(function ($reseller) {
+                $name = $reseller->customer?->name 
+                    ?? $reseller->user?->name 
+                    ?? ('Reseller #' . $reseller->id);
+                $code = $reseller->customer?->customer_code ?? $reseller->user?->email ?? ('ID:' . $reseller->id);
+                $phone = $reseller->customer?->phone ?? $reseller->user?->phone ?? '-';
+                $hasCustomer = !empty($reseller->customer_id);
+                $type = $hasCustomer ? 'Pelanggan' : 'Mitra User';
 
-            return [
-                'id' => $reseller->id,
-                'name' => $reseller->customer ? $reseller->customer->name : 'Unknown',
-                'balance' => $reseller->balance,
-                'piutang' => $piutangReseller,
-                'total_kasbon' => $totalKasbonReseller,
-                'total_paid' => $verifiedPaid,
-            ];
-        });
+                // Hitung kasbon & pembayaran per reseller
+                $totalKasbonReseller = 0;
+                $verifiedPaidReseller = 0;
 
-        // 5. Riwayat Transaksi Mutasi Reseller Terakhir
-        $recentTransactions = \App\Models\ResellerTransaction::whereHas('reseller')
-            ->with(['reseller.customer'])
-            ->latest()
+                if ($hasCustomer) {
+                    $customerInvoices = Invoice::where('is_reseller_balance', true)
+                        ->where('customer_id', $reseller->customer_id)
+                        ->get();
+                    
+                    $totalKasbonReseller = (float) $customerInvoices->sum('amount');
+                    $verifiedPaidReseller = (float) Payment::where('status', 'verified')
+                        ->whereIn('invoice_id', $customerInvoices->pluck('id'))
+                        ->sum('amount');
+                }
+
+                // Tambahkan histori permohonan saldo direct (jika ada)
+                $directCashTransfer = (float) ResellerBalanceRequest::where('reseller_id', $reseller->id)
+                    ->where('status', 'approved')
+                    ->whereIn('payment_method', ['transfer', 'cash'])
+                    ->sum('amount');
+                $verifiedPaidReseller += $directCashTransfer;
+
+                $piutangReseller = max(0, $totalKasbonReseller - $verifiedPaidReseller);
+
+                // Hitung total pemakaian saldo (debit) untuk voucher / loket
+                $totalUsage = (float) ResellerTransaction::where('reseller_id', $reseller->id)
+                    ->where('type', 'debit')
+                    ->sum('amount');
+
+                return [
+                    'id' => $reseller->id,
+                    'name' => $name,
+                    'code' => $code,
+                    'phone' => $phone,
+                    'has_customer' => $hasCustomer,
+                    'type' => $type,
+                    'balance' => (float) $reseller->balance,
+                    'piutang' => $piutangReseller,
+                    'total_kasbon' => $totalKasbonReseller,
+                    'total_paid' => $verifiedPaidReseller,
+                    'total_usage' => $totalUsage,
+                ];
+            });
+
+        // 5. Riwayat Transaksi Mutasi Reseller Terakhir (eager load user & customer)
+        $recentTransactions = ResellerTransaction::whereHas('reseller')
+            ->with(['reseller.customer', 'reseller.user'])
+            ->latest('id')
             ->take(15)
             ->get();
 
-        // 6. Total Pengeluaran dan Kas Bersih (Order Toko dikecualikan karena beban material perusahaan)
-        $totalPengeluaran = \App\Models\Expense::withoutOrderToko()->sum('amount');
-        $kasBersih = $totalPemasukan - $totalPengeluaran;
+        // 6. Beban / Pengeluaran Terkait Reseller & Mitra (Bukan beban umum seluruh kantor/tower ISP)
+        $resellerExpenseQuery = Expense::where(function($q) {
+            $q->where('description', 'like', '%reseller%')
+              ->orWhere('description', 'like', '%mitra%')
+              ->orWhere('description', 'like', '%voucher%')
+              ->orWhere('description', 'like', '%saldo%')
+              ->orWhereHas('category', function($cq) {
+                  $cq->where('name', 'like', '%reseller%')
+                    ->orWhere('name', 'like', '%mitra%')
+                    ->orWhere('name', 'like', '%voucher%');
+              });
+        })->withoutOrderToko();
 
-        // 7. Riwayat Pengeluaran Terakhir (Kecualikan Order Toko)
-        $recentExpenses = \App\Models\Expense::with(['user', 'category'])
-            ->withoutOrderToko()
+        $totalPengeluaranReseller = (float) (clone $resellerExpenseQuery)->sum('amount');
+        $kasBersih = $totalPemasukan - $totalPengeluaranReseller;
+
+        // 7. Riwayat Pengeluaran Terkait Reseller Terakhir
+        $recentExpenses = (clone $resellerExpenseQuery)
+            ->with(['user', 'category'])
             ->latest('expense_date')
             ->latest('created_at')
             ->take(15)
@@ -78,14 +134,14 @@ class ResellerReportController extends Controller
                 'saldo_beredar' => $totalSaldoBeredar,
                 'pemasukan' => $totalPemasukan,
                 'piutang' => $totalPiutang,
-                'pengeluaran' => $totalPengeluaran,
+                'pengeluaran' => $totalPengeluaranReseller,
                 'kas_bersih' => $kasBersih,
             ],
             'resellers' => $resellers,
             'recent_transactions' => $recentTransactions,
             'recent_expenses' => $recentExpenses,
-            'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
-            'expense_categories' => \App\Models\ExpenseCategory::active()->orderBy('name')->get(['id', 'code', 'name', 'color']),
+            'areas' => Area::orderBy('name')->get(['id', 'name']),
+            'expense_categories' => ExpenseCategory::active()->orderBy('name')->get(['id', 'code', 'name', 'color']),
         ]);
     }
 }
