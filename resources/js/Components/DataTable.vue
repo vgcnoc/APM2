@@ -91,7 +91,12 @@
                             </slot>
                         </td>
                     </tr>
-                    <tr v-else v-for="(row, index) in data" :key="row.id || index">
+                    <tr 
+                        v-else 
+                        v-for="(row, index) in data" 
+                        :key="row.id || index"
+                        :class="rowClass ? rowClass(row, index) : ''"
+                    >
                         <td v-if="selectable" class="w-10 text-center px-3">
                             <input type="checkbox" 
                                 class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 shadow-sm" 
@@ -154,6 +159,7 @@ const props = defineProps({
     filters: { type: Object, default: () => ({}) },
     emptyTitle: { type: String, default: 'Tidak ada data ditemukan' },
     emptySubtitle: { type: String, default: '' },
+    rowClass: { type: Function, default: null },
 });
 
 const emit = defineEmits(['update:selected']);

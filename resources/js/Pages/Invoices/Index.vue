@@ -122,6 +122,7 @@
             searchPlaceholder="Cari nama atau area..."
             searchRoute="/invoices"
             :filters="filters"
+            :rowClass="getInvoiceRowClass"
         >
             <template #filters>
                 <div class="flex flex-wrap items-center gap-2.5 w-full">
@@ -268,6 +269,17 @@
             </template>
             
             <template #actions>
+                <!-- Legenda Blok Warna -->
+                <div class="hidden xl:flex items-center gap-1.5 mr-auto">
+                    <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-50 text-amber-900 border border-amber-200 text-xs font-bold shadow-2xs" title="Baris di-blok kuning untuk tagihan dengan komitmen Janji Bayar">
+                        <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                        Janji Bayar
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-blue-50 text-blue-900 border border-blue-200 text-xs font-bold shadow-2xs" title="Baris di-blok biru untuk tagihan yang telah bayar sebagian (mencicil)">
+                        <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                        Bayar Sebagian
+                    </span>
+                </div>
                 <button 
                     v-can="'invoices_btn_export'" 
                     type="button"
@@ -2373,6 +2385,23 @@ watch(() => props.filters, (newFilters) => {
     filterStartDate.value = newFilters?.start_date || '';
     filterEndDate.value = newFilters?.end_date || '';
 }, { deep: true });
+
+function getInvoiceRowClass(row) {
+    if (!row) return '';
+    const hasPromise = Boolean(row.promise_date);
+    const isPartial = (row.status === 'partial');
+
+    if (hasPromise && isPartial) {
+        return '!bg-purple-50/70 hover:!bg-purple-100/80 border-l-4 !border-l-purple-500 transition-colors';
+    }
+    if (hasPromise) {
+        return '!bg-amber-50/70 hover:!bg-amber-100/80 border-l-4 !border-l-amber-500 transition-colors';
+    }
+    if (isPartial) {
+        return '!bg-blue-50/70 hover:!bg-blue-100/80 border-l-4 !border-l-blue-500 transition-colors';
+    }
+    return '';
+}
 
 function filterTab(tab) {
     filterTabVal.value = tab;

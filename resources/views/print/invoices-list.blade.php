@@ -8,7 +8,11 @@
             size: A4 landscape;
             margin: 8mm 8mm;
         }
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
         body {
             font-family: Helvetica, Arial, sans-serif;
             color: #1e293b;
@@ -94,6 +98,24 @@
         }
         .data-table tr:nth-child(even) td {
             background-color: #f8fafc;
+        }
+        .data-table tr.row-promise td {
+            background-color: #fefce8 !important; /* Soft Amber / Yellow for Janji Bayar */
+        }
+        .data-table tr.row-promise td:first-child {
+            border-left: 3.5px solid #f59e0b !important;
+        }
+        .data-table tr.row-partial td {
+            background-color: #eff6ff !important; /* Soft Sky Blue for Bayar Sebagian (Cicil) */
+        }
+        .data-table tr.row-partial td:first-child {
+            border-left: 3.5px solid #3b82f6 !important;
+        }
+        .data-table tr.row-promise-partial td {
+            background-color: #faf5ff !important; /* Soft Purple for Bayar Sebagian & Janji Bayar */
+        }
+        .data-table tr.row-promise-partial td:first-child {
+            border-left: 3.5px solid #a855f7 !important;
         }
         .data-table tfoot td {
             background-color: #f1f5f9;
@@ -219,6 +241,25 @@
             </tr>
         </table>
 
+        <!-- Petunjuk Legenda Blok Warna -->
+        <div style="margin: 8px 0 6px 0; display: flex; align-items: center; justify-content: space-between; font-size: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-weight: bold; color: #475569;">Petunjuk Blok Warna:</span>
+                <span style="display: inline-flex; align-items: center; gap: 4px; padding: 1.5px 6px; background: #fefce8; border: 1px solid #fde047; border-left: 3.5px solid #f59e0b; border-radius: 3px;">
+                    <span style="color: #854d0e; font-weight: bold;">Kuning: Janji Bayar</span>
+                </span>
+                <span style="display: inline-flex; align-items: center; gap: 4px; padding: 1.5px 6px; background: #eff6ff; border: 1px solid #bfdbfe; border-left: 3.5px solid #3b82f6; border-radius: 3px;">
+                    <span style="color: #1e40af; font-weight: bold;">Biru: Bayar Sebagian (Cicil)</span>
+                </span>
+                <span style="display: inline-flex; align-items: center; gap: 4px; padding: 1.5px 6px; background: #faf5ff; border: 1px solid #e9d5ff; border-left: 3.5px solid #a855f7; border-radius: 3px;">
+                    <span style="color: #6b21a8; font-weight: bold;">Ungu: Bayar Sebagian & Janji Bayar</span>
+                </span>
+            </div>
+            <div style="color: #64748b; font-size: 7.5px; font-style: italic;">
+                * Baris di-blok warna otomatis agar penagihan lapangan mudah dimonitor
+            </div>
+        </div>
+
         <table class="data-table">
             <thead>
                 <tr>
@@ -243,8 +284,17 @@
                     @php
                         $lastPayment = $inv->payments->first();
                         $hasPromise = !empty($inv->promise_date);
+                        $isPartial = ($inv->status === 'partial');
+                        $rowClass = '';
+                        if ($hasPromise && $isPartial) {
+                            $rowClass = 'row-promise-partial';
+                        } elseif ($hasPromise) {
+                            $rowClass = 'row-promise';
+                        } elseif ($isPartial) {
+                            $rowClass = 'row-partial';
+                        }
                     @endphp
-                    <tr style="{{ $hasPromise ? 'background-color: #fffdf7;' : '' }}">
+                    <tr class="{{ $rowClass }}">
                         <td class="text-center">{{ $idx + 1 }}</td>
                         <td style="font-family: Courier, monospace; font-weight: bold; font-size: 8px;">{{ $inv->invoice_number }}</td>
                         <td>
