@@ -291,13 +291,27 @@ class ResellerBillingController extends Controller
      */
     public function settlements(Request $request)
     {
+        $user = auth()->user();
+        $userAccessibleAreaIds = [];
+        if ($user && method_exists($user, 'accessibleAreas')) {
+            $userAccessibleAreaIds = $user->accessibleAreas()->pluck('areas.id')->toArray();
+        } elseif ($user && !empty($user->area_id)) {
+            $userAccessibleAreaIds = [$user->area_id];
+        }
+
         $activeTab = $request->get('tab', 'pending');
         
         $baseQuery = Payment::whereHas('invoice', function($q) {
             $q->where('is_reseller_balance', true);
-        })->whereHas('customer', function($q) {
-            $q->where('is_reseller', true);
         });
+
+        if (!empty($userAccessibleAreaIds) && !$user->hasRole(['super admin', 'admin', 'keuangan'])) {
+            $baseQuery->whereHas('customer', fn($c) => $c->whereIn('area_id', $userAccessibleAreaIds));
+        }
+
+        if ($request->filled('area_id')) {
+            $baseQuery->whereHas('customer', fn($c) => $c->where('area_id', $request->area_id));
+        }
 
         $todayStr = now()->toDateString();
         $stats = [
@@ -311,13 +325,23 @@ class ResellerBillingController extends Controller
             'total_verified_amount' => (float) (clone $baseQuery)->where('status', 'verified')->sum('amount'),
         ];
 
-        $query = Payment::with(['invoice.payments', 'customer', 'collector'])
+        $query = Payment::with([
+                'invoice.payments', 
+                'customer.areaModel', 
+                'customer.reseller.user', 
+                'collector'
+            ])
             ->whereHas('invoice', function($q) {
                 $q->where('is_reseller_balance', true);
-            })
-            ->whereHas('customer', function($q) {
-                $q->where('is_reseller', true);
             });
+
+        if (!empty($userAccessibleAreaIds) && !$user->hasRole(['super admin', 'admin', 'keuangan'])) {
+            $query->whereHas('customer', fn($c) => $c->whereIn('area_id', $userAccessibleAreaIds));
+        }
+
+        if ($request->filled('area_id')) {
+            $query->whereHas('customer', fn($c) => $c->where('area_id', $request->area_id));
+        }
 
         if ($activeTab === 'verified') {
             $query->where('status', 'verified');
@@ -330,10 +354,19 @@ class ResellerBillingController extends Controller
             $query->where(function($q) use ($search) {
                 $q->whereHas('customer', function($cq) use ($search) {
                     $cq->where('name', 'like', "%{$search}%")
-                       ->orWhere('phone', 'like', "%{$search}%");
+                       ->orWhere('phone', 'like', "%{$search}%")
+                       ->orWhere('customer_code', 'like', "%{$search}%")
+                       ->orWhereHas('reseller.user', function($ruq) use ($search) {
+                           $ruq->where('name', 'like', "%{$search}%")
+                               ->orWhere('phone', 'like', "%{$search}%");
+                       });
                 })->orWhereHas('invoice', function($iq) use ($search) {
-                    $iq->where('invoice_number', 'like', "%{$search}%");
-                })->orWhere('notes', 'like', "%{$search}%");
+                    $iq->where('invoice_number', 'like', "%{$search}%")
+                       ->orWhere('notes', 'like', "%{$search}%");
+                })->orWhereHas('collector', function($colq) use ($search) {
+                    $colq->where('name', 'like', "%{$search}%");
+                })->orWhere('notes', 'like', "%{$search}%")
+                  ->orWhere('reference_number', 'like', "%{$search}%");
             });
         }
 
@@ -355,17 +388,37 @@ class ResellerBillingController extends Controller
             $query->where('payment_date', '<=', $request->end_date);
         }
             
-        $payments = $query->latest('id')->paginate(10)
+        $payments = $query->latest('id')->paginate(15)
             ->withQueryString()
             ->through(function ($payment) {
                 if ($payment->invoice) {
-                    $verifiedPaid = $payment->invoice->payments->where('status', 'verified')->sum('amount');
-                    $pendingPaid = $payment->invoice->payments->where('status', 'pending')->sum('amount');
+                    $verifiedPaid = (float) $payment->invoice->payments->where('status', 'verified')->sum('amount');
+                    $pendingPaid = (float) $payment->invoice->payments->where('status', 'pending')->sum('amount');
                     
-                    $payment->invoice->setAttribute('remaining', max(0, $payment->invoice->amount - $verifiedPaid));
+                    $payment->invoice->setAttribute('remaining', max(0, (float)$payment->invoice->amount - $verifiedPaid));
                     $payment->invoice->setAttribute('total_paid', $verifiedPaid);
                     $payment->invoice->setAttribute('pending_amount', $pendingPaid);
+                    $payment->invoice->setAttribute('effective_remaining', max(0, (float)$payment->invoice->amount - $verifiedPaid - $pendingPaid));
                 }
+
+                $resellerName = $payment->customer?->name 
+                    ?? $payment->invoice?->customer?->name 
+                    ?? $payment->customer?->reseller?->user?->name 
+                    ?? $payment->invoice?->customer?->reseller?->user?->name;
+
+                $resellerPhone = $payment->customer?->phone 
+                    ?? $payment->invoice?->customer?->phone 
+                    ?? $payment->customer?->reseller?->user?->phone 
+                    ?? $payment->invoice?->customer?->reseller?->user?->phone;
+
+                $resellerCode = $payment->customer?->customer_code
+                    ?? $payment->invoice?->customer?->customer_code
+                    ?? ('MITRA-' . ($payment->customer_id ?? $payment->id));
+
+                $payment->setAttribute('reseller_name', $resellerName ?: ('Reseller #' . ($payment->customer_id ?? 'Unknown')));
+                $payment->setAttribute('reseller_phone', $resellerPhone ?: '-');
+                $payment->setAttribute('reseller_code', $resellerCode);
+
                 return $payment;
             });
 
@@ -378,12 +431,19 @@ class ResellerBillingController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
+        $areasQuery = Area::orderBy('name');
+        if (!empty($userAccessibleAreaIds)) {
+            $areasQuery->whereIn('id', $userAccessibleAreaIds);
+        }
+        $areas = $areasQuery->get(['id', 'name']);
+
         return Inertia::render('ResellerBilling/Settlements', [
             'payments' => $payments,
             'activeTab' => $activeTab,
             'stats' => $stats,
-            'filters' => $request->only(['search', 'collector_id', 'payment_method', 'start_date', 'end_date', 'tab']),
+            'filters' => $request->only(['search', 'collector_id', 'payment_method', 'start_date', 'end_date', 'tab', 'area_id']),
             'collectors' => $collectors,
+            'areas' => $areas,
         ]);
     }
 
@@ -405,21 +465,24 @@ class ResellerBillingController extends Controller
             $invoice = $payment->invoice;
             
             // Check if invoice needs to change status
-            $totalPaid = $invoice->payments()->where('status', 'verified')->sum('amount');
-            
-            if ($totalPaid >= $invoice->amount) {
-                $invoice->update(['status' => 'paid']);
-            } elseif ($totalPaid > 0) {
-                $invoice->update(['status' => 'partial']);
+            if ($invoice) {
+                $totalPaid = (float) $invoice->payments()->where('status', 'verified')->sum('amount');
+                
+                if ($totalPaid >= (float) $invoice->amount) {
+                    $invoice->update(['status' => 'paid']);
+                } elseif ($totalPaid > 0) {
+                    $invoice->update(['status' => 'partial']);
+                }
             }
 
             // AUTO INCENTIVE GENERATION
-            if ($payment->collector && $payment->collector->incentive_rate > 0) {
+            $collectorId = $payment->collected_by ?? $payment->collector?->id;
+            if ($payment->collector && $payment->collector->incentive_rate > 0 && $collectorId) {
                 \App\Models\Incentive::create([
-                    'user_id' => $payment->collector_id,
+                    'user_id' => $collectorId,
                     'amount' => $payment->collector->incentive_rate,
                     'type' => 'auto',
-                    'description' => 'Insentif penagihan Reseller Invoice: ' . $invoice->invoice_number,
+                    'description' => 'Insentif penagihan Reseller Invoice: ' . ($invoice ? $invoice->invoice_number : ('#' . $payment->id)),
                     'reference_id' => 'payment_' . $payment->id,
                     'incentive_date' => now(),
                     'status' => 'pending'
@@ -427,7 +490,7 @@ class ResellerBillingController extends Controller
             }
 
             DB::commit();
-            return back()->with('success', 'Pelunasan berhasil disetujui. Saldo tagihan telah berkurang.');
+            return back()->with('success', 'Pelunasan setoran sebesar Rp ' . number_format($payment->amount, 0, ',', '.') . ' berhasil disetujui. Saldo tagihan telah berkurang.');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Gagal memproses pelunasan: ' . $e->getMessage());
@@ -442,6 +505,7 @@ class ResellerBillingController extends Controller
         DB::beginTransaction();
         try {
             $invoice = $payment->invoice;
+            $amount = $payment->amount;
 
             // Hapus insentif pending jika ada yang terhubung
             \App\Models\Incentive::where('reference_id', 'payment_' . $payment->id)
@@ -455,8 +519,8 @@ class ResellerBillingController extends Controller
 
             // Jika pembayaran tadinya sudah verified, sinkronkan ulang status invoice
             if ($isVerified && $invoice) {
-                $totalPaid = $invoice->payments()->where('status', 'verified')->sum('amount');
-                if ($totalPaid >= $invoice->amount) {
+                $totalPaid = (float) $invoice->payments()->where('status', 'verified')->sum('amount');
+                if ($totalPaid >= (float) $invoice->amount) {
                     $invoice->update(['status' => 'paid']);
                 } elseif ($totalPaid > 0) {
                     $invoice->update(['status' => 'partial']);
@@ -466,7 +530,7 @@ class ResellerBillingController extends Controller
             }
 
             DB::commit();
-            return back()->with('success', 'Setoran penagih reseller berhasil dibatalkan/dihapus.');
+            return back()->with('success', 'Setoran penagih reseller sebesar Rp ' . number_format($amount, 0, ',', '.') . ' berhasil dibatalkan.');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Gagal membatalkan setoran: ' . $e->getMessage());
