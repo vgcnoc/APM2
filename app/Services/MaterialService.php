@@ -831,7 +831,7 @@ class MaterialService
         }
 
         // 3. Fallback: Cocokkan token unik selain istilah generik
-        $tokens = array_filter(preg_split('/[\s\-_/]+/', $normalizedText), function ($t) {
+        $tokens = array_filter(preg_split('/[^a-z0-9]+/i', $normalizedText), function ($t) {
             return strlen($t) >= 3 && !in_array($t, ['ont', 'modem', 'unit', 'gpon', 'xpon', 'epon', 'pcs', 'brand', 'model', 'bekas', 'rusak']);
         });
 
