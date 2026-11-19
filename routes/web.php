@@ -294,6 +294,7 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'store'])->name('store');
             Route::get('/{workOrder}', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'show'])->name('show');
             Route::match(['put', 'patch'], '/{workOrder}', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'update'])->name('update');
+            Route::match(['put', 'post'], '/{workOrder}/update-materials', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'updateMaterials'])->name('update-materials');
             Route::post('/{workOrder}/reschedule', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'reschedule'])->name('reschedule');
             Route::get('/{workOrder}/print-surat-jalan', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'printSuratJalan'])->name('print-surat-jalan');
             Route::post('/{workOrder}/approve-material', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'approveMaterial'])->name('approve-material');

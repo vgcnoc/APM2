@@ -511,6 +511,65 @@ class InfrastructureWorkOrderController extends Controller
     }
 
     /**
+     * Edit / Rekonsiliasi Pemakaian Material Riil Lapangan & Panjang Kabel.
+     * Dapat dilakukan oleh Admin, Manager, Tim Infrastruktur, Gudang/Logistik,
+     * maupun Teknisi Pelaksana jika sebelumnya lupa atau ada koreksi pemakaian riil.
+     */
+    public function updateMaterials(Request $request, InfrastructureWorkOrder $workOrder)
+    {
+        $user = Auth::user();
+        $allowedRoles = ['admin', 'super admin', 'superadmin', 'manager', 'infrastruktur', 'noc', 'maintenance', 'maintenance-1', 'gudang', 'logistik'];
+        $userRole = strtolower(trim((string) ($user->role ?? '')));
+        $hasSpatieRole = method_exists($user, 'hasAnyRole') ? $user->hasAnyRole($allowedRoles) : (method_exists($user, 'hasRole') ? $user->hasRole($allowedRoles) : false);
+
+        $isAssigned = ($workOrder->technician_id === $user->id) 
+            || ($workOrder->technicians && $workOrder->technicians->contains('id', $user->id));
+
+        $canReconcile = $user->can('infrastructure_work_orders_report')
+            || $user->can('infrastructure_work_orders_edit')
+            || $user->can('infrastructure_work_orders_review_material')
+            || $hasSpatieRole
+            || in_array($userRole, $allowedRoles, true)
+            || $isAssigned;
+
+        if (!$canReconcile) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengedit pemakaian material pada penugasan ini.');
+        }
+
+        $validated = $request->validate([
+            'cable_meter_start' => 'nullable|integer|min:0',
+            'cable_meter_end' => 'nullable|integer|min:0',
+            'cable_length_used' => 'nullable|integer|min:0',
+            'notes' => 'nullable|string|max:1000',
+            'materials' => 'required|array',
+            'materials.*.id' => 'nullable|integer',
+            'materials.*.material_id' => 'required|exists:materials,id',
+            'materials.*.requested_qty' => 'nullable|numeric|min:0',
+            'materials.*.used_qty' => 'required|numeric|min:0',
+            'materials.*.unit' => 'nullable|string|max:20',
+            'materials.*.notes' => 'nullable|string|max:255',
+        ]);
+
+        try {
+            InfrastructureWorkOrderService::reconcileMaterials(
+                $workOrder,
+                $validated['materials'],
+                [
+                    'cable_meter_start' => $validated['cable_meter_start'] ?? null,
+                    'cable_meter_end' => $validated['cable_meter_end'] ?? null,
+                    'cable_length_used' => $validated['cable_length_used'] ?? null,
+                ],
+                $validated['notes'] ?? null,
+                $user
+            );
+
+            return back()->with('success', "Pemakaian material & panjang kabel untuk penugasan {$workOrder->wo_number} berhasil diperbarui dan disinkronkan ke logistik gudang!");
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Gagal memperbarui pemakaian material: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Tampilan Cetak Surat Jalan Pengeluaran Material.
      */
     public function printSuratJalan(InfrastructureWorkOrder $workOrder)

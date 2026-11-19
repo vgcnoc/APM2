@@ -813,6 +813,162 @@ class InfrastructureWorkOrderService
     }
 
     /**
+     * Rekonsiliasi & Koreksi Pemakaian Material Riil Lapangan & Sinkronisasi Retur Sisa ke Gudang.
+     */
+    public static function reconcileMaterials(
+        InfrastructureWorkOrder $workOrder,
+        array $materialsData,
+        array $cableData = [],
+        ?string $notes = null,
+        ?User $user = null
+    ): void {
+        DB::transaction(function () use ($workOrder, $materialsData, $cableData, $notes, $user) {
+            $cableStart = isset($cableData['cable_meter_start']) && $cableData['cable_meter_start'] !== ''
+                ? (int) $cableData['cable_meter_start']
+                : $workOrder->cable_meter_start;
+            $cableEnd = isset($cableData['cable_meter_end']) && $cableData['cable_meter_end'] !== ''
+                ? (int) $cableData['cable_meter_end']
+                : $workOrder->cable_meter_end;
+
+            $cableLengthUsed = isset($cableData['cable_length_used']) && $cableData['cable_length_used'] !== '' && is_numeric($cableData['cable_length_used'])
+                ? (int) $cableData['cable_length_used']
+                : (($cableStart !== null && $cableEnd !== null && $cableEnd > $cableStart) ? ($cableEnd - $cableStart) : $workOrder->cable_length_used);
+
+            $updatePayload = [
+                'cable_meter_start' => $cableStart,
+                'cable_meter_end' => $cableEnd,
+                'cable_length_used' => $cableLengthUsed,
+            ];
+
+            if (!empty($notes)) {
+                $prevNotes = $workOrder->notes ? $workOrder->notes . "\n" : "";
+                $timestamp = now()->translatedFormat('d M Y H:i');
+                $userName = $user?->name ?? 'User';
+                $updatePayload['notes'] = $prevNotes . "[{$timestamp} - Rekonsiliasi Material oleh {$userName}]: {$notes}";
+            }
+
+            $workOrder->update($updatePayload);
+
+            // Sinkronkan ke master ODP / ODC jika sudah terbit
+            if ($cableLengthUsed > 0) {
+                $cableStr = "{$cableLengthUsed}m";
+                if ($workOrder->created_odp_id) {
+                    $odp = Odp::find($workOrder->created_odp_id);
+                    if ($odp && (empty($odp->cable_pull) || $odp->cable_pull === 'Individu' || is_numeric(str_replace('m', '', $odp->cable_pull)))) {
+                        $odp->update(['cable_pull' => $cableStr]);
+                    }
+                } elseif ($workOrder->created_odc_id) {
+                    $odc = Odc::find($workOrder->created_odc_id);
+                    if ($odc && (empty($odc->cable_pull) || $odc->cable_pull === 'Individu' || is_numeric(str_replace('m', '', $odc->cable_pull)))) {
+                        $odc->update(['cable_pull' => $cableStr]);
+                    }
+                }
+            }
+
+            $processedIds = [];
+            foreach ($materialsData as $item) {
+                $matId = (int) ($item['material_id'] ?? 0);
+                if (!$matId) continue;
+
+                $used = max(0, (float) ($item['used_qty'] ?? 0));
+                $woMatId = !empty($item['id']) ? (int) $item['id'] : null;
+
+                if ($woMatId) {
+                    $woMat = InfrastructureWorkOrderMaterial::where('id', $woMatId)
+                        ->where('work_order_id', $workOrder->id)
+                        ->first();
+                } else {
+                    $woMat = InfrastructureWorkOrderMaterial::where('work_order_id', $workOrder->id)
+                        ->where('material_id', $matId)
+                        ->first();
+                }
+
+                if ($woMat) {
+                    $requested = isset($item['requested_qty']) && is_numeric($item['requested_qty'])
+                        ? (float) $item['requested_qty']
+                        : (float) $woMat->requested_qty;
+                    $ret = max(0, $requested - $used);
+
+                    $woMat->update([
+                        'requested_qty' => $requested,
+                        'used_qty' => $used,
+                        'returned_qty' => $ret,
+                        'status' => 'reconciled',
+                        'unit' => !empty($item['unit']) ? $item['unit'] : $woMat->unit,
+                        'notes' => isset($item['notes']) ? $item['notes'] : $woMat->notes,
+                    ]);
+                    $processedIds[] = $woMat->id;
+                } else {
+                    $material = Material::find($matId);
+                    $requested = isset($item['requested_qty']) && is_numeric($item['requested_qty'])
+                        ? (float) $item['requested_qty']
+                        : $used;
+                    $ret = max(0, $requested - $used);
+
+                    $newWoMat = InfrastructureWorkOrderMaterial::create([
+                        'work_order_id' => $workOrder->id,
+                        'material_id' => $matId,
+                        'requested_qty' => $requested,
+                        'used_qty' => $used,
+                        'returned_qty' => $ret,
+                        'unit' => !empty($item['unit']) ? $item['unit'] : ($material?->unit ?? 'pcs'),
+                        'status' => 'reconciled',
+                        'notes' => $item['notes'] ?? 'Material tambahan rekonsiliasi',
+                    ]);
+                    $processedIds[] = $newWoMat->id;
+                }
+            }
+
+            // Material yang tidak disertakan dalam rekonsiliasi: tandai tidak dipakai & kembalikan penuh ke gudang
+            $unprocessed = InfrastructureWorkOrderMaterial::where('work_order_id', $workOrder->id)
+                ->whereNotIn('id', $processedIds)
+                ->get();
+            foreach ($unprocessed as $unp) {
+                $unp->update([
+                    'used_qty' => 0,
+                    'returned_qty' => (float) $unp->requested_qty,
+                    'status' => 'reconciled',
+                    'notes' => 'Tidak dipakai / dikembalikan penuh ke gudang',
+                ]);
+            }
+
+            // Otomatis sinkronkan Serah Terima Pengembalian Gudang (RTR) jika WO sudah completed / under_review
+            if (in_array($workOrder->status, ['completed', 'approved', 'under_review'])) {
+                MaterialHandoverService::replacePendingOrApprovedReturnHandover(
+                    'rollout_odc_odp',
+                    $workOrder->id,
+                    $workOrder->area_id,
+                    $workOrder->wo_number
+                );
+
+                $allMaterials = InfrastructureWorkOrderMaterial::where('work_order_id', $workOrder->id)->get();
+                $returnedMats = $allMaterials->filter(fn($m) => (float) $m->returned_qty > 0);
+
+                if ($returnedMats->isNotEmpty()) {
+                    $itemsToReturn = $returnedMats->map(function ($woMat) {
+                        return [
+                            'material_id' => $woMat->material_id,
+                            'quantity' => (float) $woMat->returned_qty,
+                            'unit' => $woMat->unit ?? 'pcs',
+                            'condition' => 'Layak Pakai',
+                        ];
+                    })->values()->toArray();
+
+                    MaterialHandoverService::submitReturnHandover(
+                        sourceType: 'rollout_odc_odp',
+                        sourceId: $workOrder->id,
+                        sourceRef: $workOrder->wo_number,
+                        items: $itemsToReturn,
+                        technicianName: $workOrder->technician?->name ?: ($user?->name ?? 'Teknisi'),
+                        areaId: $workOrder->area_id,
+                        notes: 'Pengembalian Sisa Material Rollout ' . ($workOrder->type === 'odc_deployment' ? 'ODC' : 'ODP') . ' ' . $workOrder->wo_number . ' (Koreksi Rekonsiliasi)'
+                    );
+                }
+            }
+        });
+    }
+
+    /**
      * Sinkronkan foto fisik ODP / ODC langsung ke Master Database ODP/ODC dan Peta GIS.
      */
     public static function syncPhotoToMaster(InfrastructureWorkOrder $workOrder, string $photoPath): void
