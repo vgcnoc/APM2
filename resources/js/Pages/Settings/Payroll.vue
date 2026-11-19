@@ -164,12 +164,12 @@
                                 </div>
                                 <div>
                                     <div class="flex items-center gap-2 flex-wrap">
-                                        <h2 class="text-lg font-black tracking-tight text-white">Integrasi Flip for Business (Big Flip)</h2>
-                                        <span :class="form.flip_disbursement_enabled ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30' : 'bg-white/10 text-slate-400 border-white/10'" class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border">
+                                        <div class="text-lg font-black tracking-tight !text-white drop-shadow-sm">Integrasi Flip for Business (Big Flip)</div>
+                                        <span :class="form.flip_disbursement_enabled ? 'bg-emerald-500/25 !text-emerald-300 border-emerald-400/40' : 'bg-white/10 !text-slate-200 border-white/20'" class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border">
                                             {{ form.flip_disbursement_enabled ? '● AKTIF' : '○ NONAKTIF' }}
                                         </span>
                                     </div>
-                                    <p class="text-xs text-amber-200/80 mt-0.5">Transfer gaji &amp; insentif teknisi langsung ke 100+ bank &amp; e-wallet (DANA, GoPay, OVO, ShopeePay)</p>
+                                    <p class="text-xs !text-amber-100/90 mt-0.5 font-medium">Transfer gaji &amp; insentif teknisi langsung ke 100+ bank &amp; e-wallet (DANA, GoPay, OVO, ShopeePay)</p>
                                 </div>
                             </div>
 
@@ -182,9 +182,7 @@
                                     class="sr-only peer"
                                 >
                                 <div class="w-14 h-7 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-amber-500 shadow-inner"></div>
-                                <span class="ml-3 text-xs font-bold text-slate-200">
-                                    {{ form.flip_disbursement_enabled ? 'Fitur Aktif' : 'Aktifkan' }}
-                                </span>
+                                <span class="ml-3 text-xs font-black !text-amber-100">{{ form.flip_disbursement_enabled ? 'Fitur Aktif' : 'Aktifkan' }}</span>
                             </label>
                         </div>
 
@@ -195,7 +193,7 @@
                                 <div class="lg:col-span-2">
                                     <label class="block text-xs font-bold text-amber-200 uppercase tracking-wider mb-1.5 flex items-center justify-between">
                                         <span>Secret API Key Flip *</span>
-                                        <span class="text-[10px] font-medium text-slate-400">Didapat dari Dashboard Flip for Business</span>
+                                        <span class="text-[10px] font-bold !text-amber-200/80">Didapat dari Dashboard Flip for Business</span>
                                     </label>
                                     <div class="relative">
                                         <input 
@@ -212,7 +210,7 @@
                                             {{ showFlipKey ? 'Sembunyikan' : 'Lihat' }}
                                         </button>
                                     </div>
-                                    <p class="text-[11px] text-slate-400 mt-1">Dapatkan di menu <strong>Integrasi API &rarr; Secret Key</strong> di Dashboard Flip for Business Anda.</p>
+                                    <p class="text-[11px] !text-slate-200 mt-1">Dapatkan di menu <strong class="!text-amber-300">Integrasi API &rarr; Secret Key</strong> di Dashboard Flip for Business Anda.</p>
                                 </div>
 
                                 <!-- Environment Sandbox / Production -->
@@ -227,14 +225,14 @@
                                         <option value="sandbox">Development (Sandbox / Uji Coba)</option>
                                         <option value="production">Production (Live Transaksi Nyata)</option>
                                     </select>
-                                    <p class="text-[11px] text-slate-400 mt-1">Pilih <em>Production</em> jika akun Flip sudah terverifikasi.</p>
+                                    <p class="text-[11px] !text-slate-200 mt-1">Pilih <em class="!text-amber-300 font-semibold">Production</em> jika akun Flip sudah terverifikasi.</p>
                                 </div>
 
                                 <!-- Validation Token (Webhook) -->
                                 <div class="lg:col-span-3">
                                     <label class="block text-xs font-bold text-amber-200 uppercase tracking-wider mb-1.5 flex items-center justify-between">
                                         <span>Validation Token (Webhook Verification)</span>
-                                        <span class="text-[10px] text-slate-400">(Opsional untuk verifikasi callback)</span>
+                                        <span class="text-[10px] font-bold !text-amber-200/80">(Opsional untuk verifikasi callback)</span>
                                     </label>
                                     <input 
                                         type="text" 
@@ -242,7 +240,7 @@
                                         placeholder="Contoh: token_validasi_webhook_flip..." 
                                         class="w-full bg-slate-800/80 border border-slate-700 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 text-white rounded-xl px-4 py-2.5 text-xs font-mono shadow-sm transition-all"
                                     />
-                                    <p class="text-[11px] text-slate-400 mt-1">Digunakan untuk memastikan update status transfer benar-benar dikirim dari server Flip.</p>
+                                    <p class="text-[11px] !text-slate-200 mt-1">Digunakan untuk memastikan update status transfer benar-benar dikirim dari server Flip.</p>
                                 </div>
                             </div>
 
@@ -256,7 +254,7 @@
                                     />
                                     <div>
                                         <span class="text-xs font-extrabold text-white block">Auto Disburse Flip Otomatis Saat Tombol "Cairkan" Ditekan</span>
-                                        <span class="text-[11px] text-slate-300 block mt-0.5">Jika dicentang dan Flip aktif, menekan tombol Cairkan / Cairkan Semua di menu Payroll akan langsung memicu transfer dana via Flip for Business.</span>
+                                        <span class="text-[11px] !text-slate-200 block mt-0.5">Jika dicentang dan Flip aktif, menekan tombol Cairkan / Cairkan Semua di menu Payroll akan langsung memicu transfer dana via Flip for Business.</span>
                                     </div>
                                 </label>
                             </div>
@@ -327,12 +325,12 @@
                                 </div>
                                 <div>
                                     <div class="flex items-center gap-2 flex-wrap">
-                                        <h2 class="text-lg font-black tracking-tight text-white">Integrasi Xendit Auto Transfer (Disbursements)</h2>
-                                        <span :class="form.xendit_disbursement_enabled ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30' : 'bg-white/10 text-slate-400 border-white/10'" class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border">
+                                        <div class="text-lg font-black tracking-tight !text-white drop-shadow-sm">Integrasi Xendit Auto Transfer (Disbursements)</div>
+                                        <span :class="form.xendit_disbursement_enabled ? 'bg-emerald-500/25 !text-emerald-300 border-emerald-400/40' : 'bg-white/10 !text-slate-200 border-white/20'" class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border">
                                             {{ form.xendit_disbursement_enabled ? '● AKTIF' : '○ NONAKTIF' }}
                                         </span>
                                     </div>
-                                    <p class="text-xs text-indigo-200/80 mt-0.5">Kirim transfer gaji &amp; insentif langsung ke rekening bank karyawan secara real-time via API Xendit</p>
+                                    <p class="text-xs !text-indigo-100/90 mt-0.5 font-medium">Kirim transfer gaji &amp; insentif langsung ke rekening bank karyawan secara real-time via API Xendit</p>
                                 </div>
                             </div>
 
@@ -345,9 +343,7 @@
                                     class="sr-only peer"
                                 >
                                 <div class="w-14 h-7 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-500 shadow-inner"></div>
-                                <span class="ml-3 text-xs font-bold text-slate-200">
-                                    {{ form.xendit_disbursement_enabled ? 'Fitur Aktif' : 'Aktifkan' }}
-                                </span>
+                                <span class="ml-3 text-xs font-black !text-indigo-100">{{ form.xendit_disbursement_enabled ? 'Fitur Aktif' : 'Aktifkan' }}</span>
                             </label>
                         </div>
 
@@ -358,7 +354,7 @@
                                 <div>
                                     <label class="block text-xs font-bold text-indigo-200 uppercase tracking-wider mb-1.5 flex items-center justify-between">
                                         <span>Secret API Key Xendit *</span>
-                                        <span class="text-[10px] font-medium text-slate-400">Sandbox: <code class="text-indigo-300">xnd_development_...</code> | Live: <code class="text-emerald-300">xnd_production_...</code></span>
+                                        <span class="text-[10px] font-bold !text-indigo-200/80">Sandbox: <code class="!text-indigo-300">xnd_development_...</code> | Live: <code class="!text-emerald-300">xnd_production_...</code></span>
                                     </label>
                                     <div class="relative">
                                         <input 
@@ -375,7 +371,7 @@
                                             {{ showXenditKey ? 'Sembunyikan' : 'Lihat' }}
                                         </button>
                                     </div>
-                                    <p class="text-[11px] text-slate-400 mt-1">Dapatkan dari menu <strong>Settings &rarr; API Keys &rarr; Secret Key</strong> di Dashboard Xendit Anda.</p>
+                                    <p class="text-[11px] !text-slate-200 mt-1">Dapatkan dari menu <strong class="!text-indigo-300">Settings &rarr; API Keys &rarr; Secret Key</strong> di Dashboard Xendit Anda.</p>
                                 </div>
 
                                 <!-- Webhook Callback Token -->
@@ -390,7 +386,7 @@
                                         placeholder="Contoh: token_verifikasi_webhook..." 
                                         class="w-full bg-slate-800/80 border border-slate-700 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20 text-white rounded-xl px-4 py-2.5 text-xs font-mono shadow-sm transition-all"
                                     />
-                                    <p class="text-[11px] text-slate-400 mt-1">Digunakan untuk memvalidasi header <code>x-callback-token</code> saat Xendit mengirim update status transfer.</p>
+                                    <p class="text-[11px] !text-slate-200 mt-1">Digunakan untuk memvalidasi header <code class="!text-indigo-300">x-callback-token</code> saat Xendit mengirim update status transfer.</p>
                                 </div>
                             </div>
 
@@ -404,7 +400,7 @@
                                     />
                                     <div>
                                         <span class="text-xs font-extrabold text-white block">Auto Disburse Xendit Otomatis Saat Tombol "Cairkan" Ditekan</span>
-                                        <span class="text-[11px] text-slate-300 block mt-0.5">Jika dicentang dan Xendit aktif, menekan tombol Cairkan / Cairkan Semua di menu Payroll akan otomatis memicu transfer dana via Xendit.</span>
+                                        <span class="text-[11px] !text-slate-200 block mt-0.5">Jika dicentang dan Xendit aktif, menekan tombol Cairkan / Cairkan Semua di menu Payroll akan otomatis memicu transfer dana via Xendit.</span>
                                     </div>
                                 </label>
                             </div>
