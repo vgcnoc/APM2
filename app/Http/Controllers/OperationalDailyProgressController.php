@@ -793,6 +793,7 @@ class OperationalDailyProgressController extends Controller
                 'customer_name' => $cust->name,
                 'customer_code' => $cust->customer_id ?? $cust->code ?? '-',
                 'detail' => $detail,
+                'address' => $cust->address ?? '-',
                 'odp' => $odpName,
                 'phone' => $cust->phone,
                 'technicians' => $techniciansStr,
@@ -832,6 +833,7 @@ class OperationalDailyProgressController extends Controller
                 'customer_name' => $cust->name,
                 'customer_code' => $cust->customer_id ?? $cust->code ?? '-',
                 'detail' => "{$pkgName} - {$cust->address}",
+                'address' => $cust->address ?? '-',
                 'odp' => $cust->ont?->odp?->name ?? '-',
                 'phone' => $cust->phone,
                 'technicians' => $techniciansStr,
@@ -913,6 +915,7 @@ class OperationalDailyProgressController extends Controller
             $items[] = [
                 'customer_name' => $cust->name,
                 'detail' => $detail,
+                'address' => $cust->address ?? '-',
                 'odp' => $srv->odp?->name ?? '-',
                 'phone' => $cust->phone,
                 'technicians' => $techniciansStr,
@@ -969,6 +972,7 @@ class OperationalDailyProgressController extends Controller
             $items[] = [
                 'customer_name' => $cust->name,
                 'detail' => "{$pkgName} - {$cust->address}",
+                'address' => $cust->address ?? '-',
                 'odp' => '-',
                 'phone' => $cust->phone,
                 'technicians' => $techniciansStr,
@@ -1671,13 +1675,21 @@ class OperationalDailyProgressController extends Controller
                 $lines[] = "👷 *Petugas Teknisi :* {$techName}";
                 $idx = 1;
                 foreach ($tItems as $g) {
-                    $lines[] = "{$idx}. Nama Pelanggan : {$g['customer_name']}";
-                    $lines[] = "   Alamat : {$g['address']}";
-                    $lines[] = "   ODP\t  : {$g['odp']}";
-                    $lines[] = "   Kendala: {$g['issue']}";
-                    $lines[] = "   HP: {$g['phone']}";
-                    $lines[] = "   Durasi: {$g['duration']}";
-                    $lines[] = "   Status: {$g['status_label']}";
+                    $cName = $g['customer_name'] ?? '-';
+                    $addr = $g['address'] ?? '-';
+                    $odp = $g['odp'] ?? '-';
+                    $issue = $g['issue'] ?? '-';
+                    $hp = $g['phone'] ?? '-';
+                    $dur = $g['duration'] ?? '-';
+                    $stat = $g['status_label'] ?? '-';
+
+                    $lines[] = "{$idx}. Nama Pelanggan : {$cName}";
+                    $lines[] = "   Alamat : {$addr}";
+                    $lines[] = "   ODP\t  : {$odp}";
+                    $lines[] = "   Kendala: {$issue}";
+                    $lines[] = "   HP: {$hp}";
+                    $lines[] = "   Durasi: {$dur}";
+                    $lines[] = "   Status: {$stat}";
                     $idx++;
                 }
             }
@@ -1694,11 +1706,17 @@ class OperationalDailyProgressController extends Controller
                 $idx = 1;
                 foreach ($pItems as $pg) {
                     $segmen = !empty($pg['segment_type']) ? " ({$pg['segment_type']})" : "";
-                    $lines[] = "{$idx}. No. Tiket: {$pg['ticket_number']}{$segmen}";
-                    $lines[] = "   Lokasi : {$pg['location_name']}";
+                    $ticket = $pg['ticket_number'] ?? '-';
+                    $loc = $pg['location_name'] ?? '-';
                     $target = $pg['infra_target'] ?? '-';
+                    $issue = $pg['issue'] ?? '-';
+                    $dur = $pg['duration'] ?? '-';
+                    $stat = $pg['status_label'] ?? '-';
+
+                    $lines[] = "{$idx}. No. Tiket: {$ticket}{$segmen}";
+                    $lines[] = "   Lokasi : {$loc}";
                     $lines[] = "   Target : {$target}";
-                    $lines[] = "   Kendala: {$pg['issue']}";
+                    $lines[] = "   Kendala: {$issue}";
                     if (!empty($pg['affected_customers_count']) && $pg['affected_customers_count'] > 0) {
                         $lines[] = "   Dampak : {$pg['affected_customers_count']} Pelanggan";
                     }
@@ -1708,8 +1726,8 @@ class OperationalDailyProgressController extends Controller
                     if (!empty($pg['action_taken']) && $pg['action_taken'] !== '-') {
                         $lines[] = "   Tindakan: {$pg['action_taken']}";
                     }
-                    $lines[] = "   Durasi : {$pg['duration']}";
-                    $lines[] = "   Status : {$pg['status_label']}";
+                    $lines[] = "   Durasi : {$dur}";
+                    $lines[] = "   Status : {$stat}";
                     $idx++;
                 }
             }
@@ -1725,12 +1743,19 @@ class OperationalDailyProgressController extends Controller
                 $lines[] = "👷 *Petugas Teknisi :* {$techName}";
                 $idx = 1;
                 foreach ($pItems as $p) {
-                    $lines[] = "{$idx}. Nama Pelanggan : {$p['customer_name']}";
-                    $lines[] = "   Data Detail : {$p['detail']}";
-                    $lines[] = "   ODP\t  : {$p['odp']}";
-                    $lines[] = "   HP: {$p['phone']}";
-                    $lines[] = "   Durasi: {$p['duration']}";
-                    $lines[] = "   Status: {$p['status_label']}";
+                    $cName = $p['customer_name'] ?? '-';
+                    $detail = $p['detail'] ?? '-';
+                    $odp = $p['odp'] ?? '-';
+                    $hp = $p['phone'] ?? '-';
+                    $dur = $p['duration'] ?? '-';
+                    $stat = $p['status_label'] ?? '-';
+
+                    $lines[] = "{$idx}. Nama Pelanggan : {$cName}";
+                    $lines[] = "   Data Detail : {$detail}";
+                    $lines[] = "   ODP\t  : {$odp}";
+                    $lines[] = "   HP: {$hp}";
+                    $lines[] = "   Durasi: {$dur}";
+                    $lines[] = "   Status: {$stat}";
                     $idx++;
                 }
             }
@@ -1746,11 +1771,17 @@ class OperationalDailyProgressController extends Controller
                 $lines[] = "👷 *Petugas Survey/Teknisi :* {$techName}";
                 $idx = 1;
                 foreach ($sItems as $s) {
-                    $lines[] = "{$idx}. Nama Pelanggan : {$s['customer_name']}";
-                    $lines[] = "   Data Detail : {$s['detail']}";
-                    $lines[] = "   ODP\t  : {$s['odp']}";
-                    $lines[] = "   HP: {$s['phone']}";
-                    $lines[] = "   Status: {$s['status_label']}";
+                    $cName = $s['customer_name'] ?? '-';
+                    $detail = $s['detail'] ?? '-';
+                    $odp = $s['odp'] ?? '-';
+                    $hp = $s['phone'] ?? '-';
+                    $stat = $s['status_label'] ?? '-';
+
+                    $lines[] = "{$idx}. Nama Pelanggan : {$cName}";
+                    $lines[] = "   Data Detail : {$detail}";
+                    $lines[] = "   ODP\t  : {$odp}";
+                    $lines[] = "   HP: {$hp}";
+                    $lines[] = "   Status: {$stat}";
                     $idx++;
                 }
             }
@@ -1766,12 +1797,19 @@ class OperationalDailyProgressController extends Controller
                 $lines[] = "👷 *Petugas Teknisi/CBP :* {$techName}";
                 $idx = 1;
                 foreach ($cItems as $c) {
-                    $lines[] = "{$idx}. Nama Pelanggan : {$c['customer_name']}";
-                    $lines[] = "   Alamat : {$c['address']}";
-                    $lines[] = "   ODP\t  : {$c['odp']}";
-                    $lines[] = "   Alasan : {$c['reason']}";
-                    $lines[] = "   HP: {$c['phone']}";
-                    $lines[] = "   Status: {$c['status_label']}";
+                    $cName = $c['customer_name'] ?? '-';
+                    $addr = $c['address'] ?? '-';
+                    $odp = $c['odp'] ?? '-';
+                    $reason = $c['reason'] ?? '-';
+                    $hp = $c['phone'] ?? '-';
+                    $stat = $c['status_label'] ?? '-';
+
+                    $lines[] = "{$idx}. Nama Pelanggan : {$cName}";
+                    $lines[] = "   Alamat : {$addr}";
+                    $lines[] = "   ODP\t  : {$odp}";
+                    $lines[] = "   Alasan : {$reason}";
+                    $lines[] = "   HP: {$hp}";
+                    $lines[] = "   Status: {$stat}";
                     $idx++;
                 }
             }
@@ -1787,8 +1825,11 @@ class OperationalDailyProgressController extends Controller
                 $lines[] = "🛠️ *Petugas Maintenance/Teknisi :* {$techName}";
                 $idx = 1;
                 foreach ($mItems as $m) {
-                    $lines[] = "{$idx}. Kegiatan : {$m['category_label']}";
-                    $lines[] = "   Target/Lokasi: {$m['title']}" . ($m['location'] ? " - {$m['location']}" : '');
+                    $catLabel = $m['category_label'] ?? '-';
+                    $title = $m['title'] ?? '-';
+                    $loc = !empty($m['location']) ? " - {$m['location']}" : '';
+                    $lines[] = "{$idx}. Kegiatan : {$catLabel}";
+                    $lines[] = "   Target/Lokasi: {$title}{$loc}";
                     if (!empty($m['optical_power_after']) || !empty($m['optical_power_before'])) {
                         $lines[] = "   Redaman: " . ($m['optical_power_after'] ?: $m['optical_power_before']);
                     }
@@ -1800,15 +1841,15 @@ class OperationalDailyProgressController extends Controller
                     if (!empty($m['materials']) && count($m['materials']) > 0) {
                         $matParts = [];
                         foreach ($m['materials'] as $mat) {
-                            $q = ($mat['quantity_used'] > 0) ? $mat['quantity_used'] : $mat['quantity_prepared'];
-                            $matParts[] = "{$q} {$mat['unit']} {$mat['material_name']}";
+                            $q = ($mat['quantity_used'] ?? 0) > 0 ? $mat['quantity_used'] : ($mat['quantity_prepared'] ?? 0);
+                            $matParts[] = "{$q} " . ($mat['unit'] ?? '') . " " . ($mat['material_name'] ?? '');
                         }
                         if (!empty($matParts)) {
                             $lines[] = "   Material: " . implode(', ', $matParts);
                         }
                     }
-                    $lines[] = "   Durasi  : {$m['duration']}";
-                    $lines[] = "   Status  : {$m['status_label']}";
+                    $lines[] = "   Durasi  : " . ($m['duration'] ?? '-');
+                    $lines[] = "   Status  : " . ($m['status_label'] ?? '-');
                     $idx++;
                 }
             }
@@ -1816,15 +1857,15 @@ class OperationalDailyProgressController extends Controller
 
         // 7. RINGKASAN HARI INI
         $lines[] = "📊 *RINGKASAN HARI INI*";
-        $lines[] = "* Gangguan PGS/PGK: {$summary['gangguan']} ({$summary['gangguan_done']} Selesai, {$summary['gangguan_pending']} Pending)";
-        $lines[] = "* Gangguan Jalur (PGJ): {$summary['pgj']} ({$summary['pgj_done']} Selesai, {$summary['pgj_pending']} Pending)";
-        $lines[] = "* Pemasangan: {$summary['pemasangan']} ({$summary['pemasangan_done']} Selesai, {$summary['pemasangan_pending']} Pending)";
-        $lines[] = "* Survey: {$summary['survey']} ({$summary['survey_feasible']} Selesai, {$summary['survey_pending']} Tunggu)";
+        $lines[] = "* Gangguan PGS/PGK: " . ($summary['gangguan'] ?? 0) . " (" . ($summary['gangguan_done'] ?? 0) . " Selesai, " . ($summary['gangguan_pending'] ?? 0) . " Pending)";
+        $lines[] = "* Gangguan Jalur (PGJ): " . ($summary['pgj'] ?? 0) . " (" . ($summary['pgj_done'] ?? 0) . " Selesai, " . ($summary['pgj_pending'] ?? 0) . " Pending)";
+        $lines[] = "* Pemasangan: " . ($summary['pemasangan'] ?? 0) . " (" . ($summary['pemasangan_done'] ?? 0) . " Selesai, " . ($summary['pemasangan_pending'] ?? 0) . " Pending)";
+        $lines[] = "* Survey: " . ($summary['survey'] ?? 0) . " (" . ($summary['survey_feasible'] ?? 0) . " Selesai, " . ($summary['survey_pending'] ?? 0) . " Tunggu)";
         $cbpPendingStr = ($summary['cbp_assigned'] ?? 0) > 0 
-            ? "{$summary['cbp_done']} Selesai, {$summary['cbp_assigned']} Terjadwal" . (($summary['cbp_pending'] ?? 0) > 0 ? ", {$summary['cbp_pending']} Pending" : "")
-            : "{$summary['cbp_done']} Selesai, {$summary['cbp_pending']} Pending";
-        $lines[] = "* Pencabutan: {$summary['cbp']} ({$cbpPendingStr})";
-        $lines[] = "* Perapihan/Cek Jalur: {$summary['maintenance']} ({$summary['maintenance_done']} Selesai, {$summary['maintenance_pending']} Pending)";
+            ? (($summary['cbp_done'] ?? 0) . " Selesai, " . ($summary['cbp_assigned'] ?? 0) . " Terjadwal" . (($summary['cbp_pending'] ?? 0) > 0 ? ", " . ($summary['cbp_pending'] ?? 0) . " Pending" : ""))
+            : (($summary['cbp_done'] ?? 0) . " Selesai, " . ($summary['cbp_pending'] ?? 0) . " Pending");
+        $lines[] = "* Pencabutan: " . ($summary['cbp'] ?? 0) . " ({$cbpPendingStr})";
+        $lines[] = "* Perapihan/Cek Jalur: " . ($summary['maintenance'] ?? 0) . " (" . ($summary['maintenance_done'] ?? 0) . " Selesai, " . ($summary['maintenance_pending'] ?? 0) . " Pending)";
         $lines[] = "";
 
         // 8. STATUS TEKNISI
@@ -1875,7 +1916,7 @@ class OperationalDailyProgressController extends Controller
         $tekStatus = $technicianStatus['teknisi'] ?? [];
         
         $assignedTechs = collect($pgjList)->pluck('technicians')->flatMap(function ($t) {
-            return explode(',', $t);
+            return explode(',', (string)($t ?? ''));
         })->map(fn($t) => trim($t))->filter(fn($t) => $t && !in_array($t, ['Belum Ditugaskan', '-']))->unique()->values()->all();
         
         $dutyStr = !empty($assignedTechs) ? implode(', ', $assignedTechs) : (!empty($maintStatus['on_duty']) ? implode(', ', $maintStatus['on_duty']) : (!empty($tekStatus['on_duty']) ? implode(', ', $tekStatus['on_duty']) : '-'));
@@ -1893,11 +1934,17 @@ class OperationalDailyProgressController extends Controller
                 $idx = 1;
                 foreach ($pItems as $pg) {
                     $segmen = !empty($pg['segment_type']) ? " ({$pg['segment_type']})" : "";
-                    $lines[] = "{$idx}. No. Tiket: {$pg['ticket_number']}{$segmen}";
-                    $lines[] = "   Lokasi : {$pg['location_name']}";
+                    $ticket = $pg['ticket_number'] ?? '-';
+                    $loc = $pg['location_name'] ?? '-';
                     $target = $pg['infra_target'] ?? '-';
+                    $issue = $pg['issue'] ?? '-';
+                    $dur = $pg['duration'] ?? '-';
+                    $stat = $pg['status_label'] ?? '-';
+
+                    $lines[] = "{$idx}. No. Tiket: {$ticket}{$segmen}";
+                    $lines[] = "   Lokasi : {$loc}";
                     $lines[] = "   Target : {$target}";
-                    $lines[] = "   Kendala: {$pg['issue']}";
+                    $lines[] = "   Kendala: {$issue}";
                     if (!empty($pg['affected_customers_count']) && $pg['affected_customers_count'] > 0) {
                         $lines[] = "   Dampak : {$pg['affected_customers_count']} Pelanggan";
                     }
@@ -1907,8 +1954,8 @@ class OperationalDailyProgressController extends Controller
                     if (!empty($pg['action_taken']) && $pg['action_taken'] !== '-') {
                         $lines[] = "   Tindakan: {$pg['action_taken']}";
                     }
-                    $lines[] = "   Durasi : {$pg['duration']}";
-                    $lines[] = "   Status : {$pg['status_label']}";
+                    $lines[] = "   Durasi : {$dur}";
+                    $lines[] = "   Status : {$stat}";
                     $idx++;
                 }
             }
@@ -1969,13 +2016,21 @@ class OperationalDailyProgressController extends Controller
                 $lines[] = "👷 *Petugas Teknisi :* {$techName}";
                 $idx = 1;
                 foreach ($tItems as $g) {
-                    $lines[] = "{$idx}. Nama Pelanggan : {$g['customer_name']}";
-                    $lines[] = "   Alamat : {$g['address']}";
-                    $lines[] = "   ODP\t  : {$g['odp']}";
-                    $lines[] = "   Kendala: {$g['issue']}";
-                    $lines[] = "   HP: {$g['phone']}";
-                    $lines[] = "   Durasi: {$g['duration']}";
-                    $lines[] = "   Status: {$g['status_label']}";
+                    $cName = $g['customer_name'] ?? '-';
+                    $addr = $g['address'] ?? '-';
+                    $odp = $g['odp'] ?? '-';
+                    $issue = $g['issue'] ?? '-';
+                    $hp = $g['phone'] ?? '-';
+                    $dur = $g['duration'] ?? '-';
+                    $stat = $g['status_label'] ?? '-';
+
+                    $lines[] = "{$idx}. Nama Pelanggan : {$cName}";
+                    $lines[] = "   Alamat : {$addr}";
+                    $lines[] = "   ODP\t  : {$odp}";
+                    $lines[] = "   Kendala: {$issue}";
+                    $lines[] = "   HP: {$hp}";
+                    $lines[] = "   Durasi: {$dur}";
+                    $lines[] = "   Status: {$stat}";
                     $idx++;
                 }
             }
@@ -2029,13 +2084,21 @@ class OperationalDailyProgressController extends Controller
                 $lines[] = "👷 *Petugas Teknisi :* {$techName}";
                 $idx = 1;
                 foreach ($pItems as $p) {
-                    $lines[] = "{$idx}. Nama Pelanggan : {$p['customer_name']}";
-                    $lines[] = "   Data Detail : {$p['detail']}";
-                    $lines[] = "   ODP\t  : {$p['odp']}";
-                    $lines[] = "   Alamat : {$p['address']}";
-                    $lines[] = "   HP: {$p['phone']}";
-                    $lines[] = "   Durasi: {$p['duration']}";
-                    $lines[] = "   Status: {$p['status_label']}";
+                    $cName = $p['customer_name'] ?? '-';
+                    $detail = $p['detail'] ?? '-';
+                    $odp = $p['odp'] ?? '-';
+                    $addr = $p['address'] ?? ($p['detail'] ?? '-');
+                    $hp = $p['phone'] ?? '-';
+                    $dur = $p['duration'] ?? '-';
+                    $stat = $p['status_label'] ?? '-';
+
+                    $lines[] = "{$idx}. Nama Pelanggan : {$cName}";
+                    $lines[] = "   Data Detail : {$detail}";
+                    $lines[] = "   ODP\t  : {$odp}";
+                    $lines[] = "   Alamat : {$addr}";
+                    $lines[] = "   HP: {$hp}";
+                    $lines[] = "   Durasi: {$dur}";
+                    $lines[] = "   Status: {$stat}";
                     $idx++;
                 }
             }
