@@ -176,6 +176,33 @@ class OperationalDailyProgressController extends Controller
             $customNote
         );
 
+        $waTextPgj = $this->buildPgjWhatsAppTemplate(
+            $areaLabel,
+            $indonesianDayDate,
+            $technicianStatus,
+            $pgjList,
+            $summary,
+            $customNote
+        );
+
+        $waTextGangguan = $this->buildGangguanWhatsAppTemplate(
+            $areaLabel,
+            $indonesianDayDate,
+            $technicianStatus,
+            $gangguanList,
+            $summary,
+            $customNote
+        );
+
+        $waTextPemasangan = $this->buildPemasanganWhatsAppTemplate(
+            $areaLabel,
+            $indonesianDayDate,
+            $technicianStatus,
+            $pemasanganList,
+            $summary,
+            $customNote
+        );
+
         // Cek Status Gateway WA
         $waGatewayStatus = false;
         try {
@@ -279,6 +306,9 @@ class OperationalDailyProgressController extends Controller
             'availableOdcs' => $availableOdcs,
             'summary' => $summary,
             'waText' => $waText,
+            'waTextPgj' => $waTextPgj,
+            'waTextGangguan' => $waTextGangguan,
+            'waTextPemasangan' => $waTextPemasangan,
             'waGatewayStatus' => $waGatewayStatus,
             'canViewAllAreas' => $isGlobal,
             'isAreaScoped' => !$isGlobal,
@@ -1819,6 +1849,210 @@ class OperationalDailyProgressController extends Controller
         // 10. NOTE
         $lines[] = "📝 *NOTE*";
         $lines[] = $customNote ?: "Tetap semangat dan jaga keselamatan kerja! 💪";
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Susun Teks Format WhatsApp Khusus Gangguan Jalur (PGJ) - Mandiri
+     */
+    private function buildPgjWhatsAppTemplate(
+        string $areaLabel,
+        string $indonesianDayDate,
+        array $technicianStatus,
+        array $pgjList,
+        array $summary,
+        string $customNote
+    ): string {
+        $lines = [];
+
+        $lines[] = "⚡ *PROGRESS GANGGUAN JALUR (PGJ)*";
+        $lines[] = "🏢 *{$areaLabel}*";
+        $lines[] = $indonesianDayDate;
+        $lines[] = "";
+
+        $maintStatus = $technicianStatus['maintenance'] ?? [];
+        $tekStatus = $technicianStatus['teknisi'] ?? [];
+        
+        $assignedTechs = collect($pgjList)->pluck('technicians')->flatMap(function ($t) {
+            return explode(',', $t);
+        })->map(fn($t) => trim($t))->filter(fn($t) => $t && !in_array($t, ['Belum Ditugaskan', '-']))->unique()->values()->all();
+        
+        $dutyStr = !empty($assignedTechs) ? implode(', ', $assignedTechs) : (!empty($maintStatus['on_duty']) ? implode(', ', $maintStatus['on_duty']) : (!empty($tekStatus['on_duty']) ? implode(', ', $tekStatus['on_duty']) : '-'));
+
+        $lines[] = "👷‍♂️ *TIM / PETUGAS JALUR BERTUGAS :*";
+        $lines[] = "• Petugas: {$dutyStr}";
+
+        if (!empty($pgjList)) {
+            $lines[] = "";
+            $lines[] = "⚡ *DETAIL PENANGANAN JALUR (PGJ)*";
+            $groupedPgj = collect($pgjList)->groupBy('technicians');
+            foreach ($groupedPgj as $techName => $pItems) {
+                $lines[] = "";
+                $lines[] = "👷 *Petugas Jalur/Teknisi :* {$techName}";
+                $idx = 1;
+                foreach ($pItems as $pg) {
+                    $segmen = !empty($pg['segment_type']) ? " ({$pg['segment_type']})" : "";
+                    $lines[] = "{$idx}. No. Tiket: {$pg['ticket_number']}{$segmen}";
+                    $lines[] = "   Lokasi : {$pg['location_name']}";
+                    $target = $pg['infra_target'] ?? '-';
+                    $lines[] = "   Target : {$target}";
+                    $lines[] = "   Kendala: {$pg['issue']}";
+                    if (!empty($pg['affected_customers_count']) && $pg['affected_customers_count'] > 0) {
+                        $lines[] = "   Dampak : {$pg['affected_customers_count']} Pelanggan";
+                    }
+                    if (!empty($pg['optical_power_after']) || !empty($pg['optical_power_before'])) {
+                        $lines[] = "   Redaman: " . ($pg['optical_power_after'] ?: $pg['optical_power_before']);
+                    }
+                    if (!empty($pg['action_taken']) && $pg['action_taken'] !== '-') {
+                        $lines[] = "   Tindakan: {$pg['action_taken']}";
+                    }
+                    $lines[] = "   Durasi : {$pg['duration']}";
+                    $lines[] = "   Status : {$pg['status_label']}";
+                    $idx++;
+                }
+            }
+        } else {
+            $lines[] = "";
+            $lines[] = "✨ *KONDISI JALUR :* Normal / Tidak ada laporan gangguan jalur aktif hari ini.";
+        }
+
+        $lines[] = "";
+        $lines[] = "📊 *RINGKASAN PGJ HARI INI*";
+        $pgjTotal = $summary['pgj'] ?? 0;
+        $pgjDone = $summary['pgj_done'] ?? 0;
+        $pgjInProg = $summary['pgj_in_progress'] ?? 0;
+        $pgjPending = $summary['pgj_pending'] ?? 0;
+        $lines[] = "* Total Tiket Jalur: {$pgjTotal}";
+        $lines[] = "* Selesai (Done)   : {$pgjDone}";
+        if ($pgjInProg > 0) {
+            $lines[] = "* Sedang Dikerjakan: {$pgjInProg}";
+        }
+        $lines[] = "* Pending/Antrean  : {$pgjPending}";
+
+        $lines[] = "";
+        $lines[] = "📝 *NOTE*";
+        $lines[] = $customNote ?: "Tetap utamakan keselamatan kerja dan pantau terus stabilitas redaman kabel optik! ⚡";
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Susun Teks Format WhatsApp Khusus Gangguan PGS/PGK - Mandiri
+     */
+    private function buildGangguanWhatsAppTemplate(
+        string $areaLabel,
+        string $indonesianDayDate,
+        array $technicianStatus,
+        array $gangguanList,
+        array $summary,
+        string $customNote
+    ): string {
+        $lines = [];
+
+        $lines[] = "🆘 *PROGRESS GANGGUAN PELANGGAN (PGS/PGK)*";
+        $lines[] = "🏢 *{$areaLabel}*";
+        $lines[] = $indonesianDayDate;
+        $lines[] = "";
+
+        $tekStatus = $technicianStatus['teknisi'] ?? [];
+        $tekDutyStr = !empty($tekStatus['on_duty']) ? implode(', ', $tekStatus['on_duty']) : '-';
+        $lines[] = "👷‍♂️ *TEKNISI GANGGUAN BERTUGAS :*";
+        $lines[] = "• Teknisi: {$tekDutyStr}";
+
+        if (!empty($gangguanList)) {
+            $lines[] = "";
+            $lines[] = "🆘 *DAFTAR GANGGUAN PGS/PGK*";
+            $groupedGangguan = collect($gangguanList)->groupBy('technicians');
+            foreach ($groupedGangguan as $techName => $tItems) {
+                $lines[] = "";
+                $lines[] = "👷 *Petugas Teknisi :* {$techName}";
+                $idx = 1;
+                foreach ($tItems as $g) {
+                    $lines[] = "{$idx}. Nama Pelanggan : {$g['customer_name']}";
+                    $lines[] = "   Alamat : {$g['address']}";
+                    $lines[] = "   ODP\t  : {$g['odp']}";
+                    $lines[] = "   Kendala: {$g['issue']}";
+                    $lines[] = "   HP: {$g['phone']}";
+                    $lines[] = "   Durasi: {$g['duration']}";
+                    $lines[] = "   Status: {$g['status_label']}";
+                    $idx++;
+                }
+            }
+        } else {
+            $lines[] = "";
+            $lines[] = "✨ *STATUS :* Tidak ada gangguan pelanggan (PGS/PGK) aktif hari ini.";
+        }
+
+        $lines[] = "";
+        $lines[] = "📊 *RINGKASAN PGS/PGK HARI INI*";
+        $lines[] = "* Total Gangguan : " . ($summary['gangguan'] ?? 0);
+        $lines[] = "* Selesai (Done) : " . ($summary['gangguan_done'] ?? 0);
+        $lines[] = "* Pending        : " . ($summary['gangguan_pending'] ?? 0);
+
+        $lines[] = "";
+        $lines[] = "📝 *NOTE*";
+        $lines[] = $customNote ?: "Tetap semangat dan utamakan kepuasan pelanggan! 💪";
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Susun Teks Format WhatsApp Khusus Pemasangan Baru (PSB) - Mandiri
+     */
+    private function buildPemasanganWhatsAppTemplate(
+        string $areaLabel,
+        string $indonesianDayDate,
+        array $technicianStatus,
+        array $pemasanganList,
+        array $summary,
+        string $customNote
+    ): string {
+        $lines = [];
+
+        $lines[] = "🛜 *PROGRESS PEMASANGAN BARU (PSB)*";
+        $lines[] = "🏢 *{$areaLabel}*";
+        $lines[] = $indonesianDayDate;
+        $lines[] = "";
+
+        $tekStatus = $technicianStatus['teknisi'] ?? [];
+        $tekDutyStr = !empty($tekStatus['on_duty']) ? implode(', ', $tekStatus['on_duty']) : '-';
+        $lines[] = "👷‍♂️ *TEKNISI INSTALASI BERTUGAS :*";
+        $lines[] = "• Teknisi: {$tekDutyStr}";
+
+        if (!empty($pemasanganList)) {
+            $lines[] = "";
+            $lines[] = "🛜 *DAFTAR PEMASANGAN BARU*";
+            $groupedPasang = collect($pemasanganList)->groupBy('technicians');
+            foreach ($groupedPasang as $techName => $pItems) {
+                $lines[] = "";
+                $lines[] = "👷 *Petugas Teknisi :* {$techName}";
+                $idx = 1;
+                foreach ($pItems as $p) {
+                    $lines[] = "{$idx}. Nama Pelanggan : {$p['customer_name']}";
+                    $lines[] = "   Data Detail : {$p['detail']}";
+                    $lines[] = "   ODP\t  : {$p['odp']}";
+                    $lines[] = "   Alamat : {$p['address']}";
+                    $lines[] = "   HP: {$p['phone']}";
+                    $lines[] = "   Durasi: {$p['duration']}";
+                    $lines[] = "   Status: {$p['status_label']}";
+                    $idx++;
+                }
+            }
+        } else {
+            $lines[] = "";
+            $lines[] = "✨ *STATUS :* Tidak ada jadwal pemasangan baru (PSB) hari ini.";
+        }
+
+        $lines[] = "";
+        $lines[] = "📊 *RINGKASAN PEMASANGAN HARI INI*";
+        $lines[] = "* Total Pemasangan: " . ($summary['pemasangan'] ?? 0);
+        $lines[] = "* Selesai (Aktif) : " . ($summary['pemasangan_done'] ?? 0);
+        $lines[] = "* Pending         : " . ($summary['pemasangan_pending'] ?? 0);
+
+        $lines[] = "";
+        $lines[] = "📝 *NOTE*";
+        $lines[] = $customNote ?: "Pastikan kerapihan instalasi kabel & redaman optik standar sebelum aktivasi! 🛜";
 
         return implode("\n", $lines);
     }

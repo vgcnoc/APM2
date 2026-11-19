@@ -420,6 +420,25 @@
 
                     <!-- TAB 2: GANGGUAN JALUR (PGJ - MANDIRI) -->
                     <div v-if="activeTab === 'pgj'" class="space-y-3">
+                        <!-- PGJ Dedicated Header & Broadcast Switcher -->
+                        <div class="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/30 p-3.5 rounded-2xl border border-amber-200/80 dark:border-amber-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                            <div class="flex items-center gap-2.5">
+                                <span class="text-xl">⚡</span>
+                                <div>
+                                    <h4 class="text-xs font-black text-amber-900 dark:text-amber-200 uppercase tracking-wider">Modul Progress Khusus PGJ (Jalur & Backbone)</h4>
+                                    <p class="text-[11px] text-amber-700 dark:text-amber-400">Total: {{ summary.pgj || 0 }} Tiket ({{ summary.pgj_done || 0 }} Selesai, {{ summary.pgj_pending || 0 }} Pending)</p>
+                                </div>
+                            </div>
+                            <button 
+                                type="button" 
+                                @click="waMode = 'pgj'"
+                                class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                                :class="waMode === 'pgj' ? 'bg-amber-600 text-white shadow-amber-600/30 ring-2 ring-amber-300' : 'bg-white dark:bg-slate-900 text-amber-800 dark:text-amber-200 border border-amber-300 hover:bg-amber-100'"
+                            >
+                                <span>📱 Tampilkan Format WA Khusus PGJ</span>
+                            </button>
+                        </div>
+
                         <div v-if="pgjList.length === 0" class="bg-white dark:bg-slate-900 rounded-3xl p-10 text-center border border-slate-200/80 dark:border-slate-800">
                             <div class="w-16 h-16 mx-auto rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center text-3xl mb-3">
                                 ⚡
@@ -1148,6 +1167,62 @@
                             </span>
                         </div>
 
+                        <!-- Pilihan Tipe / Filter Broadcast WhatsApp Mandiri -->
+                        <div>
+                            <div class="flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                                <span>🎯 Mode Broadcast :</span>
+                                <span class="text-[10px] text-amber-600 dark:text-amber-400 font-black" v-if="waMode === 'pgj'">⚡ Eksklusif Tim Jalur (PGJ)</span>
+                                <span class="text-[10px] text-rose-600 dark:text-rose-400 font-bold" v-else-if="waMode === 'gangguan'">🆘 Eksklusif PGS/PGK</span>
+                                <span class="text-[10px] text-blue-600 dark:text-blue-400 font-bold" v-else-if="waMode === 'pemasangan'">🛜 Eksklusif Pasang Baru</span>
+                                <span class="text-[10px] text-slate-400 font-normal" v-else>🌐 Laporan Gabungan</span>
+                            </div>
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl">
+                                <button 
+                                    type="button" 
+                                    @click="waMode = 'all'"
+                                    class="py-2 px-1.5 rounded-xl text-[11px] font-bold transition-all text-center flex items-center justify-center gap-1 cursor-pointer"
+                                    :class="waMode === 'all' 
+                                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-black' 
+                                        : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'"
+                                >
+                                    <span>🌐</span> Semua
+                                </button>
+                                <button 
+                                    type="button" 
+                                    @click="waMode = 'pgj'"
+                                    class="py-2 px-1.5 rounded-xl text-[11px] font-bold transition-all text-center flex items-center justify-center gap-1 cursor-pointer"
+                                    :class="waMode === 'pgj' 
+                                        ? 'bg-amber-500 text-white shadow-xs font-black' 
+                                        : 'text-slate-500 hover:text-amber-600'"
+                                >
+                                    <span>⚡</span> Khusus PGJ
+                                    <span v-if="summary.pgj > 0" class="px-1 py-0.2 rounded-md text-[9px]" :class="waMode === 'pgj' ? 'bg-white/30 text-white' : 'bg-amber-100 text-amber-800'">{{ summary.pgj }}</span>
+                                </button>
+                                <button 
+                                    type="button" 
+                                    @click="waMode = 'gangguan'"
+                                    class="py-2 px-1.5 rounded-xl text-[11px] font-bold transition-all text-center flex items-center justify-center gap-1 cursor-pointer"
+                                    :class="waMode === 'gangguan' 
+                                        ? 'bg-rose-500 text-white shadow-xs font-black' 
+                                        : 'text-slate-500 hover:text-rose-600'"
+                                >
+                                    <span>🆘</span> PGS/PGK
+                                    <span v-if="summary.gangguan > 0" class="px-1 py-0.2 rounded-md text-[9px]" :class="waMode === 'gangguan' ? 'bg-white/30 text-white' : 'bg-rose-100 text-rose-800'">{{ summary.gangguan }}</span>
+                                </button>
+                                <button 
+                                    type="button" 
+                                    @click="waMode = 'pemasangan'"
+                                    class="py-2 px-1.5 rounded-xl text-[11px] font-bold transition-all text-center flex items-center justify-center gap-1 cursor-pointer"
+                                    :class="waMode === 'pemasangan' 
+                                        ? 'bg-blue-600 text-white shadow-xs font-black' 
+                                        : 'text-slate-500 hover:text-blue-600'"
+                                >
+                                    <span>🛜</span> PSB
+                                    <span v-if="summary.pemasangan > 0" class="px-1 py-0.2 rounded-md text-[9px]" :class="waMode === 'pemasangan' ? 'bg-white/30 text-white' : 'bg-blue-100 text-blue-800'">{{ summary.pemasangan }}</span>
+                                </button>
+                            </div>
+                        </div>
+
                         <!-- Editable Note Field -->
                         <div>
                             <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
@@ -1164,7 +1239,7 @@
                         <!-- Live Textarea / WhatsApp Bubble Box -->
                         <div class="relative rounded-2xl bg-[#0b141a]/95 text-slate-100 p-4 font-mono text-xs shadow-inner border border-slate-800">
                             <div class="flex items-center justify-between text-[10px] text-emerald-400 pb-2 mb-2 border-b border-emerald-950 font-sans font-bold">
-                                <span>PREVIEW PESAN WHATSAPP</span>
+                                <span>PREVIEW: {{ waMode === 'pgj' ? '⚡ KHUSUS JALUR (PGJ)' : (waMode === 'gangguan' ? '🆘 KHUSUS PGS/PGK' : (waMode === 'pemasangan' ? '🛜 KHUSUS PASANG BARU' : '🌐 SEMUA OPERASIONAL')) }}</span>
                                 <span>{{ activeWaText.length }} KARAKTER</span>
                             </div>
                             <pre class="whitespace-pre-wrap leading-relaxed max-h-[380px] overflow-y-auto pr-1 scrollbar-thin select-all font-sans text-xs text-slate-200">{{ activeWaText }}</pre>
@@ -1188,7 +1263,7 @@
                                 <svg v-else class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                                 </svg>
-                                <span>{{ isCopied ? 'Berhasil Disalin ke Clipboard!' : 'Salin Format WA (1-Click Copy)' }}</span>
+                                <span>{{ isCopied ? 'Berhasil Disalin ke Clipboard!' : (waMode === 'pgj' ? 'Salin Broadcast Khusus PGJ (1-Click)' : 'Salin Format WA (1-Click Copy)') }}</span>
                             </button>
 
                             <!-- 2. Buka di WhatsApp Web / App Direct -->
@@ -2292,6 +2367,9 @@ const props = defineProps({
     availableOdcs: { type: Array, default: () => [] },
     summary: { type: Object, default: () => ({}) },
     waText: { type: String, default: '' },
+    waTextPgj: { type: String, default: '' },
+    waTextGangguan: { type: String, default: '' },
+    waTextPemasangan: { type: String, default: '' },
     waGatewayStatus: { type: Boolean, default: false },
     canViewAllAreas: { type: Boolean, default: true },
     isAreaScoped: { type: Boolean, default: false },
@@ -2401,8 +2479,18 @@ const tabs = computed(() => [
 ]);
 
 // Dynamic WhatsApp message text calculation
+const waMode = ref('all'); // 'all' | 'pgj' | 'gangguan' | 'pemasangan'
+
 const activeWaText = computed(() => {
-    const baseText = props.waText || '';
+    let baseText = props.waText || '';
+    if (waMode.value === 'pgj') {
+        baseText = props.waTextPgj || '';
+    } else if (waMode.value === 'gangguan') {
+        baseText = props.waTextGangguan || '';
+    } else if (waMode.value === 'pemasangan') {
+        baseText = props.waTextPemasangan || '';
+    }
+    
     if (!baseText) return '';
     
     const noteMarker = '📝 *NOTE*';
