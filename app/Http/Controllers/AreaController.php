@@ -32,8 +32,10 @@ class AreaController extends Controller
             }
         }
 
-        if (!$hasAllowedRole) {
-            abort(403, 'Pengaturan Master Area & Wilayah Desa hanya dapat diakses oleh akun Administrasi dan HRD & Finance.');
+        $hasPermission = method_exists($user, 'can') && $user->can('menu_settings_areas');
+
+        if (!$hasAllowedRole && !$hasPermission) {
+            abort(403, 'Pengaturan Master Area & Wilayah Desa hanya dapat diakses oleh akun Administrasi, HRD & Finance, atau yang memiliki izin.');
         }
     }
 
@@ -57,6 +59,7 @@ class AreaController extends Controller
 
         $totalAreas = Area::count();
         $totalCustomers = Customer::whereNotNull('area_id')->count();
+        $activeCustomers = Customer::whereNotNull('area_id')->where('status', 'active')->count();
         $totalOdps = Odp::whereNotNull('area_id')->count();
 
         return inertia('Settings/Areas', [
@@ -64,6 +67,7 @@ class AreaController extends Controller
             'stats' => [
                 'total_areas' => $totalAreas,
                 'total_customers' => $totalCustomers,
+                'active_customers' => $activeCustomers,
                 'total_odps' => $totalOdps,
             ],
             'filters' => [
@@ -94,8 +98,14 @@ class AreaController extends Controller
         $this->authorizeAreaSettings();
         $this->sanitizeCoordinates($request);
 
+        $activeCompanyId = session('active_company_id');
+        $uniqueRule = \Illuminate\Validation\Rule::unique('areas', 'name');
+        if ($activeCompanyId && $activeCompanyId !== 'all') {
+            $uniqueRule->where('company_id', $activeCompanyId);
+        }
+
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:areas,name',
+            'name' => ['required', 'string', 'max:255', $uniqueRule],
             'description' => 'nullable|string',
             'address' => 'nullable|string',
             'coverage_villages' => 'nullable|string',
@@ -103,6 +113,7 @@ class AreaController extends Controller
             'longitude' => 'nullable|numeric|between:-180,180',
             'radius_meters' => 'nullable|numeric|min:0',
         ], [
+            'name.unique' => 'Nama area ini sudah terdaftar.',
             'latitude.numeric' => 'Latitude harus berupa angka desimal (contoh: -6.9587311)',
             'latitude.between' => 'Latitude harus berada dalam rentang -90 sampai 90',
             'longitude.numeric' => 'Longitude harus berupa angka desimal (contoh: 106.7747203)',
@@ -120,8 +131,14 @@ class AreaController extends Controller
         $this->authorizeAreaSettings();
         $this->sanitizeCoordinates($request);
 
+        $activeCompanyId = session('active_company_id');
+        $uniqueRule = \Illuminate\Validation\Rule::unique('areas', 'name')->ignore($area->id);
+        if ($activeCompanyId && $activeCompanyId !== 'all') {
+            $uniqueRule->where('company_id', $activeCompanyId);
+        }
+
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:areas,name,' . $area->id,
+            'name' => ['required', 'string', 'max:255', $uniqueRule],
             'description' => 'nullable|string',
             'address' => 'nullable|string',
             'coverage_villages' => 'nullable|string',
@@ -129,6 +146,7 @@ class AreaController extends Controller
             'longitude' => 'nullable|numeric|between:-180,180',
             'radius_meters' => 'nullable|numeric|min:0',
         ], [
+            'name.unique' => 'Nama area ini sudah terdaftar.',
             'latitude.numeric' => 'Latitude harus berupa angka desimal (contoh: -6.9587311)',
             'latitude.between' => 'Latitude harus berada dalam rentang -90 sampai 90',
             'longitude.numeric' => 'Longitude harus berupa angka desimal (contoh: 106.7747203)',

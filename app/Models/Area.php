@@ -21,7 +21,7 @@ class Area extends Model
         if (empty($this->coverage_villages)) {
             return [];
         }
-        $items = explode(',', $this->coverage_villages);
+        $items = preg_split('/[,;\r\n]+/', (string) $this->coverage_villages);
         $result = [];
         foreach ($items as $item) {
             $t = trim($item);

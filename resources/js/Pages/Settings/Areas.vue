@@ -15,7 +15,12 @@
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
-                        <span class="p-2 bg-indigo-50 text-indigo-600 rounded-2xl text-xl">📍</span>
+                        <span class="p-2.5 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-xs">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </span>
                         <span>Master Data Area / Wilayah</span>
                     </h1>
                     <p class="text-xs sm:text-sm text-slate-500 mt-1">Kelola daftar area coverage, titik koordinat geografis, serta sebaran pelanggan &amp; infrastruktur jaringan</p>
@@ -30,8 +35,10 @@
                         <div class="text-2xl font-black text-slate-900 mt-1 font-mono">{{ stats?.total_areas || (areas.total || areas.data?.length || 0) }}</div>
                         <div class="text-[11px] text-slate-400 mt-0.5">Wilayah operasional terdaftar</div>
                     </div>
-                    <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center text-xl shadow-xs">
-                        🗺️
+                    <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-xs">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                        </svg>
                     </div>
                 </div>
 
@@ -39,10 +46,14 @@
                     <div>
                         <span class="text-xs font-bold uppercase tracking-wider text-emerald-600">Pelanggan di Area</span>
                         <div class="text-2xl font-black text-emerald-700 mt-1 font-mono">{{ stats?.total_customers || 0 }}</div>
-                        <div class="text-[11px] text-slate-400 mt-0.5">Pelanggan aktif terplot di area</div>
+                        <div class="text-[11px] text-slate-400 mt-0.5">
+                            {{ stats?.active_customers ? `${stats.active_customers} aktif dari ${stats.total_customers} total` : 'Pelanggan aktif terplot di area' }}
+                        </div>
                     </div>
-                    <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center text-xl shadow-xs">
-                        👥
+                    <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shadow-xs">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
                     </div>
                 </div>
 
@@ -50,10 +61,12 @@
                     <div>
                         <span class="text-xs font-bold uppercase tracking-wider text-sky-600">Titik ODP di Area</span>
                         <div class="text-2xl font-black text-sky-700 mt-1 font-mono">{{ stats?.total_odps || 0 }}</div>
-                        <div class="text-[11px] text-slate-400 mt-0.5">Kotak pembagi fiber optic</div>
+                        <div class="text-[11px] text-slate-400 mt-0.5">Kotak pembagi fiber optic terplot</div>
                     </div>
-                    <div class="w-12 h-12 bg-sky-50 text-sky-600 rounded-2xl flex items-center justify-center text-xl shadow-xs">
-                        📦
+                    <div class="w-12 h-12 bg-sky-50 text-sky-600 rounded-2xl flex items-center justify-center shadow-xs">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
                     </div>
                 </div>
             </div>
@@ -126,11 +139,24 @@
 
                                 <!-- Cakupan Desa / Wilayah -->
                                 <td class="px-6 py-4">
-                                    <div v-if="area.coverage_villages_list && area.coverage_villages_list.length > 0" class="flex flex-wrap gap-1 max-w-xs">
-                                        <span v-for="v in area.coverage_villages_list" :key="v" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                    <div v-if="area.coverage_villages_list && area.coverage_villages_list.length > 0" class="flex flex-wrap items-center gap-1 max-w-xs">
+                                        <span 
+                                            v-for="v in (expandedAreas[area.id] ? area.coverage_villages_list : area.coverage_villages_list.slice(0, 4))" 
+                                            :key="v" 
+                                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/80 shadow-2xs"
+                                        >
                                             <span>🏘️</span>
                                             <span>{{ v }}</span>
                                         </span>
+                                        <button
+                                            v-if="area.coverage_villages_list.length > 4"
+                                            @click="expandedAreas[area.id] = !expandedAreas[area.id]"
+                                            type="button"
+                                            class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 border border-slate-200 transition-colors cursor-pointer"
+                                            :title="expandedAreas[area.id] ? 'Ciutkan desa' : 'Lihat semua desa'"
+                                        >
+                                            {{ expandedAreas[area.id] ? 'Sembunyikan' : `+${area.coverage_villages_list.length - 4} lainnya` }}
+                                        </button>
                                     </div>
                                     <span v-else class="text-xs text-slate-400 italic">Belum diatur</span>
                                 </td>
@@ -156,14 +182,22 @@
                                 <!-- Sebaran Pelanggan & ODP -->
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center gap-1.5 flex-wrap">
-                                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                        <Link 
+                                            :href="`/customers?search=${encodeURIComponent(area.name)}`"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition-all shadow-2xs hover:scale-105"
+                                            title="Klik untuk melihat daftar pelanggan di area ini"
+                                        >
                                             <span>👥</span>
                                             <span>{{ area.customers_count || 0 }} Pelanggan</span>
-                                        </span>
-                                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-sky-50 text-sky-800 border border-sky-200">
+                                        </Link>
+                                        <Link 
+                                            :href="`/data-jaringan?search=${encodeURIComponent(area.name)}`"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-sky-50 text-sky-800 border border-sky-200 hover:bg-sky-100 transition-all shadow-2xs hover:scale-105"
+                                            title="Klik untuk melihat ODP di area ini"
+                                        >
                                             <span>📦</span>
                                             <span>{{ area.odps_count || 0 }} ODP</span>
-                                        </span>
+                                        </Link>
                                     </div>
                                 </td>
 
@@ -181,8 +215,18 @@
                                         Edit
                                     </button>
                                     <button 
+                                        v-if="area.customers_count === 0 && area.odps_count === 0"
                                         @click="deleteArea(area)" 
                                         class="px-3 py-1.5 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white border border-rose-200 hover:border-transparent transition-all shadow-xs cursor-pointer active:scale-95"
+                                    >
+                                        Hapus
+                                    </button>
+                                    <button 
+                                        v-else
+                                        @click="explainCannotDelete(area)" 
+                                        type="button"
+                                        class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed transition-all opacity-80"
+                                        :title="`Terkunci: Memiliki ${area.customers_count} pelanggan & ${area.odps_count} ODP.`"
                                     >
                                         Hapus
                                     </button>
@@ -191,7 +235,7 @@
 
                             <!-- Baris Kosong -->
                             <tr v-if="areaList.length === 0">
-                                <td colspan="6" class="px-6 py-16 text-center text-slate-500">
+                                <td colspan="7" class="px-6 py-16 text-center text-slate-500">
                                     <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-xl mx-auto mb-3">📍</div>
                                     <div class="text-sm font-bold text-slate-800">Belum ada data area / wilayah</div>
                                     <div class="text-xs text-slate-400 mt-0.5">Klik tombol "Tambah Area Baru" untuk mendaftarkan wilayah operasional baru.</div>
@@ -201,12 +245,12 @@
                     </table>
                 </div>
 
-                <!-- Pagination -->
-                <div v-if="paginationLinks && paginationLinks.length > 3" class="px-6 py-4 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between text-xs text-slate-500">
+                <!-- Table Footer / Summary & Pagination -->
+                <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
                     <div>
-                        Menampilkan <strong class="text-slate-800">{{ areas.from || 1 }}</strong> - <strong class="text-slate-800">{{ areas.to || areaList.length }}</strong> dari <strong class="text-slate-800">{{ areas.total || areaList.length }}</strong> area
+                        Menampilkan <strong class="text-slate-800">{{ areas.from || (areaList.length > 0 ? 1 : 0) }}</strong> - <strong class="text-slate-800">{{ areas.to || areaList.length }}</strong> dari <strong class="text-slate-800">{{ areas.total || areaList.length }}</strong> area
                     </div>
-                    <div class="flex items-center gap-1">
+                    <div v-if="paginationLinks && paginationLinks.length > 3" class="flex items-center gap-1">
                         <template v-for="link in paginationLinks" :key="link.label">
                             <Link 
                                 v-if="link.url" 
@@ -231,7 +275,12 @@
             <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-hidden border border-slate-100">
                 <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
                     <div class="flex items-center gap-2.5">
-                        <span class="p-2 bg-indigo-50 text-indigo-600 rounded-xl text-lg">📍</span>
+                        <span class="p-2 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </span>
                         <h3 class="text-base font-black text-slate-900">{{ isEditing ? 'Edit Area / Wilayah' : 'Tambah Area Baru' }}</h3>
                     </div>
                     <button @click="closeModal" class="text-slate-400 hover:text-slate-600 text-lg font-bold p-1 rounded-lg hover:bg-slate-100 cursor-pointer">
@@ -266,9 +315,9 @@
                                 v-model="form.coverage_villages" 
                                 rows="2" 
                                 class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 focus:bg-white transition-all" 
-                                placeholder="Contoh: Desa Sirnajaya, Desa Bantarkalong, Hegarmanah (pisahkan dengan koma)"
+                                placeholder="Contoh: Desa Sirnajaya, Desa Bantarkalong, Hegarmanah (pisahkan dengan koma atau baris baru)"
                             ></textarea>
-                            <p class="text-[11px] text-slate-400 mt-1">Daftar desa/kelurahan yang dilayani oleh area ini (pisahkan dengan koma). Panduan ini otomatis tampil di form data booking karyawan &amp; affiliate luar agar tidak salah pilih area.</p>
+                            <p class="text-[11px] text-slate-400 mt-1">Daftar desa/kelurahan yang dilayani oleh area ini (pisahkan dengan koma atau baris baru). Panduan ini otomatis tampil di form booking &amp; registrasi agar tidak salah pilih area.</p>
                             <p v-if="form.errors.coverage_villages" class="text-rose-500 text-xs mt-1 font-semibold">{{ form.errors.coverage_villages }}</p>
                         </div>
 
@@ -428,6 +477,7 @@ const clearSearch = () => {
 const isModalOpen = ref(false);
 const isEditing = ref(false);
 const editId = ref(null);
+const expandedAreas = ref({});
 
 const form = useForm({
     name: '',
@@ -512,7 +562,18 @@ function handleCoordPaste(e) {
     const text = (e.clipboardData || window.clipboardData)?.getData('text');
     if (!text) return;
     const trimmed = text.trim();
-    // Match pair coordinate: "-6.9587311, 106.7747203" or "-6,9587311, 106,7747203" or space-separated
+
+    // 1. Check Google Maps URL format: e.g. .../@-6.9587311,106.7747203... or ?q=-6.9587311,106.7747203
+    const urlMatch = trimmed.match(/(?:@|[?&]q=)(-?\d+(?:[.,]\d+)?)\s*,\s*(-?\d+(?:[.,]\d+)?)/);
+    if (urlMatch) {
+        e.preventDefault();
+        form.latitude = urlMatch[1].replace(',', '.');
+        form.longitude = urlMatch[2].replace(',', '.');
+        form.clearErrors('latitude', 'longitude');
+        return;
+    }
+
+    // 2. Match standard pair coordinate: "-6.9587311, 106.7747203" or "-6,9587311, 106,7747203" or space-separated
     const match = trimmed.match(/^(-?\d+(?:[.,]\d+)?)\s*[,/ ]\s*(-?\d+(?:[.,]\d+)?)$/);
     if (match) {
         e.preventDefault();
@@ -528,16 +589,37 @@ function onCoordInput(field) {
     }
 }
 
+function explainCannotDelete(area) {
+    Swal.fire({
+        icon: 'info',
+        title: 'Area Terkunci',
+        html: `Area <strong>${area.name}</strong> tidak dapat dihapus karena saat ini masih menaungi:<br>
+            <div class="mt-3 text-xs text-left bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1 font-medium">
+                <div>👥 <strong>${area.customers_count || 0}</strong> pelanggan terdaftar</div>
+                <div>📦 <strong>${area.odps_count || 0}</strong> ODP terpasang</div>
+            </div>
+            <p class="mt-3 text-xs text-slate-500">Pindahkan data pelanggan atau ODP terkait ke area lain terlebih dahulu jika ingin menghapus area ini.</p>`,
+        confirmButtonColor: '#4f46e5',
+        confirmButtonText: 'Mengerti'
+    });
+}
+
 function submit() {
     // Auto-sanitize coordinates (convert commas to dots and trim)
     if (form.latitude !== null && form.latitude !== undefined) {
         let latStr = String(form.latitude).trim();
-        const pairMatch = latStr.match(/^(-?\d+(?:[.,]\d+)?)\s*[,/ ]\s*(-?\d+(?:[.,]\d+)?)$/);
-        if (pairMatch && !form.longitude) {
-            form.latitude = pairMatch[1].replace(',', '.');
-            form.longitude = pairMatch[2].replace(',', '.');
+        const urlMatch = latStr.match(/(?:@|[?&]q=)(-?\d+(?:[.,]\d+)?)\s*,\s*(-?\d+(?:[.,]\d+)?)/);
+        if (urlMatch && !form.longitude) {
+            form.latitude = urlMatch[1].replace(',', '.');
+            form.longitude = urlMatch[2].replace(',', '.');
         } else {
-            form.latitude = latStr === '' ? null : latStr.replace(',', '.');
+            const pairMatch = latStr.match(/^(-?\d+(?:[.,]\d+)?)\s*[,/ ]\s*(-?\d+(?:[.,]\d+)?)$/);
+            if (pairMatch && !form.longitude) {
+                form.latitude = pairMatch[1].replace(',', '.');
+                form.longitude = pairMatch[2].replace(',', '.');
+            } else {
+                form.latitude = latStr === '' ? null : latStr.replace(',', '.');
+            }
         }
     }
     if (form.longitude !== null && form.longitude !== undefined) {
