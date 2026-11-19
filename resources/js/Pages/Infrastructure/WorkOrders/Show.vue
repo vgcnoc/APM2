@@ -194,26 +194,52 @@ const openMaterialReconciliationModal = () => {
 };
 
 const onCableMetersChanged = () => {
-    const start = parseInt(materialReconcileForm.cable_meter_start);
-    const end = parseInt(materialReconcileForm.cable_meter_end);
-    if (!isNaN(start) && !isNaN(end) && end > start) {
-        materialReconcileForm.cable_length_used = end - start;
+    const start = parseFloat(materialReconcileForm.cable_meter_start);
+    const end = parseFloat(materialReconcileForm.cable_meter_end);
+    if (!isNaN(start) && !isNaN(end)) {
+        materialReconcileForm.cable_length_used = Math.abs(end - start);
     }
 };
 
-const applyCableLengthToMaterials = () => {
-    const len = parseInt(materialReconcileForm.cable_length_used);
-    if (isNaN(len) || len <= 0) return;
-    const cableMat = materialReconcileForm.materials.find(m =>
+const addCableLength = (meters) => {
+    const current = parseFloat(materialReconcileForm.cable_length_used) || 0;
+    materialReconcileForm.cable_length_used = Math.max(0, current + meters);
+};
+
+const targetCableMaterial = computed(() => {
+    return (materialReconcileForm.materials || []).find(m =>
         (m.name || '').toLowerCase().includes('kabel') ||
         (m.name || '').toLowerCase().includes('dropcore') ||
         (m.name || '').toLowerCase().includes('feeder') ||
         (m.unit || '').toLowerCase() === 'meter' ||
         (m.unit || '').toLowerCase() === 'm'
     );
-    if (cableMat) {
-        cableMat.used_qty = len;
+});
+
+const applyCableLengthToMaterials = () => {
+    const len = parseFloat(materialReconcileForm.cable_length_used);
+    if (isNaN(len) || len < 0) return;
+    if (targetCableMaterial.value) {
+        targetCableMaterial.value.used_qty = len;
     }
+};
+
+const setAllMaterialsUsed = () => {
+    (materialReconcileForm.materials || []).forEach(m => {
+        m.used_qty = Number(m.requested_qty || 0);
+    });
+};
+
+const setAllMaterialsZero = () => {
+    (materialReconcileForm.materials || []).forEach(m => {
+        m.used_qty = 0;
+    });
+};
+
+const adjustMaterialQty = (m, delta) => {
+    const current = parseFloat(m.used_qty) || 0;
+    const nextVal = Math.max(0, current + delta);
+    m.used_qty = Number(nextVal.toFixed(2));
 };
 
 const addMaterialToReconciliation = () => {
@@ -2148,253 +2174,451 @@ const formatDate = (dateStr) => {
         <!-- MODAL: EDIT & REKONSILIASI PEMAKAIAN MATERIAL LAPANGAN -->
         <div
             v-if="showMaterialReconciliationModal"
-            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto"
+            class="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/75 backdrop-blur-xs overflow-hidden"
         >
-            <div class="relative w-full max-w-3xl bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-200 dark:border-slate-800 my-8">
-                <!-- Header -->
-                <div class="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-                    <div>
+            <div class="relative w-full max-w-4xl max-h-[94vh] sm:max-h-[90vh] flex flex-col bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                <!-- Sticky Header -->
+                <div class="shrink-0 px-4 py-3.5 sm:px-6 sm:py-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 z-20">
+                    <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-2 flex-wrap">
-                            <h3 class="text-base font-black text-slate-800 dark:text-white flex items-center gap-2">
-                                <span>📦 Edit Pemakaian Material &amp; Retur Gudang</span>
+                            <h3 class="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
+                                <span>📦</span> <span>Edit Pemakaian &amp; Retur Material</span>
                             </h3>
-                            <span class="text-xs px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300 font-bold">
+                            <span class="text-[11px] px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 font-bold border border-indigo-200/60 dark:border-indigo-800">
                                 {{ workOrder.wo_number }}
                             </span>
-                            <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 font-bold">
+                            <span class="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 font-bold border border-emerald-200/60 dark:border-emerald-800">
                                 {{ workOrder.target_name }}
                             </span>
                         </div>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                            Koreksi rincian pemakaian material riil, panjang tarikan kabel lapangan, dan otomatisasi retur sisa material ke gudang.
+                        <p class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+                            Koreksi rincian pemakaian riil lapangan, meteran kabel, dan otomatisasi retur sisa ke gudang.
                         </p>
                     </div>
                     <button
                         type="button"
                         @click="showMaterialReconciliationModal = false"
-                        class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
+                        class="shrink-0 p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
+                        aria-label="Tutup modal"
                     >
                         ✕
                     </button>
                 </div>
 
-                <form @submit.prevent="submitMaterialReconciliation" class="mt-5 space-y-5">
-                    <!-- SECTION 1: PENGUKURAN PANJANG TARIKAN KABEL -->
-                    <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 space-y-3">
-                        <div class="flex items-center justify-between flex-wrap gap-2">
-                            <span class="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                                <span>📍</span> Pengukuran Tarikan Kabel (Meteran Roll)
-                            </span>
-                            <button
-                                v-if="materialReconcileForm.cable_length_used > 0"
-                                type="button"
-                                @click="applyCableLengthToMaterials"
-                                class="px-2.5 py-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 hover:bg-indigo-100 rounded-lg transition border border-indigo-200 dark:border-indigo-800 flex items-center gap-1 cursor-pointer"
-                                title="Otomatis salin panjang kabel ini ke baris material kabel"
-                            >
-                                <span>⚡ Terapkan ke Baris Material Kabel</span>
-                            </button>
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <div>
-                                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                                    Meteran Awal (Start)
-                                </label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    v-model="materialReconcileForm.cable_meter_start"
-                                    @input="onCableMetersChanged"
-                                    placeholder="Cth: 1250"
-                                    class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                                />
+                <!-- Form Container with Scrollable Body -->
+                <form @submit.prevent="submitMaterialReconciliation" class="flex-1 flex flex-col min-h-0">
+                    <div class="flex-1 overflow-y-auto px-3.5 py-4 sm:px-6 sm:py-5 space-y-4 sm:space-y-5">
+                        <!-- SECTION 1: PENGUKURAN PANJANG TARIKAN KABEL -->
+                        <div class="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-indigo-50/20 dark:from-slate-800/60 dark:to-indigo-950/20 border border-slate-200/90 dark:border-slate-700 space-y-3">
+                            <div class="flex items-center justify-between flex-wrap gap-2">
+                                <span class="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                                    <span>📍</span> Pengukuran Tarikan Kabel (Meteran Roll)
+                                </span>
+                                <button
+                                    v-if="targetCableMaterial && materialReconcileForm.cable_length_used > 0"
+                                    type="button"
+                                    @click="applyCableLengthToMaterials"
+                                    class="px-2.5 py-1 text-[11px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/50 hover:bg-indigo-100 rounded-lg transition border border-indigo-200 dark:border-indigo-800 flex items-center gap-1 cursor-pointer shadow-2xs"
+                                    :title="'Otomatis salin panjang kabel ini ke baris: ' + targetCableMaterial.name"
+                                >
+                                    <span>⚡ Terapkan ke: {{ targetCableMaterial.name }} ({{ materialReconcileForm.cable_length_used }}m)</span>
+                                </button>
                             </div>
-                            <div>
-                                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                                    Meteran Akhir (End)
-                                </label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    v-model="materialReconcileForm.cable_meter_end"
-                                    @input="onCableMetersChanged"
-                                    placeholder="Cth: 1375"
-                                    class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                                />
-                            </div>
-                            <div>
-                                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                                    Total Panjang Terpakai (Meter)
-                                </label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    v-model="materialReconcileForm.cable_length_used"
-                                    placeholder="Cth: 125"
-                                    class="w-full px-3 py-2 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 font-mono font-extrabold text-emerald-800 dark:text-emerald-300 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                                />
-                            </div>
-                        </div>
-                    </div>
 
-                    <!-- SECTION 2: TABEL MATERIAL PEMAKAIAN & SISA RETUR -->
-                    <div class="space-y-2">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                                <span>📋</span> Rincian Material &amp; Sisa Pengembalian
-                            </span>
-                            <span class="text-[11px] text-slate-400">
-                                Sistem otomatis menghitung: Sisa Retur = Permintaan - Terpakai
-                            </span>
-                        </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                                        Meteran Awal (Start)
+                                    </label>
+                                    <div class="relative">
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="any"
+                                            v-model="materialReconcileForm.cable_meter_start"
+                                            @input="onCableMetersChanged"
+                                            placeholder="Contoh: 1500"
+                                            class="w-full px-3 py-2 pr-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                        />
+                                        <span class="absolute right-3 top-2.5 text-[10px] font-semibold text-slate-400">m</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                                        Meteran Akhir (End)
+                                    </label>
+                                    <div class="relative">
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="any"
+                                            v-model="materialReconcileForm.cable_meter_end"
+                                            @input="onCableMetersChanged"
+                                            placeholder="Contoh: 1375"
+                                            class="w-full px-3 py-2 pr-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                        />
+                                        <span class="absolute right-3 top-2.5 text-[10px] font-semibold text-slate-400">m</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-emerald-800 dark:text-emerald-300 mb-1 flex items-center justify-between">
+                                        <span>Total Terpakai (Meter)</span>
+                                        <span v-if="materialReconcileForm.cable_meter_start && materialReconcileForm.cable_meter_end" class="text-[10px] font-normal text-slate-400">
+                                            (Auto-hitung)
+                                        </span>
+                                    </label>
+                                    <div class="relative">
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="any"
+                                            v-model="materialReconcileForm.cable_length_used"
+                                            placeholder="Contoh: 125"
+                                            class="w-full px-3 py-2 pr-10 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 font-mono font-black text-emerald-900 dark:text-emerald-200 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                        />
+                                        <span class="absolute right-3 top-2.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">meter</span>
+                                    </div>
+                                </div>
+                            </div>
 
-                        <div class="border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-2xs">
-                            <div class="max-h-64 overflow-y-auto">
-                                <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-                                    <thead class="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-left sticky top-0 z-10">
-                                        <tr>
-                                            <th class="px-3.5 py-2.5">Nama Material</th>
-                                            <th class="px-3 py-2.5 text-center">Permintaan (BOM)</th>
-                                            <th class="px-3 py-2.5 text-center w-36">Terpakai Riil</th>
-                                            <th class="px-3 py-2.5 text-center">Sisa Retur</th>
-                                            <th class="px-2 py-2.5 text-center w-10"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
-                                        <tr v-for="(m, idx) in materialReconcileForm.materials" :key="'rec-mat-' + idx" class="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                                            <td class="px-3.5 py-2 font-bold text-slate-900 dark:text-white">
-                                                <div>{{ m.name }}</div>
-                                                <div class="text-[10px] text-slate-400 font-normal">Satuan: {{ m.unit }}</div>
-                                            </td>
-                                            <td class="px-3 py-2 text-center font-bold text-indigo-600 dark:text-indigo-400">
-                                                {{ m.requested_qty }} {{ m.unit }}
-                                            </td>
-                                            <td class="px-3 py-2 text-center">
-                                                <div class="inline-flex items-center gap-1 w-full justify-center">
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        step="any"
-                                                        v-model.number="m.used_qty"
-                                                        class="w-24 px-2.5 py-1 text-center font-bold font-mono text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                                                    />
-                                                    <span class="text-[11px] text-slate-500">{{ m.unit }}</span>
-                                                </div>
-                                            </td>
-                                            <td class="px-3 py-2 text-center whitespace-nowrap">
-                                                <span
-                                                    v-if="m.used_qty < m.requested_qty"
-                                                    class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
-                                                    title="Sisa material akan otomatis dikembalikan ke stok gudang"
-                                                >
-                                                    🔄 Retur {{ Math.max(0, m.requested_qty - m.used_qty) }} {{ m.unit }}
-                                                </span>
-                                                <span
-                                                    v-else-if="m.used_qty == m.requested_qty"
-                                                    class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
-                                                >
-                                                    ✅ Habis Pas
-                                                </span>
-                                                <span
-                                                    v-else
-                                                    class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
-                                                    title="Pemakaian melebihi permintaan awal"
-                                                >
-                                                    ⚠️ Lebih: +{{ (m.used_qty - m.requested_qty).toFixed(1) }} {{ m.unit }}
-                                                </span>
-                                            </td>
-                                            <td class="px-2 py-2 text-center">
-                                                <button
-                                                    type="button"
-                                                    @click="removeMaterialRow(idx)"
-                                                    class="p-1 text-slate-400 hover:text-rose-600 rounded-md transition cursor-pointer"
-                                                    title="Hapus baris material ini"
-                                                >
-                                                    ✕
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <tr v-if="!materialReconcileForm.materials || materialReconcileForm.materials.length === 0">
-                                            <td colspan="5" class="py-6 text-center text-slate-400 text-xs">
-                                                Tidak ada material dalam penugasan ini. Silakan tambah material di bawah.
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                            <!-- Quick Cable Chips / Shortcuts -->
+                            <div class="flex items-center justify-between flex-wrap gap-2 pt-1 border-t border-slate-200/50 dark:border-slate-700/50 text-[11px]">
+                                <span class="text-slate-500 dark:text-slate-400 text-[10px]">
+                                    💡 Tip: Masukkan meteran start &amp; end untuk hitung otomatis selisih gulungan, atau isi langsung total meter terpakai.
+                                </span>
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="text-[10px] text-slate-400">Tambah cepat:</span>
+                                    <button
+                                        v-for="preset in [25, 50, 100, 150]"
+                                        :key="'cable-preset-' + preset"
+                                        type="button"
+                                        @click="addCableLength(preset)"
+                                        class="px-2 py-0.5 rounded-md bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 text-[10px] font-mono font-bold cursor-pointer transition"
+                                    >
+                                        +{{ preset }}m
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- SECTION 3: TAMBAH MATERIAL TAMBAHAN YANG LUPA DICATAT -->
-                    <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-                        <div class="flex-1">
-                            <select
-                                v-model="newMaterialSelect"
-                                class="w-full px-3 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                            >
-                                <option value="">-- Tambah Material Lain (Jika Lupa Dicatat) --</option>
-                                <option v-for="mat in materials" :key="'add-mat-' + mat.id" :value="mat.id">
-                                    {{ mat.name }} (Stok: {{ mat.stock }} {{ mat.unit }})
-                                </option>
-                            </select>
+                        <!-- SECTION 2: RINCIAN MATERIAL & SISA PENGEMBALIAN -->
+                        <div class="space-y-2.5">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <div>
+                                    <span class="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                                        <span>📋</span> Rincian Material &amp; Sisa Pengembalian
+                                    </span>
+                                    <div class="text-[11px] text-slate-500 dark:text-slate-400">
+                                        Sisa Retur otomatis dihitung = Permintaan (BOM) - Pemakaian Riil
+                                    </div>
+                                </div>
+
+                                <!-- Fast Batch Actions -->
+                                <div class="flex items-center gap-1.5 self-start sm:self-auto flex-wrap">
+                                    <button
+                                        type="button"
+                                        @click="setAllMaterialsUsed"
+                                        class="px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition border border-slate-200 dark:border-slate-700 flex items-center gap-1 cursor-pointer"
+                                        title="Set semua pemakaian sama dengan permintaan awal (100% habis)"
+                                    >
+                                        <span>✅ 100% Habis Semua</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        @click="setAllMaterialsZero"
+                                        class="px-2.5 py-1 text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition border border-slate-200 dark:border-slate-700 flex items-center gap-1 cursor-pointer"
+                                        title="Set semua pemakaian ke 0 (retur semua)"
+                                    >
+                                        <span>🔄 Retur Semua</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- DESKTOP TABLE VIEW (sm ke atas) -->
+                            <div class="hidden sm:block border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-2xs">
+                                <div class="max-h-64 overflow-y-auto">
+                                    <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                                        <thead class="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-left sticky top-0 z-10">
+                                            <tr>
+                                                <th class="px-3.5 py-2.5">Nama Material</th>
+                                                <th class="px-3 py-2.5 text-center">Permintaan (BOM)</th>
+                                                <th class="px-3 py-2.5 text-center min-w-[200px]">Terpakai Riil</th>
+                                                <th class="px-3 py-2.5 text-center">Sisa Retur</th>
+                                                <th class="px-2 py-2.5 text-center w-10"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
+                                            <tr v-for="(m, idx) in materialReconcileForm.materials" :key="'rec-mat-desktop-' + idx" class="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                                                <td class="px-3.5 py-2.5 font-bold text-slate-900 dark:text-white">
+                                                    <div>{{ m.name }}</div>
+                                                    <div class="text-[10px] text-slate-400 font-normal">Satuan: {{ m.unit }}</div>
+                                                </td>
+                                                <td class="px-3 py-2.5 text-center font-bold text-indigo-600 dark:text-indigo-400">
+                                                    {{ m.requested_qty }} {{ m.unit }}
+                                                </td>
+                                                <td class="px-3 py-2.5 text-center">
+                                                    <div class="inline-flex items-center gap-1 justify-center">
+                                                        <button
+                                                            type="button"
+                                                            @click="adjustMaterialQty(m, -1)"
+                                                            class="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-black text-xs transition cursor-pointer"
+                                                            title="Kurangi 1"
+                                                        >
+                                                            -
+                                                        </button>
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            step="any"
+                                                            v-model.number="m.used_qty"
+                                                            class="w-24 px-2 py-1 text-center font-bold font-mono text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            @click="adjustMaterialQty(m, 1)"
+                                                            class="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-black text-xs transition cursor-pointer"
+                                                            title="Tambah 1"
+                                                        >
+                                                            +
+                                                        </button>
+                                                        <span class="text-[11px] text-slate-500 min-w-[32px] text-left ml-1">{{ m.unit }}</span>
+                                                    </div>
+                                                </td>
+                                                <td class="px-3 py-2.5 text-center whitespace-nowrap">
+                                                    <span
+                                                        v-if="m.used_qty < m.requested_qty"
+                                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
+                                                        title="Sisa material akan otomatis dikembalikan ke gudang"
+                                                    >
+                                                        🔄 Retur {{ Math.max(0, m.requested_qty - m.used_qty) }} {{ m.unit }}
+                                                    </span>
+                                                    <span
+                                                        v-else-if="m.used_qty == m.requested_qty"
+                                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                                                    >
+                                                        ✅ Habis Pas
+                                                    </span>
+                                                    <span
+                                                        v-else
+                                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
+                                                        title="Pemakaian melebihi permintaan awal"
+                                                    >
+                                                        ⚠️ Lebih: +{{ (m.used_qty - m.requested_qty).toFixed(1) }} {{ m.unit }}
+                                                    </span>
+                                                </td>
+                                                <td class="px-2 py-2.5 text-center">
+                                                    <button
+                                                        type="button"
+                                                        @click="removeMaterialRow(idx)"
+                                                        class="p-1 text-slate-400 hover:text-rose-600 rounded-md transition cursor-pointer"
+                                                        title="Hapus baris material ini"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            <tr v-if="!materialReconcileForm.materials || materialReconcileForm.materials.length === 0">
+                                                <td colspan="5" class="py-6 text-center text-slate-400 text-xs">
+                                                    Tidak ada material dalam penugasan ini. Silakan tambah material di bawah.
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- MOBILE CARD VIEW (layar smartphone / < sm) -->
+                            <div class="block sm:hidden space-y-2.5">
+                                <div
+                                    v-for="(m, idx) in materialReconcileForm.materials"
+                                    :key="'rec-mat-mobile-' + idx"
+                                    class="p-3.5 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-2xs space-y-2.5"
+                                >
+                                    <div class="flex items-start justify-between gap-2">
+                                        <div>
+                                            <div class="font-bold text-slate-900 dark:text-white text-xs leading-snug">
+                                                {{ m.name }}
+                                            </div>
+                                            <div class="text-[10px] text-slate-400">
+                                                Satuan: {{ m.unit }}
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            @click="removeMaterialRow(idx)"
+                                            class="p-1 text-slate-400 hover:text-rose-600 rounded-lg transition"
+                                            title="Hapus material"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+
+                                    <div class="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-slate-700/60">
+                                        <div class="text-slate-600 dark:text-slate-300">
+                                            <span class="text-[10px] text-slate-400 block">Permintaan (BOM):</span>
+                                            <span class="font-bold text-indigo-600 dark:text-indigo-400 font-mono">{{ m.requested_qty }} {{ m.unit }}</span>
+                                        </div>
+
+                                        <div class="text-right">
+                                            <span class="text-[10px] text-slate-400 block">Status:</span>
+                                            <span
+                                                v-if="m.used_qty < m.requested_qty"
+                                                class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300"
+                                            >
+                                                🔄 Retur {{ Math.max(0, m.requested_qty - m.used_qty) }} {{ m.unit }}
+                                            </span>
+                                            <span
+                                                v-else-if="m.used_qty == m.requested_qty"
+                                                class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                                            >
+                                                ✅ Habis Pas
+                                            </span>
+                                            <span
+                                                v-else
+                                                class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300"
+                                            >
+                                                ⚠️ Lebih +{{ (m.used_qty - m.requested_qty).toFixed(1) }}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Touch Stepper Input -->
+                                    <div class="pt-1.5 flex items-center justify-between gap-2">
+                                        <span class="text-[11px] font-bold text-slate-700 dark:text-slate-300">Terpakai Riil:</span>
+                                        <div class="flex items-center gap-1.5">
+                                            <button
+                                                type="button"
+                                                @click="adjustMaterialQty(m, -1)"
+                                                class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-white font-black text-sm flex items-center justify-center transition"
+                                            >
+                                                -
+                                            </button>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="any"
+                                                v-model.number="m.used_qty"
+                                                class="w-20 px-2 py-1 text-center font-bold font-mono text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                            />
+                                            <button
+                                                type="button"
+                                                @click="adjustMaterialQty(m, 1)"
+                                                class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-white font-black text-sm flex items-center justify-center transition"
+                                            >
+                                                +
+                                            </button>
+                                            <span class="text-[11px] text-slate-500 min-w-[28px]">{{ m.unit }}</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Quick Mobile Chips -->
+                                    <div class="flex items-center justify-end gap-1.5 pt-1">
+                                        <button
+                                            type="button"
+                                            @click="m.used_qty = Number(m.requested_qty)"
+                                            class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-[10px] font-bold text-slate-600 dark:text-slate-300"
+                                        >
+                                            Habis 100%
+                                        </button>
+                                        <button
+                                            type="button"
+                                            @click="m.used_qty = 0"
+                                            class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-[10px] font-bold text-slate-600 dark:text-slate-300"
+                                        >
+                                            Retur (0)
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div v-if="!materialReconcileForm.materials || materialReconcileForm.materials.length === 0" class="p-6 text-center text-slate-400 text-xs bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                                    Tidak ada material dalam penugasan ini. Silakan tambah material di bawah.
+                                </div>
+                            </div>
                         </div>
-                        <div class="w-28 flex items-center gap-1">
+
+                        <!-- SECTION 3: TAMBAH MATERIAL TAMBAHAN YANG LUPA DICATAT -->
+                        <div class="p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80 space-y-2">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                                <span>➕</span> Tambah Material Susulan / Lainnya (Jika Ada)
+                            </span>
+                            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                                <div class="flex-1 min-w-0">
+                                    <select
+                                        v-model="newMaterialSelect"
+                                        class="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                    >
+                                        <option value="">-- Pilih Barang dari Master Gudang --</option>
+                                        <option v-for="mat in materials" :key="'add-mat-' + mat.id" :value="mat.id">
+                                            {{ mat.name }} (Stok: {{ mat.stock }} {{ mat.unit }})
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <div class="w-28 sm:w-24">
+                                        <input
+                                            type="number"
+                                            min="0.1"
+                                            step="any"
+                                            v-model.number="newMaterialQty"
+                                            placeholder="Qty"
+                                            class="w-full px-2.5 py-2 text-xs text-center font-bold rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        @click="addMaterialToReconciliation"
+                                        class="flex-1 sm:flex-initial px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap shadow-xs"
+                                    >
+                                        <span>+ Tambah</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SECTION 4: CATATAN REKONSILIASI -->
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                                Catatan Rekonsiliasi / Keterangan Penyesuaian
+                            </label>
                             <input
-                                type="number"
-                                min="0.1"
-                                step="any"
-                                v-model.number="newMaterialQty"
-                                placeholder="Qty"
-                                class="w-full px-2.5 py-1.5 text-xs text-center font-bold rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                type="text"
+                                v-model="materialReconcileForm.notes"
+                                placeholder="Contoh: Koreksi panjang kabel riil &amp; sisa 25m dropcore dikembalikan ke gudang"
+                                class="w-full px-3.5 py-2.5 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                             />
                         </div>
-                        <button
-                            type="button"
-                            @click="addMaterialToReconciliation"
-                            class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap shadow-xs"
-                        >
-                            <span>+ Tambah</span>
-                        </button>
-                    </div>
 
-                    <!-- SECTION 4: CATATAN REKONSILIASI -->
-                    <div>
-                        <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                            Catatan Rekonsiliasi / Keterangan Penyesuaian
-                        </label>
-                        <input
-                            type="text"
-                            v-model="materialReconcileForm.notes"
-                            placeholder="Contoh: Koreksi panjang kabel riil &amp; sisa 25m dropcore dikembalikan ke gudang"
-                            class="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                        />
-                    </div>
-
-                    <!-- INFO OTOMASI RETUR GUDANG -->
-                    <div class="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-800 dark:text-emerald-300 flex items-start gap-2">
-                        <span class="text-base">💡</span>
-                        <div>
-                            <b>Otomatisasi Logistik Gudang:</b> Saat disimpan, sistem akan otomatis memperbarui Serah Terima Pengembalian Gudang (RTR) dan menyinkronkan stok fisik gudang sesuai selisih retur material yang telah disesuaikan.
+                        <!-- INFO OTOMASI RETUR GUDANG -->
+                        <div class="p-3 sm:p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-800 dark:text-emerald-300 flex items-start gap-2.5">
+                            <span class="text-base shrink-0">💡</span>
+                            <div class="leading-relaxed">
+                                <b>Otomatisasi Logistik Gudang:</b> Saat disimpan, sistem akan otomatis memperbarui Serah Terima Pengembalian Gudang (RTR) dan menyinkronkan stok fisik gudang sesuai selisih retur material yang telah disesuaikan.
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Footer Buttons -->
-                    <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
-                        <button
-                            type="button"
-                            @click="showMaterialReconciliationModal = false"
-                            class="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 rounded-xl transition cursor-pointer"
-                        >
-                            Batal
-                        </button>
-                        <button
-                            type="submit"
-                            :disabled="materialReconcileForm.processing"
-                            class="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                        >
-                            <span v-if="materialReconcileForm.processing">⏳ Menyimpan...</span>
-                            <span v-else>💾 Simpan Pemakaian Material</span>
-                        </button>
+                    <!-- Sticky Footer Buttons -->
+                    <div class="shrink-0 px-4 py-3 sm:px-6 sm:py-3.5 bg-slate-50/95 dark:bg-slate-800/90 backdrop-blur-md border-t border-slate-100 dark:border-slate-800 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 z-20">
+                        <div class="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block">
+                            {{ materialReconcileForm.materials?.length || 0 }} material terdaftar
+                        </div>
+                        <div class="flex items-center justify-end gap-2 w-full sm:w-auto">
+                            <button
+                                type="button"
+                                @click="showMaterialReconciliationModal = false"
+                                class="flex-1 sm:flex-initial px-4 py-2.5 text-xs font-bold text-slate-600 bg-white hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 rounded-xl transition border border-slate-200 dark:border-slate-700 cursor-pointer text-center"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="submit"
+                                :disabled="materialReconcileForm.processing"
+                                class="flex-1 sm:flex-initial px-5 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                            >
+                                <span v-if="materialReconcileForm.processing">⏳ Menyimpan...</span>
+                                <span v-else>💾 Simpan Pemakaian Material</span>
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
