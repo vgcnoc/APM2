@@ -666,44 +666,44 @@
 
             <!-- Simulation Panel -->
             <div class="lg:w-5/12 xl:w-1/3">
-                <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white p-6 sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto space-y-5 custom-scrollbar">
+                <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white p-5 sticky top-6 max-h-[calc(100vh-2rem)] overflow-y-auto space-y-3.5 custom-scrollbar">
                     
                     <!-- Header -->
-                    <div class="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-slate-700">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center shadow-sm">
-                                <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                    <div class="flex items-start justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-700">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center shadow-sm shrink-0">
+                                <svg class="w-4.5 h-4.5 text-indigo-600 dark:text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
                             </div>
                             <div>
-                                <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                                <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
                                     Simulasi AI
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase shadow-sm" :class="form.billing_type === 'pascabayar' ? (form.billing_cycle === 'anniversary' ? 'bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-500/20 dark:text-purple-300 dark:border-purple-400/30' : (form.prorata_first_month ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-400/30' : 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-400/30')) : 'bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-400/30'">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wide uppercase shadow-sm" :class="form.billing_type === 'pascabayar' ? (form.billing_cycle === 'anniversary' ? 'bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-500/20 dark:text-purple-300 dark:border-purple-400/30' : (form.prorata_first_month ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-400/30' : 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-400/30')) : 'bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-400/30'">
                                         {{ form.billing_type === 'pascabayar' ? (form.billing_cycle === 'anniversary' ? 'Pascabayar (Anniversary - Penuh)' : (form.prorata_first_month ? 'Pascabayar (Prorata Kalender)' : 'Pascabayar (Normal)')) : 'Prabayar (Prepaid)' }}
                                     </span>
                                 </h3>
-                                <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Kalkulasi cerdas live sesuai pengaturan</p>
+                                <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Kalkulasi cerdas live sesuai pengaturan</p>
                             </div>
                         </div>
                     </div>
 
                     <!-- Sandbox Interactive Controls -->
-                    <div class="bg-slate-50 dark:bg-slate-800/70 rounded-xl p-3.5 border border-slate-200 dark:border-slate-700 space-y-3">
+                    <div class="bg-slate-50 dark:bg-slate-800/70 rounded-xl p-3 border border-slate-200 dark:border-slate-700 space-y-2.5">
                         <div class="flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-300">
-                            <span class="flex items-center gap-1.5">
+                            <span class="flex items-center gap-1.5 text-[11px]">
                                 <svg class="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
                                 Uji Coba Parameter
                             </span>
-                            <span class="text-[10px] text-slate-400 dark:text-slate-500 font-normal">Klik untuk simulasi</span>
+                            <span class="text-[9px] text-slate-400 dark:text-slate-500 font-normal">Klik untuk simulasi</span>
                         </div>
 
                         <!-- Harga Paket -->
                         <div>
-                            <div class="flex items-center justify-between mb-1.5">
-                                <label class="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold">Harga Paket / Bln</label>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="text-[9px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold">Harga Paket / Bln</label>
                                 <span class="text-xs font-bold text-slate-900 dark:text-white">{{ formatCurrency(simPrice) }}</span>
                             </div>
-                            <div class="grid grid-cols-4 gap-1.5 mb-1.5">
-                                <button v-for="price in quickPrices" :key="price" type="button" @click="simPrice = price" class="py-1 px-1 text-[11px] rounded-lg font-medium transition-all text-center cursor-pointer" :class="simPrice === price ? 'bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-300 dark:ring-indigo-400/50 font-bold' : 'bg-white text-slate-600 border border-slate-200 hover:bg-indigo-50 hover:text-indigo-700 dark:bg-white/10 dark:text-indigo-200 dark:border-white/10 dark:hover:bg-white/20'">
+                            <div class="grid grid-cols-4 gap-1 mb-1">
+                                <button v-for="price in quickPrices" :key="price" type="button" @click="simPrice = price" class="py-0.5 px-1 text-[10px] rounded-lg font-medium transition-all text-center cursor-pointer" :class="simPrice === price ? 'bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-300 dark:ring-indigo-400/50 font-bold' : 'bg-white text-slate-600 border border-slate-200 hover:bg-indigo-50 hover:text-indigo-700 dark:bg-white/10 dark:text-indigo-200 dark:border-white/10 dark:hover:bg-white/20'">
                                     {{ price / 1000 }}rb
                                 </button>
                             </div>
@@ -715,44 +715,44 @@
 
                         <!-- Tanggal Aktivasi -->
                         <div>
-                            <div class="flex items-center justify-between mb-1.5">
-                                <label class="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold">Simulasi Tanggal Aktivasi</label>
-                                <span class="text-[11px] font-semibold text-emerald-600 dark:text-emerald-300">{{ simActivationDateFormatted }}</span>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="text-[9px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold">Simulasi Tanggal Aktivasi</label>
+                                <span class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-300">{{ simActivationDateFormatted }}</span>
                             </div>
-                            <div class="flex items-center gap-1.5 mb-1.5">
+                            <div class="flex items-center gap-1.5 mb-1">
                                 <input type="date" v-model="simActivationDate" class="w-full px-2 py-1 text-xs bg-white border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:border-slate-700 dark:text-white dark:focus:ring-indigo-400">
                             </div>
                             <div class="flex flex-wrap gap-1">
-                                <button type="button" @click="setQuickDate('today')" class="px-2 py-0.5 rounded text-[10px] bg-white border border-slate-200 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 cursor-pointer dark:bg-white/10 dark:border-white/10 dark:hover:bg-white/20 dark:text-indigo-200">Hari Ini</button>
-                                <button type="button" @click="setQuickDate('day1')" class="px-2 py-0.5 rounded text-[10px] bg-white border border-slate-200 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 cursor-pointer dark:bg-white/10 dark:border-white/10 dark:hover:bg-white/20 dark:text-indigo-200">Tgl 1</button>
-                                <button type="button" @click="setQuickDate('day10')" class="px-2 py-0.5 rounded text-[10px] bg-white border border-slate-200 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 cursor-pointer dark:bg-white/10 dark:border-white/10 dark:hover:bg-white/20 dark:text-indigo-200">Tgl 10</button>
-                                <button type="button" @click="setQuickDate('day15')" class="px-2 py-0.5 rounded text-[10px] bg-white border border-slate-200 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 cursor-pointer dark:bg-white/10 dark:border-white/10 dark:hover:bg-white/20 dark:text-indigo-200">Tgl 15</button>
-                                <button type="button" @click="setQuickDate('day20')" class="px-2 py-0.5 rounded text-[10px] bg-white border border-slate-200 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 cursor-pointer dark:bg-white/10 dark:border-white/10 dark:hover:bg-white/20 dark:text-indigo-200">Tgl 20</button>
-                                <button type="button" @click="setQuickDate('day25')" class="px-2 py-0.5 rounded text-[10px] bg-white border border-slate-200 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 cursor-pointer dark:bg-white/10 dark:border-white/10 dark:hover:bg-white/20 dark:text-indigo-200">Tgl 25</button>
+                                <button type="button" @click="setQuickDate('today')" class="px-1.5 py-0.5 rounded text-[9px] bg-white border border-slate-200 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 cursor-pointer dark:bg-white/10 dark:border-white/10 dark:hover:bg-white/20 dark:text-indigo-200">Hari Ini</button>
+                                <button type="button" @click="setQuickDate('day1')" class="px-1.5 py-0.5 rounded text-[9px] bg-white border border-slate-200 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 cursor-pointer dark:bg-white/10 dark:border-white/10 dark:hover:bg-white/20 dark:text-indigo-200">Tgl 1</button>
+                                <button type="button" @click="setQuickDate('day10')" class="px-1.5 py-0.5 rounded text-[9px] bg-white border border-slate-200 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 cursor-pointer dark:bg-white/10 dark:border-white/10 dark:hover:bg-white/20 dark:text-indigo-200">Tgl 10</button>
+                                <button type="button" @click="setQuickDate('day15')" class="px-1.5 py-0.5 rounded text-[9px] bg-white border border-slate-200 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 cursor-pointer dark:bg-white/10 dark:border-white/10 dark:hover:bg-white/20 dark:text-indigo-200">Tgl 15</button>
+                                <button type="button" @click="setQuickDate('day20')" class="px-1.5 py-0.5 rounded text-[9px] bg-white border border-slate-200 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 cursor-pointer dark:bg-white/10 dark:border-white/10 dark:hover:bg-white/20 dark:text-indigo-200">Tgl 20</button>
+                                <button type="button" @click="setQuickDate('day25')" class="px-1.5 py-0.5 rounded text-[9px] bg-white border border-slate-200 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 cursor-pointer dark:bg-white/10 dark:border-white/10 dark:hover:bg-white/20 dark:text-indigo-200">Tgl 25</button>
                             </div>
                         </div>
                     </div>
 
                     <!-- Siklus Terbit & Isolir -->
-                    <div class="grid grid-cols-1 gap-2.5">
-                        <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3.5 dark:bg-slate-800/70 dark:border-slate-700">
-                            <div class="flex items-center gap-2 mb-1">
+                    <div class="grid grid-cols-1 gap-2">
+                        <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3 dark:bg-slate-800/70 dark:border-slate-700">
+                            <div class="flex items-center gap-2 mb-0.5">
                                 <div class="w-2 h-2 rounded-full" :class="form.billing_type === 'prabayar' ? 'bg-cyan-500 dark:bg-cyan-400' : 'bg-indigo-500 dark:bg-blue-400'"></div>
-                                <span class="text-[11px] font-bold text-indigo-700 dark:text-indigo-200 uppercase tracking-wider">
-                                    {{ form.billing_type === 'prabayar' ? 'Tagihan Pertama (Aktivasi)' : 'Terbit Tagihan Rutin' }}
+                                <span class="text-[10px] font-bold text-indigo-700 dark:text-indigo-200 uppercase tracking-wider">
+                                    {{ form.billing_type === 'prabayar' ? 'Tagihan Pertama (Aktivasi)' : ((form.billing_cycle === 'calendar' && form.prorata_first_month) ? 'Terbit Tagihan Pertama (Prorata)' : 'Terbit Tagihan Rutin') }}
                                 </span>
                             </div>
                             <p class="text-sm font-semibold pl-4 text-slate-900 dark:text-white">{{ nextRoutineBillingDateFormatted }}</p>
                             <p class="text-[10px] text-indigo-600 dark:text-indigo-300 pl-4 mt-0.5">
-                                {{ form.billing_type === 'prabayar' ? 'Pelanggan prabayar membayar invoice saat aktivasi sebelum layanan aktif' : (form.billing_cycle === 'anniversary' ? 'Tagihan otomatis terbit di tanggal yang sama tiap bulan (Anniversary)' : 'Sistem otomatis generate invoice pelanggan tiap bulannya') }}
+                                {{ form.billing_type === 'prabayar' ? 'Pelanggan prabayar membayar invoice saat aktivasi sebelum layanan aktif' : ((form.billing_cycle === 'calendar' && form.prorata_first_month) ? `Invoice pemakaian prorata pertama (${simDaysUsed} hari aktif) terbit tgl ${nextRoutineBillingDateObj.getDate()} ${monthNames[nextRoutineBillingDateObj.getMonth()]}` : (form.billing_cycle === 'anniversary' ? 'Tagihan otomatis terbit di tanggal yang sama tiap bulan (Anniversary)' : 'Sistem otomatis generate invoice pelanggan tiap bulannya')) }}
                             </p>
                         </div>
 
-                        <div class="bg-red-50 border border-red-200 rounded-xl p-3.5 relative overflow-hidden dark:bg-red-950/20 dark:border-red-500/30">
+                        <div class="bg-red-50 border border-red-200 rounded-xl p-3 relative overflow-hidden dark:bg-red-950/20 dark:border-red-500/30">
                             <div class="absolute right-0 top-0 w-16 h-16 bg-red-500/10 rounded-bl-full pointer-events-none"></div>
-                            <div class="flex items-center gap-2 mb-1">
+                            <div class="flex items-center gap-2 mb-0.5">
                                 <div class="w-2 h-2 rounded-full bg-red-500 dark:bg-red-400 animate-pulse"></div>
-                                <span class="text-[11px] font-bold text-red-700 dark:text-red-200 uppercase tracking-wider">Tanggal & Jam Isolir</span>
+                                <span class="text-[10px] font-bold text-red-700 dark:text-red-200 uppercase tracking-wider">Tanggal & Jam Isolir</span>
                             </div>
                             <p class="text-sm font-bold text-slate-900 dark:text-white pl-4">Tgl {{ isolateDateFormatted }}</p>
                             <p class="text-[10px] text-red-700 dark:text-red-200 pl-4 mt-0.5">Tanggal {{ form.isolate_day }}, pukul {{ form.isolate_time || '00:00' }} WIB · diperiksa setiap menit</p>
@@ -761,55 +761,55 @@
 
                     <!-- Hasil Perhitungan Tagihan Pertama (Simulasi) -->
                     <!-- Skenario 1: Pascabayar + Kalender Serentak + Prorata Aktif -->
-                    <div v-if="form.billing_type === 'pascabayar' && form.billing_cycle === 'calendar' && form.prorata_first_month" class="bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-500/40 rounded-xl p-4 space-y-3">
-                        <div class="flex items-center justify-between pb-2 border-b border-indigo-200 dark:border-indigo-700/50">
-                            <div class="flex items-center gap-2">
+                    <div v-if="form.billing_type === 'pascabayar' && form.billing_cycle === 'calendar' && form.prorata_first_month" class="bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-500/40 rounded-xl p-3.5 space-y-2.5">
+                        <div class="flex items-center justify-between pb-1.5 border-b border-indigo-200 dark:border-indigo-700/50">
+                            <div class="flex items-center gap-1.5">
                                 <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 002 2v14a2 2 0 002 2z"/></svg>
                                 <h4 class="text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">Rincian Prorata Kalender</h4>
                             </div>
-                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 font-bold">1x di Bulan Pertama</span>
+                            <span class="text-[9px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 font-bold">1x di Bulan Pertama</span>
                         </div>
                         
-                        <div class="space-y-2 text-xs text-slate-600 dark:text-indigo-100">
-                            <div class="flex justify-between items-center border-b border-indigo-200 dark:border-indigo-800/40 pb-1.5">
+                        <div class="space-y-1.5 text-xs text-slate-600 dark:text-indigo-100">
+                            <div class="flex justify-between items-center border-b border-indigo-200 dark:border-indigo-800/40 pb-1">
                                 <span class="text-slate-500 dark:text-indigo-300">Harga Paket Standar:</span>
                                 <span class="font-semibold text-slate-900 dark:text-white">{{ formatCurrency(simPrice) }} / bln</span>
                             </div>
-                            <div class="flex justify-between items-center border-b border-indigo-200 dark:border-indigo-800/40 pb-1.5">
+                            <div class="flex justify-between items-center border-b border-indigo-200 dark:border-indigo-800/40 pb-1">
                                 <span class="text-slate-500 dark:text-indigo-300">Tanggal Aktivasi:</span>
                                 <span class="font-semibold text-slate-900 dark:text-white">{{ simActivationDateFormatted }}</span>
                             </div>
-                            <div class="flex justify-between items-center border-b border-indigo-200 dark:border-indigo-800/40 pb-1.5">
+                            <div class="flex justify-between items-center border-b border-indigo-200 dark:border-indigo-800/40 pb-1">
                                 <span class="text-slate-500 dark:text-indigo-300">Siklus Kalender ({{ simCycleDays }} Hari):</span>
                                 <span class="font-semibold text-slate-900 dark:text-white">s/d {{ prevIssueDateFormatted }}</span>
                             </div>
-                            <div class="flex justify-between items-center border-b border-indigo-200 dark:border-indigo-800/40 pb-1.5">
+                            <div class="flex justify-between items-center border-b border-indigo-200 dark:border-indigo-800/40 pb-1">
                                 <span class="text-slate-500 dark:text-indigo-300">Hari Pemakaian Aktif:</span>
                                 <span class="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200 dark:text-emerald-300 dark:bg-emerald-950/60 dark:border-emerald-500/30">{{ simDaysUsed }} Hari Aktif</span>
                             </div>
-                            <div class="flex justify-between items-center border-b border-indigo-200 dark:border-indigo-800/40 pb-1.5">
+                            <div class="flex justify-between items-center border-b border-indigo-200 dark:border-indigo-800/40 pb-1">
                                 <span class="text-slate-500 dark:text-indigo-300">Subtotal Prorata:</span>
                                 <span class="font-bold text-slate-900 dark:text-white">{{ formatCurrency(simSubtotal) }}</span>
                             </div>
-                            <div v-if="simTaxRate > 0" class="flex justify-between items-center border-b border-indigo-200 dark:border-indigo-800/40 pb-1.5">
+                            <div v-if="simTaxRate > 0" class="flex justify-between items-center border-b border-indigo-200 dark:border-indigo-800/40 pb-1">
                                 <span class="text-slate-500 dark:text-indigo-300">PPN ({{ simTaxRate }}%):</span>
                                 <span class="font-medium text-amber-600 dark:text-amber-300">+ {{ formatCurrency(simTax) }}</span>
                             </div>
-                            <div class="flex justify-between items-baseline pt-1">
+                            <div class="flex justify-between items-baseline pt-0.5">
                                 <span class="text-xs font-bold text-slate-900 dark:text-white">Total Tagihan Pertama:</span>
-                                <span class="font-extrabold text-xl text-emerald-600 dark:text-emerald-400">{{ formatCurrency(simGrandTotal) }}</span>
+                                <span class="font-extrabold text-lg text-emerald-600 dark:text-emerald-400">{{ formatCurrency(simGrandTotal) }}</span>
                             </div>
                         </div>
 
-                        <div class="bg-white p-2.5 rounded-lg border border-indigo-100 text-[10px] space-y-1 dark:bg-indigo-950/70 dark:border-indigo-800/50">
+                        <div class="bg-white p-2 rounded-lg border border-indigo-100 text-[10px] space-y-1 dark:bg-indigo-950/70 dark:border-indigo-800/50">
                             <p class="text-indigo-700 dark:text-indigo-300">
-                                <strong class="text-slate-900 dark:text-white">Rumusan Aktif:</strong>
+                                <strong class="text-slate-900 dark:text-white">Rumusan:</strong>
                                 <span v-if="form.prorata_formula === 'fixed_30'"> Konstan 30 Hari &mdash; ({{ formatCurrency(simPrice) }} ÷ 30) × {{ simDaysUsed }} hr</span>
                                 <span v-else-if="form.prorata_formula === 'mid_month'"> Paruh Bulan &mdash; {{ simActivationDay > 15 ? 'Aktivasi > tgl 15 = Diskon 50%' : 'Aktivasi <= tgl 15 = 100% Penuh' }}</span>
                                 <span v-else> Sangat Akurat (Bulan Berjalan) &mdash; ({{ formatCurrency(simPrice) }} ÷ {{ simCycleDays }} hr) × {{ simDaysUsed }} hr</span>
                             </p>
                             <p class="text-[9px] text-slate-500 dark:text-indigo-400 italic">
-                                * Bulan ke-2 dan seterusnya tagihan otomatis normal {{ formatCurrency(simGrandTotalNormal) }} per tanggal kalender serentak.
+                                * Bulan ke-2 dan seterusnya tagihan otomatis normal {{ formatCurrency(simGrandTotalNormal) }} per tanggal kalender serentak (Mulai {{ nextRegularBillingDateFormatted }}).
                             </p>
                         </div>
                     </div>
@@ -1358,6 +1358,14 @@ const nextRoutineBillingDateFormatted = computed(() => {
         return `Tgl ${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()} (Siklus 1 Bulan)`;
     }
     return `Tgl ${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+});
+
+const nextRegularBillingDateFormatted = computed(() => {
+    const d = new Date(nextRoutineBillingDateObj.value);
+    d.setMonth(d.getMonth() + 1);
+    let issueDay = parseInt(form.invoice_issue_date) || 1;
+    if (issueDay > 28) issueDay = 28;
+    return `Tgl ${issueDay} ${monthNames[d.getMonth()]} ${d.getFullYear()}`;
 });
 
 // Isolate date based on routine billing date / activation date
