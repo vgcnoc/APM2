@@ -156,6 +156,9 @@ class RegisterResellerController extends Controller
                 $user->assignRole($resellerRole);
             } catch (\Exception $e) {}
 
+            $canSellVouchers = (bool) ((int) Setting::get('reseller_feature_vouchers_enabled', '0'));
+            $canPayBills = (bool) ((int) Setting::get('reseller_feature_billing_enabled', '1'));
+
             // 2. Buat Dompet Saldo Reseller (Murni Mitra, Tanpa Record Pelanggan / Customer)
             $reseller = Reseller::create([
                 'customer_id' => null, // Bebas dari tabel customers agar tidak masuk siklus booking s/d aktivasi
@@ -164,6 +167,8 @@ class RegisterResellerController extends Controller
                 'is_active' => !$requireApproval,
                 'tier' => $validated['tier'],
                 'parent_id' => $parentId,
+                'can_sell_vouchers' => $canSellVouchers,
+                'can_pay_bills' => $canPayBills,
                 'referral_code' => $validated['tier'] === 'master' ? Reseller::generateReferralCode() : null,
                 'status' => $requireApproval ? 'pending' : 'active',
             ]);

@@ -15,7 +15,7 @@
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
-                        <span class="p-2 bg-amber-50 text-amber-600 rounded-2xl text-xl">🏪</span>
+                        <span class="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl border border-amber-200/60 shadow-xs">🏪</span>
                         <span>Pengaturan Reseller &amp; Master Biller</span>
                     </h1>
                     <p class="text-xs sm:text-sm text-slate-500 mt-1">
@@ -28,7 +28,7 @@
                         @click="openCreateResellerModal"
                         class="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm rounded-2xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
                     >
-                        <span>➕</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                         <span>Buat Akun Reseller Baru</span>
                     </button>
                 </div>
@@ -36,52 +36,75 @@
 
             <!-- Stat Cards -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm">
+                <div 
+                    @click="goToTab('vouchers', 'reseller')"
+                    class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm hover:border-emerald-300 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.99] transition-all cursor-pointer group"
+                    title="Klik untuk melihat daftar seluruh reseller aktif"
+                >
                     <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Reseller Aktif</span>
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-500 group-hover:text-emerald-700 transition-colors">Reseller Aktif</span>
                         <span class="p-2 bg-emerald-50 text-emerald-600 rounded-xl text-sm font-bold">🤝</span>
                     </div>
-                    <div class="text-2xl font-black text-slate-900 mt-2 font-mono">{{ stats?.total_resellers || 0 }}</div>
-                    <div class="text-[11px] text-slate-400 mt-0.5">Akun mitra loket &amp; biller aktif</div>
+                    <div class="text-2xl font-black text-slate-900 group-hover:text-emerald-700 mt-2 font-mono transition-colors">{{ stats?.total_resellers || 0 }}</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5 flex items-center justify-between">
+                        <span>Akun mitra loket &amp; biller</span>
+                        <span class="text-emerald-600 opacity-0 group-hover:opacity-100 font-bold transition-opacity">Lihat &rarr;</span>
+                    </div>
                 </div>
 
                 <div 
-                    @click="activeTab = 'pending'"
-                    class="bg-white rounded-2xl p-4 sm:p-5 border transition-all cursor-pointer shadow-sm"
-                    :class="(stats?.pending_count || 0) > 0 ? 'border-amber-300 ring-2 ring-amber-100 bg-amber-50/20' : 'border-slate-200/80'"
+                    @click="goToTab('pending')"
+                    class="bg-white rounded-2xl p-4 sm:p-5 border transition-all cursor-pointer shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-[0.99] group"
+                    :class="(stats?.pending_count || 0) > 0 ? 'border-amber-300 ring-2 ring-amber-100 bg-amber-50/25' : 'border-slate-200/80 hover:border-amber-300'"
+                    title="Klik untuk meninjau permohonan mitra tertunda"
                 >
                     <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold uppercase tracking-wider" :class="(stats?.pending_count || 0) > 0 ? 'text-amber-700' : 'text-slate-500'">Menunggu Approve</span>
+                        <span class="text-xs font-bold uppercase tracking-wider" :class="(stats?.pending_count || 0) > 0 ? 'text-amber-700' : 'text-slate-500 group-hover:text-amber-700'">Menunggu Approve</span>
                         <span class="p-2 rounded-xl text-sm font-bold" :class="(stats?.pending_count || 0) > 0 ? 'bg-amber-100 text-amber-800 animate-pulse' : 'bg-slate-100 text-slate-600'">⏳</span>
                     </div>
-                    <div class="text-2xl font-black mt-2 font-mono" :class="(stats?.pending_count || 0) > 0 ? 'text-amber-700' : 'text-slate-900'">
+                    <div class="text-2xl font-black mt-2 font-mono" :class="(stats?.pending_count || 0) > 0 ? 'text-amber-700' : 'text-slate-900 group-hover:text-amber-700'">
                         {{ stats?.pending_count || 0 }}
                     </div>
-                    <div class="text-[11px] mt-0.5" :class="(stats?.pending_count || 0) > 0 ? 'text-amber-700 font-bold' : 'text-slate-400'">
-                        {{ (stats?.pending_count || 0) > 0 ? 'Perlu tindakan verifikasi admin' : 'Tidak ada permohonan tertunda' }}
+                    <div class="text-[11px] mt-0.5 flex items-center justify-between" :class="(stats?.pending_count || 0) > 0 ? 'text-amber-700 font-bold' : 'text-slate-400'">
+                        <span>{{ (stats?.pending_count || 0) > 0 ? 'Perlu tindakan verifikasi admin' : 'Tidak ada permohonan tertunda' }}</span>
+                        <span class="text-amber-700 opacity-0 group-hover:opacity-100 font-bold transition-opacity">Buka &rarr;</span>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm">
+                <div 
+                    @click="goToTab('settings', null, 'reseller_min_deposit')"
+                    class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm hover:border-emerald-400 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.99] transition-all cursor-pointer group"
+                    title="Klik untuk mengubah ketentuan minimal saldo modal reseller"
+                >
                     <div class="flex items-center justify-between">
                         <span class="text-xs font-bold uppercase tracking-wider text-emerald-700">Min. Saldo Reseller</span>
                         <span class="p-2 bg-emerald-50 text-emerald-700 rounded-xl text-sm font-bold">💳</span>
                     </div>
-                    <div class="text-xl sm:text-2xl font-black text-emerald-800 mt-2 font-mono">
+                    <div class="text-xl sm:text-2xl font-black text-emerald-800 mt-2 font-mono group-hover:text-emerald-900 transition-colors">
                         Rp {{ formatRupiah(settingsForm.reseller_min_deposit) }}
                     </div>
-                    <div class="text-[11px] text-slate-400 mt-0.5">Syarat modal loket biasa / voucher</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5 flex items-center justify-between">
+                        <span>Syarat modal loket biasa / voucher</span>
+                        <span class="text-emerald-700 opacity-0 group-hover:opacity-100 font-bold transition-opacity">Ubah &rarr;</span>
+                    </div>
                 </div>
 
-                <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm">
+                <div 
+                    @click="goToTab('settings', null, 'biller_min_deposit')"
+                    class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm hover:border-purple-400 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.99] transition-all cursor-pointer group"
+                    title="Klik untuk mengubah ketentuan minimal saldo modal master biller"
+                >
                     <div class="flex items-center justify-between">
                         <span class="text-xs font-bold uppercase tracking-wider text-purple-700">Min. Saldo Biller</span>
                         <span class="p-2 bg-purple-50 text-purple-700 rounded-xl text-sm font-bold">👑</span>
                     </div>
-                    <div class="text-xl sm:text-2xl font-black text-purple-900 mt-2 font-mono">
+                    <div class="text-xl sm:text-2xl font-black text-purple-900 mt-2 font-mono group-hover:text-purple-950 transition-colors">
                         Rp {{ formatRupiah(settingsForm.biller_min_deposit) }}
                     </div>
-                    <div class="text-[11px] text-slate-400 mt-0.5">Syarat modal master biller resmi</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5 flex items-center justify-between">
+                        <span>Syarat modal master biller resmi</span>
+                        <span class="text-purple-700 opacity-0 group-hover:opacity-100 font-bold transition-opacity">Ubah &rarr;</span>
+                    </div>
                 </div>
             </div>
 
@@ -89,39 +112,43 @@
             <div class="flex items-center gap-2 border-b border-slate-200 pb-3 flex-wrap">
                 <button
                     type="button"
-                    @click="activeTab = 'settings'"
-                    class="px-4 py-2.5 rounded-2xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer shadow-xs"
-                    :class="activeTab === 'settings' ? 'bg-indigo-600 text-white shadow-indigo-200' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80'"
+                    @click="switchTab('settings')"
+                    class="px-4 py-2.5 rounded-2xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer shadow-xs active:scale-95"
+                    :class="activeTab === 'settings' ? 'bg-indigo-600 text-white shadow-indigo-200 ring-2 ring-indigo-300' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80'"
                 >
-                    <span>⚙️</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                     <span>Pengaturan Pendaftaran Mandiri</span>
                 </button>
 
                 <button
                     type="button"
-                    @click="activeTab = 'pending'"
-                    class="px-4 py-2.5 rounded-2xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer relative shadow-xs"
-                    :class="activeTab === 'pending' ? 'bg-amber-500 text-white shadow-amber-200' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80'"
+                    @click="switchTab('pending')"
+                    class="px-4 py-2.5 rounded-2xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer relative shadow-xs active:scale-95"
+                    :class="activeTab === 'pending' ? 'bg-amber-500 text-white shadow-amber-200 ring-2 ring-amber-300' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80'"
                 >
-                    <span>⏳</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     <span>Menunggu Persetujuan (Pending)</span>
                     <span 
                         v-if="pendingResellers?.length > 0"
-                        class="px-2 py-0.5 rounded-full text-[10px] font-black"
+                        class="px-2 py-0.5 rounded-full text-[10px] font-black inline-flex items-center gap-1"
                         :class="activeTab === 'pending' ? 'bg-white text-amber-700' : 'bg-amber-100 text-amber-800'"
                     >
-                        {{ pendingResellers.length }}
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>
+                        <span>{{ pendingResellers.length }}</span>
                     </span>
                 </button>
 
                 <button
                     type="button"
-                    @click="activeTab = 'vouchers'"
-                    class="px-4 py-2.5 rounded-2xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer shadow-xs"
-                    :class="activeTab === 'vouchers' ? 'bg-slate-800 text-white shadow-slate-200' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80'"
+                    @click="switchTab('vouchers')"
+                    class="px-4 py-2.5 rounded-2xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer shadow-xs active:scale-95"
+                    :class="activeTab === 'vouchers' ? 'bg-indigo-600 text-white shadow-indigo-200 ring-2 ring-indigo-300' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80'"
                 >
-                    <span>🏷️</span>
-                    <span>Hak Akses Profil Voucher</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    <span>Data Mitra &amp; Hak Akses</span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-black" :class="activeTab === 'vouchers' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'">
+                        {{ stats?.total_resellers || 0 }}
+                    </span>
                 </button>
             </div>
 
@@ -145,41 +172,55 @@
                 <form @submit.prevent="saveRegistrationSettings" class="space-y-6">
                     <!-- Section 0: Status Fitur Layanan Kemitraan ISP (Global) -->
                     <div class="bg-white rounded-3xl p-6 sm:p-7 shadow-sm border border-slate-200/80 space-y-5">
-                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
                             <div>
                                 <h3 class="text-base font-black text-slate-900 flex items-center gap-2">
-                                    <span>🌐</span>
+                                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
                                     <span>Status Fitur Layanan Kemitraan (Global)</span>
                                 </h3>
                                 <p class="text-xs text-slate-500 mt-0.5">Kontrol ketersediaan fitur pembayaran tagihan internet dan penjualan voucher hotspot</p>
                             </div>
                             
-                            <!-- Preset Cepat Layanan -->
-                            <div class="flex items-center gap-1.5 flex-wrap">
-                                <span class="text-[11px] font-bold text-slate-400 mr-1">Preset:</span>
+                            <div class="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+                                <!-- Preset Cepat Layanan -->
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="text-[11px] font-bold text-slate-400 mr-1">Preset:</span>
+                                    <button
+                                        type="button"
+                                        @click="setFeaturePreset('billing_only')"
+                                        class="px-2.5 py-1 rounded-xl text-[11px] font-bold border transition cursor-pointer active:scale-95"
+                                        :class="settingsForm.reseller_feature_billing_enabled && !settingsForm.reseller_feature_vouchers_enabled ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'"
+                                    >
+                                        💳 Hanya Tagihan (Default)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        @click="setFeaturePreset('both')"
+                                        class="px-2.5 py-1 rounded-xl text-[11px] font-bold border transition cursor-pointer active:scale-95"
+                                        :class="settingsForm.reseller_feature_billing_enabled && settingsForm.reseller_feature_vouchers_enabled ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'"
+                                    >
+                                        🌟 Buka Keduanya
+                                    </button>
+                                    <button
+                                        type="button"
+                                        @click="setFeaturePreset('vouchers_only')"
+                                        class="px-2.5 py-1 rounded-xl text-[11px] font-bold border transition cursor-pointer active:scale-95"
+                                        :class="!settingsForm.reseller_feature_billing_enabled && settingsForm.reseller_feature_vouchers_enabled ? 'bg-amber-600 text-white border-amber-600 shadow-2xs' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'"
+                                    >
+                                        🎫 Hanya Voucher
+                                    </button>
+                                </div>
+
+                                <!-- Quick Save Button Top -->
                                 <button
-                                    type="button"
-                                    @click="setFeaturePreset('billing_only')"
-                                    class="px-2.5 py-1 rounded-xl text-[11px] font-bold border transition cursor-pointer"
-                                    :class="settingsForm.reseller_feature_billing_enabled && !settingsForm.reseller_feature_vouchers_enabled ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'"
+                                    type="submit"
+                                    :disabled="settingsForm.processing"
+                                    class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95 whitespace-nowrap"
+                                    title="Simpan seluruh pengaturan formulir ini"
                                 >
-                                    💳 Hanya Tagihan (Default)
-                                </button>
-                                <button
-                                    type="button"
-                                    @click="setFeaturePreset('both')"
-                                    class="px-2.5 py-1 rounded-xl text-[11px] font-bold border transition cursor-pointer"
-                                    :class="settingsForm.reseller_feature_billing_enabled && settingsForm.reseller_feature_vouchers_enabled ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'"
-                                >
-                                    🌟 Buka Keduanya
-                                </button>
-                                <button
-                                    type="button"
-                                    @click="setFeaturePreset('vouchers_only')"
-                                    class="px-2.5 py-1 rounded-xl text-[11px] font-bold border transition cursor-pointer"
-                                    :class="!settingsForm.reseller_feature_billing_enabled && settingsForm.reseller_feature_vouchers_enabled ? 'bg-amber-600 text-white border-amber-600 shadow-2xs' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'"
-                                >
-                                    🎫 Hanya Voucher
+                                    <svg v-if="settingsForm.processing" class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <svg v-else class="w-3.5 h-3.5 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                                    <span>{{ settingsForm.processing ? 'Menyimpan...' : 'Simpan Pengaturan' }}</span>
                                 </button>
                             </div>
                         </div>
@@ -238,40 +279,44 @@
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
                             <div>
                                 <h3 class="text-base font-black text-slate-900 flex items-center gap-2">
-                                    <span>🔘</span>
+                                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                     <span>Jalur Pendaftaran Mandiri yang Diizinkan</span>
                                 </h3>
                                 <p class="text-xs text-slate-500 mt-0.5">Tentukan jenis kemitraan yang dapat dipilih calon pendaftar di halaman registrasi</p>
                             </div>
                             
-                            <!-- Preset Cepat -->
+                            <!-- Preset Cepat dengan status aktif dinamis -->
                             <div class="flex items-center gap-1.5 flex-wrap">
                                 <span class="text-[11px] font-bold text-slate-400 mr-1">Preset Cepat:</span>
                                 <button
                                     type="button"
                                     @click="setRegistrationPreset('all')"
-                                    class="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition cursor-pointer"
+                                    class="px-2.5 py-1 rounded-xl text-[11px] font-bold border transition cursor-pointer active:scale-95"
+                                    :class="settingsForm.reseller_registration_enabled && settingsForm.biller_registration_enabled ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'"
                                 >
                                     ✓ Aktifkan Semua (Reseller &amp; Biller)
                                 </button>
                                 <button
                                     type="button"
                                     @click="setRegistrationPreset('reseller_only')"
-                                    class="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition cursor-pointer"
+                                    class="px-2.5 py-1 rounded-xl text-[11px] font-bold border transition cursor-pointer active:scale-95"
+                                    :class="settingsForm.reseller_registration_enabled && !settingsForm.biller_registration_enabled ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'"
                                 >
                                     Hanya Reseller
                                 </button>
                                 <button
                                     type="button"
                                     @click="setRegistrationPreset('biller_only')"
-                                    class="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition cursor-pointer"
+                                    class="px-2.5 py-1 rounded-xl text-[11px] font-bold border transition cursor-pointer active:scale-95"
+                                    :class="!settingsForm.reseller_registration_enabled && settingsForm.biller_registration_enabled ? 'bg-purple-600 text-white border-purple-600 shadow-2xs' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'"
                                 >
                                     Hanya Biller
                                 </button>
                                 <button
                                     type="button"
                                     @click="setRegistrationPreset('none')"
-                                    class="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition cursor-pointer"
+                                    class="px-2.5 py-1 rounded-xl text-[11px] font-bold border transition cursor-pointer active:scale-95"
+                                    :class="!settingsForm.reseller_registration_enabled && !settingsForm.biller_registration_enabled ? 'bg-rose-600 text-white border-rose-600 shadow-2xs' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'"
                                 >
                                     Tutup Semua
                                 </button>
@@ -2090,6 +2135,34 @@ const defaultTermsText = `1. Calon mitra wajib mengisi data identitas diri dan l
 
 // Tab State: 'settings', 'pending', 'vouchers'
 const activeTab = ref(props.filters?.tab || (props.pendingResellers?.length > 0 ? 'pending' : 'settings'));
+
+const switchTab = (tab) => {
+    activeTab.value = tab;
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tab);
+    window.history.replaceState({}, '', url);
+};
+
+const goToTab = (tab, role = null, focusInputId = null) => {
+    activeTab.value = tab;
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tab);
+    if (role) {
+        currentRole.value = role;
+        url.searchParams.set('role', role);
+    }
+    window.history.replaceState({}, '', url);
+
+    if (focusInputId) {
+        setTimeout(() => {
+            const el = document.getElementById(focusInputId);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.focus();
+            }
+        }, 100);
+    }
+};
 
 // Form Pengaturan Pendaftaran Mandiri
 const settingsForm = useForm({

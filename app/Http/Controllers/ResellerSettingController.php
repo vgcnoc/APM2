@@ -106,7 +106,10 @@ class ResellerSettingController extends Controller
         $pendingResellers = Reseller::with(['customer.areaModel', 'user.area'])
             ->where(function ($q) {
                 $q->where('status', 'pending')
-                  ->orWhere('is_active', false);
+                  ->orWhere(function ($sub) {
+                      $sub->where('is_active', false)
+                          ->whereNotIn('status', ['suspended', 'rejected']);
+                  });
             })
             ->latest()
             ->get()
@@ -246,12 +249,24 @@ class ResellerSettingController extends Controller
             if ($initialBalance > 0) {
                 $reseller->balance += $initialBalance;
             }
+
+            if ($reseller->can_sell_vouchers === null) {
+                $reseller->can_sell_vouchers = (bool) ((int) Setting::get('reseller_feature_vouchers_enabled', '0'));
+            }
+            if ($reseller->can_pay_bills === null) {
+                $reseller->can_pay_bills = (bool) ((int) Setting::get('reseller_feature_billing_enabled', '1'));
+            }
+
             $reseller->save();
 
             // Aktifkan User
             if ($reseller->user) {
                 $reseller->user->is_active = true;
                 $reseller->user->save();
+                try {
+                    $role = Role::firstOrCreate(['name' => 'reseller', 'guard_name' => 'web']);
+                    $reseller->user->assignRole($role);
+                } catch (\Throwable $e) {}
             }
 
             // Aktifkan Customer record
@@ -319,7 +334,7 @@ class ResellerSettingController extends Controller
                 $customer->delete();
             }
 
-            if ($user) {
+            if ($user && $user->id !== 1 && $user->email !== 'admin@isp.local') {
                 $user->delete();
             }
         });
