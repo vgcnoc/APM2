@@ -4,10 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Area;
 use App\Models\Material;
+use App\Models\MaterialStock;
 use App\Models\MaterialTransaction;
+use App\Models\MaterialTransactionItem;
 use App\Models\Ont;
 use App\Services\MaterialHandoverService;
+use App\Services\MaterialService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -408,5 +412,164 @@ class MaterialHandoverController extends Controller
         MaterialHandoverService::rejectRequest($transaction, auth()->user(), $validated['reason']);
 
         return back()->with('error', "Permintaan [{$transaction->transaction_number}] ditolak dengan alasan: {$validated['reason']}");
+    }
+
+    /**
+     * Update data serah terima / permintaan material (Aksi Edit & Revisi).
+     */
+    public function update(Request $request, MaterialTransaction $transaction)
+    {
+        $validated = $request->validate([
+            'source_type' => 'required|string|in:installation,instalasi,pgs,pgk,pgj,rollout_odc,rollout_odp,rollout_odc_odp,network_maintenance,maintenance,cbp,manual',
+            'source_reference' => 'nullable|string|max:100',
+            'technician_name' => 'required|string|max:100',
+            'area_id' => 'nullable|exists:areas,id',
+            'notes' => 'nullable|string|max:500',
+            'resubmit' => 'nullable|boolean',
+            'old_ont_id' => 'nullable|exists:onts,id',
+            'replacement_ont_id' => 'nullable|exists:onts,id',
+            'items' => 'required|array|min:1',
+            'items.*.id' => 'nullable|integer',
+            'items.*.material_id' => 'nullable|exists:materials,id',
+            'items.*.material_name' => 'nullable|string|max:150',
+            'items.*.quantity' => 'required|numeric|min:0.01',
+            'items.*.unit' => 'nullable|string|max:30',
+            'items.*.condition' => 'nullable|string|max:50',
+        ]);
+
+        DB::transaction(function () use ($transaction, $validated, $request) {
+            $isSettled = ($transaction->handover_status === 'received' || $transaction->status === 'approved');
+            $wasRejected = ($transaction->handover_status === 'rejected' || $transaction->status === 'rejected');
+            $shouldResubmit = $request->boolean('resubmit') || $wasRejected;
+
+            $isReturn = ($transaction->request_type === 'return_handover' 
+                || str_starts_with($transaction->transaction_number, 'RTR-') 
+                || str_starts_with($transaction->transaction_number, 'RET-') 
+                || str_contains(strtolower($transaction->purpose ?? ''), 'pengembalian') 
+                || str_contains(strtolower($transaction->purpose ?? ''), 'serah terima'));
+
+            $area = !empty($validated['area_id']) ? Area::find($validated['area_id']) : null;
+            $areaName = $area?->name ?? ($transaction->area ?? 'Gudang Utama');
+
+            $sourceRef = $validated['source_reference'] ?? $transaction->source_reference;
+
+            $transaction->source_type = $validated['source_type'];
+            $transaction->source_reference = $sourceRef;
+            $transaction->technician_name = $validated['technician_name'];
+            $transaction->area_id = $validated['area_id'] ?? null;
+            $transaction->area = $areaName;
+            $transaction->notes = $validated['notes'] ?? null;
+
+            if (array_key_exists('old_ont_id', $validated)) {
+                $transaction->old_ont_id = $validated['old_ont_id'];
+            }
+            if (array_key_exists('replacement_ont_id', $validated)) {
+                $transaction->replacement_ont_id = $validated['replacement_ont_id'];
+            }
+
+            if ($isReturn) {
+                $transaction->purpose = "Serah Terima Pengembalian {$validated['source_type']} [{$sourceRef}]";
+            } else {
+                $transaction->purpose = "Permintaan {$transaction->request_type} {$validated['source_type']} [{$sourceRef}]";
+            }
+
+            // Jika diajukan ulang atau sebelumnya ditolak:
+            if ($shouldResubmit) {
+                if ($isReturn) {
+                    $transaction->handover_status = 'pending_handover';
+                    $transaction->status = 'pending';
+                    if ($transaction->received_notes) {
+                        $transaction->notes = trim(($transaction->notes ? $transaction->notes . " | " : "") . "[Catatan Penolakan: {$transaction->received_notes}]");
+                    }
+                    $transaction->received_by = null;
+                    $transaction->received_at = null;
+                    $transaction->received_notes = null;
+                } else {
+                    $transaction->status = 'pending';
+                    if ($transaction->received_notes) {
+                        $transaction->notes = trim(($transaction->notes ? $transaction->notes . " | " : "") . "[Catatan Penolakan: {$transaction->received_notes}]");
+                    }
+                    $transaction->received_by = null;
+                    $transaction->received_at = null;
+                    $transaction->received_notes = null;
+                }
+
+                // Sinkronisasi status serah terima bongkaran customer jika transaksi ini terkait
+                \App\Models\CustomerMaterialDismantle::where('material_transaction_id', $transaction->id)->update([
+                    'handover_status' => 'pending_handover',
+                    'received_by' => null,
+                    'received_at' => null,
+                    'received_notes' => null,
+                ]);
+            }
+
+            // Simpan perubahan items jika transaksi belum settled
+            if (!$isSettled) {
+                $transaction->items()->delete();
+
+                $totalCost = 0;
+                foreach ($validated['items'] as $item) {
+                    $materialId = $item['material_id'] ?? null;
+                    $qty = (float) ($item['quantity'] ?? 0);
+                    if ($qty <= 0) continue;
+
+                    $material = $materialId ? Material::find($materialId) : null;
+                    $materialName = $item['material_name'] ?? ($material?->name ?? 'Material');
+                    $unit = $item['unit'] ?? ($material?->unit ?? 'pcs');
+                    $condition = $item['condition'] ?? ($isReturn ? 'Layak Pakai' : 'Terpasang/Digunakan');
+
+                    $ppu = $material ? MaterialService::calculateUnitPrice($material, $unit) : 0;
+                    $itemCost = $ppu * $qty;
+                    $totalCost += $itemCost;
+
+                    $matStock = null;
+                    if ($transaction->area_id && $material) {
+                        $matStock = MaterialStock::where('material_id', $material->id)
+                            ->where('area_id', $transaction->area_id)
+                            ->first();
+                    }
+                    $stockCurrent = $matStock ? (float) $matStock->stock : ($material ? (float) $material->stock : 0);
+                    $stockAfter = $isReturn ? ($stockCurrent + $qty) : max(0, $stockCurrent - $qty);
+
+                    MaterialTransactionItem::create([
+                        'material_transaction_id' => $transaction->id,
+                        'material_id' => $material?->id,
+                        'material_name' => $materialName,
+                        'quantity' => $qty,
+                        'unit' => $unit,
+                        'price_per_unit' => $ppu,
+                        'total_price' => $itemCost,
+                        'stock_before' => $stockCurrent,
+                        'stock_after' => $stockAfter,
+                        'condition' => $condition,
+                        'notes' => $item['notes'] ?? null,
+                    ]);
+                }
+
+                $transaction->total_cost = $totalCost;
+            } else {
+                // Untuk transaksi yang sudah selesai, update kondisi & catatan tanpa mengubah kuantitas mutasi fisik
+                foreach ($validated['items'] as $item) {
+                    if (!empty($item['id'])) {
+                        $trxItem = MaterialTransactionItem::where('material_transaction_id', $transaction->id)->find($item['id']);
+                        if ($trxItem) {
+                            $trxItem->update([
+                                'condition' => $item['condition'] ?? $trxItem->condition,
+                                'notes' => $item['notes'] ?? $trxItem->notes,
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            $transaction->save();
+        });
+
+        $msg = "Data transaksi [{$transaction->transaction_number}] berhasil diperbarui.";
+        if ($request->boolean('resubmit') || $transaction->wasChanged('handover_status') || $transaction->wasChanged('status')) {
+            $msg .= " Status transaksi telah diajukan ulang ke antrean verifikasi.";
+        }
+
+        return back()->with('success', $msg);
     }
 }

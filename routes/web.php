@@ -453,6 +453,7 @@ Route::middleware(['auth'])->group(function () {
 
     // ── Serah Terima & Request Material Lapangan ───────────────
     Route::get('material-handovers', [\App\Http\Controllers\MaterialHandoverController::class, 'index'])->name('material-handovers.index');
+    Route::put('material-handovers/{transaction}', [\App\Http\Controllers\MaterialHandoverController::class, 'update'])->name('material-handovers.update');
     Route::post('material-handovers/{transaction}/receive', [\App\Http\Controllers\MaterialHandoverController::class, 'receive'])->name('material-handovers.receive');
     Route::post('material-handovers/{transaction}/reject-handover', [\App\Http\Controllers\MaterialHandoverController::class, 'rejectHandover'])->name('material-handovers.reject-handover');
     Route::post('material-handovers/return', [\App\Http\Controllers\MaterialHandoverController::class, 'storeReturn'])->name('material-handovers.store-return');

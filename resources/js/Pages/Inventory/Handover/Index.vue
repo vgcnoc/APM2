@@ -99,8 +99,14 @@
                     </button>
                 </div>
 
-                <!-- Tombol Ajukan Permintaan Material / ONT ke Ka. Teknisi -->
+                <!-- Tombol Ajukan Serah Terima / Permintaan Material -->
                 <div class="flex items-center gap-2">
+                    <button 
+                        @click="openReturnModal" 
+                        class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
+                    >
+                        <span>📥</span> + Ajukan Serah Terima Gudang
+                    </button>
                     <button 
                         @click="openRequestModal" 
                         class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
@@ -276,13 +282,23 @@
                                 <!-- Aksi -->
                                 <td class="py-4 px-4 text-right">
                                     <div class="flex items-center justify-end gap-1.5 flex-wrap">
+                                        <!-- Ditolak / Perlu Revisi (Tombol Aksi Utama untuk Memperbaiki) -->
+                                        <template v-if="trx.handover_status === 'rejected' || trx.status === 'rejected'">
+                                            <button @click="openEditModal(trx)" class="px-3.5 py-1.5 text-xs font-black text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-sm transition active:scale-95 flex items-center gap-1.5">
+                                                <span>✏️</span> Edit & Revisi
+                                            </button>
+                                        </template>
+
                                         <!-- Aksi Serah Terima (Pending Handover) -->
-                                        <template v-if="trx.request_type === 'return_handover' && trx.handover_status === 'pending_handover'">
+                                        <template v-else-if="trx.request_type === 'return_handover' && trx.handover_status === 'pending_handover'">
                                             <button @click="openReceiveModal(trx)" class="px-3.5 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm transition active:scale-95 flex items-center gap-1.5">
                                                 <span>✅</span> Terima & Cek Kondisi
                                             </button>
                                             <button @click="openRejectModal(trx, 'handover')" class="px-2.5 py-1.5 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl border border-rose-200 transition">
                                                 Tolak
+                                            </button>
+                                            <button @click="openEditModal(trx)" class="px-2.5 py-1.5 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl border border-amber-200 transition flex items-center gap-1">
+                                                <span>✏️</span> Edit
                                             </button>
                                         </template>
 
@@ -294,11 +310,17 @@
                                             <button @click="openRejectModal(trx, 'request')" class="px-2.5 py-1.5 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl border border-rose-200 transition">
                                                 Tolak
                                             </button>
+                                            <button @click="openEditModal(trx)" class="px-2.5 py-1.5 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl border border-amber-200 transition flex items-center gap-1">
+                                                <span>✏️</span> Edit
+                                            </button>
                                         </template>
 
                                         <!-- View / Sudah Selesai -->
                                         <template v-else>
                                             <span class="text-xs text-gray-400 italic">Selesai</span>
+                                            <button @click="openEditModal(trx)" class="px-2 py-1 text-[11px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition flex items-center gap-1">
+                                                <span>✏️</span> Edit
+                                            </button>
                                         </template>
                                     </div>
                                 </td>
@@ -614,6 +636,172 @@
                 </div>
             </div>
 
+            <!-- ── MODAL 5: EDIT DATA & REVISI SERAH TERIMA / PERMINTAAN ── -->
+            <div v-if="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" @click="showEditModal = false"></div>
+                <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-y-auto max-h-[90vh] animate-fade-in-up">
+                    <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-base font-black text-gray-900 flex items-center gap-2">
+                                <span class="p-1.5 rounded-xl bg-amber-100 text-amber-800">✏️</span>
+                                Edit & Revisi Transaksi Material
+                            </h3>
+                            <p class="text-xs text-gray-500 mt-0.5 font-mono font-bold">{{ editForm.transaction_number }}</p>
+                        </div>
+                        <button @click="showEditModal = false" class="text-gray-400 hover:text-gray-600 p-2 text-base font-bold">✕</button>
+                    </div>
+
+                    <form @submit.prevent="submitEditForm" class="p-6 space-y-4">
+                        <!-- Alert status info -->
+                        <div v-if="editTargetTrx?.handover_status === 'rejected' || editTargetTrx?.status === 'rejected'" 
+                            class="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-xs space-y-1">
+                            <div class="flex items-center gap-1.5 font-black text-rose-800 text-sm">
+                                <span>❌</span> Transaksi Memerlukan Perbaikan / Revisi
+                            </div>
+                            <p class="text-rose-700 font-medium">
+                                Catatan Penolakan: <b>{{ editTargetTrx.received_notes || 'Silakan cek dan lengkapi data' }}</b>
+                            </p>
+                            <p class="text-[11px] text-rose-600">
+                                Setelah data diperbaiki dan disimpan, status akan otomatis diajukan kembali ke antrean verifikasi gudang/Ka. Teknisi.
+                            </p>
+                        </div>
+
+                        <div v-else-if="editTargetTrx?.handover_status === 'received' || editTargetTrx?.status === 'approved'"
+                            class="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-800">
+                            <b>ℹ️ Transaksi Selesai:</b> Transaksi ini telah diverifikasi. Pengeditan akan memperbarui informasi referensi tiket, nama teknisi, catatan, dan kondisi barang tanpa mengubah kuantitas mutasi stok historis.
+                        </div>
+
+                        <!-- Data Umum -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Sumber Operasional <span class="text-red-500">*</span></label>
+                                <select v-model="editForm.source_type" required class="w-full text-xs px-3 py-2 border border-gray-200 rounded-xl font-bold">
+                                    <option value="installation">🏠 Instalasi PSB</option>
+                                    <option value="pgs">⚡ PGS Sigap</option>
+                                    <option value="pgk">🛠️ PGK Komplain</option>
+                                    <option value="pgj">🌐 PGJ Jalur</option>
+                                    <option value="cbp">✂️ Cabut Perangkat (CBP)</option>
+                                    <option value="rollout_odc">🏗️ Rollout ODC</option>
+                                    <option value="rollout_odp">🏗️ Rollout ODP</option>
+                                    <option value="rollout_odc_odp">🏗️ Rollout ODC & ODP</option>
+                                    <option value="maintenance">🛠️ Pemeliharaan Jalur</option>
+                                    <option value="manual">📝 Manual / Lapangan</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">No. Tiket / Referensi / Pelanggan <span class="text-red-500">*</span></label>
+                                <input type="text" v-model="editForm.source_reference" required placeholder="Cth: PGK-20261109-0002" class="w-full text-xs px-3 py-2 border border-gray-200 rounded-xl font-bold">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Nama Teknisi Lapangan <span class="text-red-500">*</span></label>
+                                <input type="text" v-model="editForm.technician_name" required placeholder="Nama teknisi lapangan" class="w-full text-xs px-3 py-2 border border-gray-200 rounded-xl font-bold">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Area Gudang</label>
+                                <select v-model="editForm.area_id" class="w-full text-xs px-3 py-2 border border-gray-200 rounded-xl font-medium">
+                                    <option value="">Gudang Utama (Pusat)</option>
+                                    <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Khusus ONT Replacement -->
+                        <div v-if="editForm.request_type === 'ont_replacement'" class="p-3 bg-purple-50 border border-purple-200 rounded-2xl space-y-2">
+                            <label class="block text-xs font-bold text-purple-900 uppercase">Unit ONT Pengganti</label>
+                            <select v-model="editForm.replacement_ont_id" class="w-full text-xs px-3 py-2 border border-purple-200 rounded-xl font-bold">
+                                <option :value="null">-- Tetap / Tidak Berubah --</option>
+                                <option v-for="o in availableOnts" :key="o.id" :value="o.id">
+                                    SN: {{ o.serial_number }} ({{ o.brand }} {{ o.model }})
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- Items Repeater -->
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="block text-xs font-bold text-gray-700 uppercase">
+                                    Rincian Material & Kuantitas <span class="text-red-500">*</span>
+                                </label>
+                                <button type="button" @click="addEditItem" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                                    <span>➕</span> Tambah Barang
+                                </button>
+                            </div>
+
+                            <div class="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+                                <div v-for="(it, idx) in editForm.items" :key="idx" class="p-3 bg-gray-50 border border-gray-200 rounded-xl space-y-2">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <div class="flex-1">
+                                            <select v-model="it.material_id" @change="onEditMaterialChange(it)" class="w-full text-xs px-2.5 py-1.5 border border-gray-200 rounded-lg font-bold">
+                                                <option value="" disabled>-- Pilih Material dari Master --</option>
+                                                <option v-for="m in materials" :key="m.id" :value="m.id">
+                                                    {{ m.name }} (Stok: {{ m.stock }} {{ m.unit }})
+                                                </option>
+                                            </select>
+                                        </div>
+                                        <button v-if="editForm.items.length > 1" type="button" @click="editForm.items.splice(idx, 1)" class="text-rose-500 hover:text-rose-700 font-bold p-1">
+                                            ✕
+                                        </button>
+                                    </div>
+
+                                    <!-- Nama item kustom jika material_id tidak terpilih -->
+                                    <div v-if="!it.material_id">
+                                        <input type="text" v-model="it.material_name" placeholder="Nama Barang / Material Kustom" class="w-full text-xs px-2.5 py-1.5 border border-gray-200 rounded-lg">
+                                    </div>
+
+                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Jumlah (Qty)</label>
+                                            <input type="number" step="0.01" min="0.01" v-model="it.quantity" required placeholder="Qty" class="w-full text-xs px-2.5 py-1.5 border border-gray-200 rounded-lg font-bold">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Satuan</label>
+                                            <input type="text" v-model="it.unit" placeholder="pcs/meter" class="w-full text-xs px-2.5 py-1.5 border border-gray-200 rounded-lg">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Kondisi</label>
+                                            <select v-model="it.condition" class="w-full text-xs px-2.5 py-1.5 border border-gray-200 rounded-lg font-bold">
+                                                <option value="Layak Pakai">🟢 Layak Pakai</option>
+                                                <option value="Tidak Layak">🟡 Tidak Layak</option>
+                                                <option value="Rusak">🔴 Rusak</option>
+                                                <option value="Terpasang/Digunakan">⚪ Terpasang</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Catatan -->
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Catatan / Keterangan</label>
+                            <input type="text" v-model="editForm.notes" placeholder="Catatan perbaikan atau alasan revisi..." class="w-full text-xs px-3 py-2 border border-gray-200 rounded-xl font-medium">
+                        </div>
+
+                        <!-- Opsi Ajukan Ulang jika status rejected atau pending -->
+                        <div v-if="editTargetTrx?.handover_status === 'rejected' || editTargetTrx?.status === 'rejected' || editTargetTrx?.handover_status === 'pending_handover' || editTargetTrx?.status === 'pending'"
+                            class="p-3 bg-amber-50/70 border border-amber-200 rounded-xl flex items-center gap-2">
+                            <input type="checkbox" id="resubmit_check" v-model="editForm.resubmit" class="rounded text-amber-600 focus:ring-amber-500 h-4 w-4">
+                            <label for="resubmit_check" class="text-xs font-bold text-amber-900 cursor-pointer">
+                                Ajukan Ulang Transaksi ke Antrean Verifikasi (Status di-reset ke Menunggu Verifikasi)
+                            </label>
+                        </div>
+
+                        <div class="pt-3 border-t border-gray-100 flex justify-end gap-2">
+                            <button type="button" @click="showEditModal = false" class="px-4 py-2 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition">
+                                Batal
+                            </button>
+                            <button type="submit" :disabled="editForm.processing" class="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition flex items-center gap-1.5">
+                                <span v-if="editForm.processing">⏳ Menyimpan...</span>
+                                <span v-else>💾 Simpan Perubahan</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
         </div>
     </AppLayout>
 </template>
@@ -667,7 +855,40 @@ const resetFilters = () => {
 };
 
 // ── Modals & Actions ──────────────────────────────────────────────────────────
-// Request Modal
+// 1. Modal Ajukan Pengembalian Baru
+const showReturnModal = ref(false);
+const returnForm = useForm({
+    source_type: 'installation',
+    source_reference: '',
+    technician_name: '',
+    area_id: '',
+    notes: '',
+    items: [
+        { material_id: '', quantity: 1, condition: 'Layak Pakai' }
+    ],
+});
+
+const openReturnModal = () => {
+    returnForm.reset();
+    returnForm.source_type = 'installation';
+    returnForm.items = [{ material_id: '', quantity: 1, condition: 'Layak Pakai' }];
+    showReturnModal.value = true;
+};
+
+const addReturnItem = () => {
+    returnForm.items.push({ material_id: '', quantity: 1, condition: 'Layak Pakai' });
+};
+
+const submitReturnForm = () => {
+    returnForm.post('/material-handovers/return', {
+        preserveScroll: true,
+        onSuccess: () => {
+            showReturnModal.value = false;
+        }
+    });
+};
+
+// 2. Modal Permintaan Material / ONT
 const showRequestModal = ref(false);
 const requestForm = useForm({
     request_type: 'additional_material',
@@ -704,6 +925,7 @@ const submitRequestForm = () => {
     });
 };
 
+// 3. Modal Terima Serah Terima Gudang
 const showReceiveModal = ref(false);
 const activeTrx = ref(null);
 const receiveForm = useForm({
@@ -741,7 +963,7 @@ const submitReceiveForm = () => {
     });
 };
 
-// Reject Modal
+// 4. Modal Tolak Transaksi
 const showRejectModal = ref(false);
 const rejectTargetTrx = ref(null);
 const rejectTargetType = ref('handover');
@@ -767,6 +989,86 @@ const submitReject = () => {
         preserveScroll: true,
         onSuccess: () => {
             showRejectModal.value = false;
+        }
+    });
+};
+
+// 5. Modal Edit Data & Revisi Transaksi
+const showEditModal = ref(false);
+const editTargetTrx = ref(null);
+const editForm = useForm({
+    id: null,
+    transaction_number: '',
+    request_type: '',
+    source_type: 'manual',
+    source_reference: '',
+    technician_name: '',
+    area_id: '',
+    old_ont_id: null,
+    replacement_ont_id: null,
+    notes: '',
+    resubmit: false,
+    items: [],
+});
+
+const openEditModal = (trx) => {
+    editTargetTrx.value = trx;
+    const isRejected = (trx.handover_status === 'rejected' || trx.status === 'rejected');
+
+    editForm.id = trx.id;
+    editForm.transaction_number = trx.transaction_number;
+    editForm.request_type = trx.request_type || 'return_handover';
+    editForm.source_type = trx.source_type || 'manual';
+    editForm.source_reference = trx.source_reference || '';
+    editForm.technician_name = trx.technician_name || '';
+    editForm.area_id = trx.area_id || '';
+    editForm.old_ont_id = trx.old_ont_id || null;
+    editForm.replacement_ont_id = trx.replacement_ont_id || null;
+    editForm.notes = trx.notes || '';
+    editForm.resubmit = isRejected; // Default true jika ditolak/perlu revisi
+
+    if (trx.items && trx.items.length > 0) {
+        editForm.items = trx.items.map(it => ({
+            id: it.id,
+            material_id: it.material_id || (it.material ? it.material.id : ''),
+            material_name: it.material?.name || it.material_name || '',
+            quantity: Number(it.quantity) || 1,
+            unit: it.unit || it.material?.unit || 'pcs',
+            condition: it.condition || 'Layak Pakai',
+        }));
+    } else {
+        editForm.items = [
+            { material_id: '', material_name: '', quantity: 1, unit: 'pcs', condition: 'Layak Pakai' }
+        ];
+    }
+
+    showEditModal.value = true;
+};
+
+const addEditItem = () => {
+    editForm.items.push({
+        material_id: '',
+        material_name: '',
+        quantity: 1,
+        unit: 'pcs',
+        condition: 'Layak Pakai',
+    });
+};
+
+const onEditMaterialChange = (item) => {
+    if (!item.material_id) return;
+    const mat = props.materials.find(m => m.id === item.material_id);
+    if (mat) {
+        item.material_name = mat.name;
+        item.unit = mat.unit || item.unit || 'pcs';
+    }
+};
+
+const submitEditForm = () => {
+    editForm.put(`/material-handovers/${editForm.id}`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showEditModal.value = false;
         }
     });
 };
@@ -799,13 +1101,17 @@ const formatQty = (num) => {
 const getSourceLabel = (src) => {
     const map = {
         installation: '🏠 Instalasi PSB',
+        instalasi: '🏠 Instalasi PSB',
         pgs: '⚡ PGS Sigap',
         pgk: '🛠️ PGK Komplain',
         pgj: '🌐 PGJ Jalur',
         maintenance: '🛠️ Pemeliharaan Jalur',
+        network_maintenance: '🛠️ Maintenance Jaringan',
         rollout_odc: '🏗️ Rollout ODC',
         rollout_odp: '🏗️ Rollout ODP',
-        manual: 'Manual',
+        rollout_odc_odp: '🏗️ Rollout ODC & ODP',
+        cbp: '✂️ Cabut Perangkat (CBP)',
+        manual: '📝 Manual / Lapangan',
     };
     return map[src] || src || 'Umum';
 };
@@ -813,12 +1119,17 @@ const getSourceLabel = (src) => {
 const getSourceBadgeClass = (src) => {
     const map = {
         installation: 'bg-blue-100 text-blue-800',
+        instalasi: 'bg-blue-100 text-blue-800',
         pgs: 'bg-amber-100 text-amber-800',
         pgk: 'bg-rose-100 text-rose-800',
         pgj: 'bg-purple-100 text-purple-800',
         maintenance: 'bg-teal-100 text-teal-800',
+        network_maintenance: 'bg-teal-100 text-teal-800',
         rollout_odc: 'bg-emerald-100 text-emerald-800',
         rollout_odp: 'bg-teal-100 text-teal-800',
+        rollout_odc_odp: 'bg-indigo-100 text-indigo-800',
+        cbp: 'bg-orange-100 text-orange-800',
+        manual: 'bg-slate-100 text-slate-800',
     };
     return map[src] || 'bg-gray-100 text-gray-800';
 };
