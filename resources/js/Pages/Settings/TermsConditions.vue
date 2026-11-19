@@ -10,16 +10,16 @@
             </div>
 
             <!-- Header Info Card -->
-            <div class="bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
+            <div class="bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 rounded-3xl p-6 sm:p-7 text-white shadow-xl relative overflow-hidden border border-indigo-800/50">
                 <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
                 <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-medium mb-3">
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/25 !text-indigo-200 border border-indigo-400/30 text-xs font-bold mb-3 shadow-inner">
                             <span class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
                             Dokumen Hukum & Kepatuhan Berlangganan
                         </div>
-                        <h2 class="text-xl md:text-2xl font-bold tracking-tight">Template Syarat &amp; Ketentuan Berlangganan</h2>
-                        <p class="text-xs md:text-sm text-slate-300 mt-1 max-w-2xl leading-relaxed">
+                        <div class="text-xl sm:text-2xl font-black tracking-tight !text-white drop-shadow-sm">Template Syarat &amp; Ketentuan Berlangganan</div>
+                        <p class="text-xs md:text-sm !text-indigo-100/90 mt-1 max-w-2xl leading-relaxed font-medium">
                             Template ini otomatis digunakan saat pendaftaran di menu <strong>Booking</strong>, verifikasi lapangan di <strong>Survey</strong>, dan serah terima pemasangan di <strong>Instalasi</strong>. Tanda tangan digital ditangkap langsung lewat layar HP atau PC.
                         </p>
                     </div>
@@ -28,7 +28,7 @@
                         <button 
                             type="button" 
                             @click="showPreviewModal = true"
-                            class="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all flex items-center gap-2 border border-white/10 cursor-pointer shadow-sm"
+                            class="px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 !text-white text-xs font-extrabold transition-all flex items-center gap-2 border border-white/20 cursor-pointer shadow-sm active:scale-95"
                         >
                             <svg class="w-4 h-4 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -40,9 +40,9 @@
                         <button 
                             type="button" 
                             @click="confirmResetToDefault"
-                            class="px-4 py-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-200 text-xs font-bold transition-all flex items-center gap-2 border border-red-500/30 cursor-pointer"
+                            class="px-4 py-2.5 rounded-xl bg-rose-500/25 hover:bg-rose-500/35 !text-rose-100 text-xs font-extrabold transition-all flex items-center gap-2 border border-rose-400/40 cursor-pointer active:scale-95 shadow-sm"
                         >
-                            <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-4 h-4 text-rose-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                             </svg>
                             <span>Reset ke Standar</span>
