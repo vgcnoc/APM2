@@ -89,24 +89,27 @@ class OperationalDailyProgressController extends Controller
         $selectedArea = $areaId ? Area::find($areaId) : null;
         $areaLabel = $selectedArea ? $selectedArea->name : ($accessibleAreaIds !== null ? 'Wilayah Ditugaskan' : 'Semua Wilayah / Area');
 
-        // 1. DATA GANGGUAN (PGS, PGK, PGJ)
+        // 1. DATA GANGGUAN (PGS, PGK)
         $gangguanList = $this->getGangguanData($date, $targetAreaIds);
 
-        // 2. DATA PEMASANGAN BARU (INSTALASI)
+        // 2. DATA GANGGUAN JALUR (PGJ - MANDIRI)
+        $pgjList = $this->getPgjData($date, $targetAreaIds);
+
+        // 3. DATA PEMASANGAN BARU (INSTALASI)
         $pemasanganList = $this->getPemasanganData($date, $targetAreaIds);
 
-        // 3. DATA SURVEY PELANGGAN BARU
+        // 4. DATA SURVEY PELANGGAN BARU
         $surveyList = $this->getSurveyData($date, $targetAreaIds);
 
-        // 4. DATA PENCABUTAN / CBP
+        // 5. DATA PENCABUTAN / CBP
         $cbpList = $this->getCbpData($date, $targetAreaIds);
 
-        // 5. DATA PEMELIHARAAN & PERAPIHAN JALUR (ODP, ODC, JALUR UTAMA - MANDIRI TANPA PGS/PGK/PGJ)
+        // 6. DATA PEMELIHARAAN & PERAPIHAN JALUR (ODP, ODC, JALUR UTAMA - MANDIRI TANPA PGS/PGK/PGJ)
         $maintenanceList = $this->getMaintenanceData($date, $targetAreaIds);
 
         // Kumpulkan teknisi aktif dari seluruh penugasan operasional hari ini
         $activeJobTechNames = [];
-        foreach (array_merge($gangguanList, $pemasanganList, $surveyList, $cbpList, $maintenanceList) as $taskItem) {
+        foreach (array_merge($gangguanList, $pgjList, $pemasanganList, $surveyList, $cbpList, $maintenanceList) as $taskItem) {
             if (!empty($taskItem['technicians'])) {
                 foreach (explode(',', $taskItem['technicians']) as $tName) {
                     $trimmed = trim($tName);
@@ -118,16 +121,22 @@ class OperationalDailyProgressController extends Controller
         }
         $activeJobTechNames = array_unique($activeJobTechNames);
 
-        // 6. STATUS TEKNISI (On Duty, Libur, Masuk Malam)
+        // 7. STATUS TEKNISI (On Duty, Libur, Masuk Malam)
         $technicianStatus = $this->getTechnicianStatus($date, $targetAreaIds, $activeJobTechNames);
 
-        // 7. RINGKASAN DATA CERDAS & AUTO
+        // 8. RINGKASAN DATA CERDAS & AUTO
         $summary = [
             'gangguan' => count($gangguanList),
             'gangguan_done' => collect($gangguanList)->where('is_done', true)->count(),
             'gangguan_in_progress' => collect($gangguanList)->where('is_in_progress', true)->count(),
             'gangguan_rescheduled' => collect($gangguanList)->where('is_rescheduled', true)->count(),
             'gangguan_pending' => collect($gangguanList)->where('is_done', false)->where('is_in_progress', false)->count(),
+
+            'pgj' => count($pgjList),
+            'pgj_done' => collect($pgjList)->where('is_done', true)->count(),
+            'pgj_in_progress' => collect($pgjList)->where('is_in_progress', true)->count(),
+            'pgj_rescheduled' => collect($pgjList)->where('is_rescheduled', true)->count(),
+            'pgj_pending' => collect($pgjList)->where('is_done', false)->where('is_in_progress', false)->count(),
 
             'pemasangan' => count($pemasanganList),
             'pemasangan_done' => collect($pemasanganList)->where('is_done', true)->count(),
@@ -152,12 +161,13 @@ class OperationalDailyProgressController extends Controller
             'maintenance_pending' => collect($maintenanceList)->where('is_done', false)->where('is_in_progress', false)->count(),
         ];
 
-        // 8. HASILKAN FORMAT TEKS WHATSAPP SESUAI TEMPLATE
+        // 9. HASILKAN FORMAT TEKS WHATSAPP SESUAI TEMPLATE
         $waText = $this->buildWhatsAppTemplate(
             $areaLabel,
             $indonesianDayDate,
             $technicianStatus,
             $gangguanList,
+            $pgjList,
             $pemasanganList,
             $surveyList,
             $cbpList,
@@ -257,6 +267,7 @@ class OperationalDailyProgressController extends Controller
             'indonesianDate' => $indonesianDayDate,
             'areaLabel' => $areaLabel,
             'gangguanList' => $gangguanList,
+            'pgjList' => $pgjList,
             'pemasanganList' => $pemasanganList,
             'surveyList' => $surveyList,
             'cbpList' => $cbpList,
@@ -549,7 +560,19 @@ class OperationalDailyProgressController extends Controller
             ];
         }
 
-        // 3. PGJ (Gangguan Jalur / Backbone / ODC)
+        return $items;
+    }
+
+    /**
+     * Ambil Data Gangguan Jalur (PGJ) secara Mandiri, Cerdas & Lengkap
+     */
+    private function getPgjData(string $date, string|array|null $areaId): array
+    {
+        $items = [];
+        $areaIds = is_array($areaId) ? $areaId : ($areaId ? [$areaId] : []);
+        $isToday = ($date === Carbon::today()->toDateString());
+
+        // PGJ (Gangguan Jalur / Backbone / Feeder / ODC / ODP)
         $pgjQuery = PgjTicket::with(['area', 'olt', 'odc', 'odp', 'technicians', 'leadTechnician', 'resolvedByUser'])
             ->where(function ($q) use ($date, $isToday) {
                 $q->whereDate('scheduled_date', $date)
@@ -585,7 +608,7 @@ class OperationalDailyProgressController extends Controller
             if (empty($techNames) && $pgj->resolvedByUser) {
                 $techNames[] = $pgj->resolvedByUser->name;
             }
-            $techniciansStr = !empty($techNames) ? implode(', ', array_unique($techNames)) : 'Tim Maintenance Jalur';
+            $techniciansStr = !empty($techNames) ? implode(', ', array_unique($techNames)) : 'Belum Ditugaskan';
 
             $isDone = in_array($pgj->status, ['completed', 'resolved', 'closed']) || !empty($pgj->resolved_at);
             $isInProgress = in_array($pgj->status, ['in_progress', 'working']) || (!empty($pgj->start_time) && empty($pgj->end_time) && !$isDone);
@@ -616,21 +639,42 @@ class OperationalDailyProgressController extends Controller
                 $duration = substr($pgj->start_time, 0, 5) . ' - ' . substr($pgj->end_time, 0, 5);
             } elseif ($pgj->start_time) {
                 $duration = 'Mulai ' . substr($pgj->start_time, 0, 5);
+            } elseif ($pgj->scheduled_time) {
+                $duration = 'Jadwal ' . substr((string)$pgj->scheduled_time, 0, 5);
             }
 
             $infraName = $pgj->odp?->name ?: ($pgj->odc?->name ?: ($pgj->olt?->name ?: ($pgj->location_name ?: '-')));
+            $locName = $pgj->location_name ?: ($pgj->segment_type ? "Segmen {$pgj->segment_type}" : 'Jalur FTTH');
 
             $items[] = [
+                'id' => $pgj->id,
                 'type' => 'PGJ',
                 'source' => 'PGJ',
                 'ticket_number' => $pgj->ticket_number,
-                'customer_name' => '⚠️ Jalur/Infra: ' . ($pgj->location_name ?: $pgj->segment_type),
+                'segment_type' => $pgj->segment_type ?: 'Jalur FTTH',
+                'category' => $pgj->category ?: 'Gangguan Jalur',
+                'priority' => $pgj->priority ?: 'normal',
+                'location_name' => $locName,
+                'customer_name' => '⚠️ Jalur/Infra: ' . $locName,
                 'address' => $pgj->area?->name ?? 'Wilayah Jalur',
-                'odp' => $infraName,
+                'area_name' => $pgj->area?->name ?? '-',
+                'odp' => $pgj->odp?->name ?: '-',
+                'odc' => $pgj->odc?->name ?: '-',
+                'olt' => $pgj->olt?->name ?: '-',
+                'infra_target' => $infraName,
                 'issue' => $pgj->reported_issue ?: 'Gangguan Jalur FTTH',
+                'cause' => $pgj->cause_indication ?: ($pgj->escalation_reason ?: '-'),
+                'action_taken' => $pgj->action_taken ?: ($pgj->resolution_notes ?: '-'),
                 'phone' => '-',
                 'technicians' => $techniciansStr,
+                'technician_ids' => $pgj->technicians->pluck('id')->toArray(),
                 'duration' => $duration,
+                'affected_customers_count' => (int) ($pgj->affected_customers_count ?: 0),
+                'optical_power_before' => $pgj->optical_loss_before,
+                'optical_power_after' => $pgj->optical_loss_after,
+                'photo_before' => $pgj->photo_before ? Storage::url($pgj->photo_before) : null,
+                'photo_after' => $pgj->photo_after ? Storage::url($pgj->photo_after) : null,
+                'status' => $pgj->status,
                 'status_label' => $statusLabel,
                 'status_class' => $statusClass,
                 'is_done' => $isDone,
@@ -1551,6 +1595,7 @@ class OperationalDailyProgressController extends Controller
         string $indonesianDayDate,
         array $technicianStatus,
         array $gangguanList,
+        array $pgjList,
         array $pemasanganList,
         array $surveyList,
         array $cbpList,
@@ -1608,7 +1653,39 @@ class OperationalDailyProgressController extends Controller
             }
         }
 
-        // 2. PEMASANGAN BARU
+        // 2. GANGGUAN JALUR (PGJ) - MANDIRI
+        if (!empty($pgjList)) {
+            $lines[] = "";
+            $lines[] = "⚡ *GANGGUAN JALUR (PGJ)*";
+            $groupedPgj = collect($pgjList)->groupBy('technicians');
+            foreach ($groupedPgj as $techName => $pItems) {
+                $lines[] = "";
+                $lines[] = "👷 *Petugas Jalur/Teknisi :* {$techName}";
+                $idx = 1;
+                foreach ($pItems as $pg) {
+                    $segmen = !empty($pg['segment_type']) ? " ({$pg['segment_type']})" : "";
+                    $lines[] = "{$idx}. No. Tiket: {$pg['ticket_number']}{$segmen}";
+                    $lines[] = "   Lokasi : {$pg['location_name']}";
+                    $target = $pg['infra_target'] ?? '-';
+                    $lines[] = "   Target : {$target}";
+                    $lines[] = "   Kendala: {$pg['issue']}";
+                    if (!empty($pg['affected_customers_count']) && $pg['affected_customers_count'] > 0) {
+                        $lines[] = "   Dampak : {$pg['affected_customers_count']} Pelanggan";
+                    }
+                    if (!empty($pg['optical_power_after']) || !empty($pg['optical_power_before'])) {
+                        $lines[] = "   Redaman: " . ($pg['optical_power_after'] ?: $pg['optical_power_before']);
+                    }
+                    if (!empty($pg['action_taken']) && $pg['action_taken'] !== '-') {
+                        $lines[] = "   Tindakan: {$pg['action_taken']}";
+                    }
+                    $lines[] = "   Durasi : {$pg['duration']}";
+                    $lines[] = "   Status : {$pg['status_label']}";
+                    $idx++;
+                }
+            }
+        }
+
+        // 3. PEMASANGAN BARU
         if (!empty($pemasanganList)) {
             $lines[] = "";
             $lines[] = "🛜 *PEMASANGAN BARU*";
@@ -1670,7 +1747,7 @@ class OperationalDailyProgressController extends Controller
             }
         }
 
-        // 5. PERAPIHAN & PENGECEKAN JALUR (ODP / ODC / JALUR UTAMA)
+        // 6. PERAPIHAN & PENGECEKAN JALUR (ODP / ODC / JALUR UTAMA)
         if (!empty($maintenanceList)) {
             $lines[] = "";
             $lines[] = "🛠️ *PERAPIHAN & PENGECEKAN JALUR (ODP/ODC/JALUR UTAMA)*";
@@ -1707,9 +1784,10 @@ class OperationalDailyProgressController extends Controller
             }
         }
 
-        // 6. RINGKASAN HARI INI
+        // 7. RINGKASAN HARI INI
         $lines[] = "📊 *RINGKASAN HARI INI*";
-        $lines[] = "* Gangguan: {$summary['gangguan']} ({$summary['gangguan_done']} Selesai, {$summary['gangguan_pending']} Pending)";
+        $lines[] = "* Gangguan PGS/PGK: {$summary['gangguan']} ({$summary['gangguan_done']} Selesai, {$summary['gangguan_pending']} Pending)";
+        $lines[] = "* Gangguan Jalur (PGJ): {$summary['pgj']} ({$summary['pgj_done']} Selesai, {$summary['pgj_pending']} Pending)";
         $lines[] = "* Pemasangan: {$summary['pemasangan']} ({$summary['pemasangan_done']} Selesai, {$summary['pemasangan_pending']} Pending)";
         $lines[] = "* Survey: {$summary['survey']} ({$summary['survey_feasible']} Selesai, {$summary['survey_pending']} Tunggu)";
         $cbpPendingStr = ($summary['cbp_assigned'] ?? 0) > 0 
@@ -1719,7 +1797,7 @@ class OperationalDailyProgressController extends Controller
         $lines[] = "* Perapihan/Cek Jalur: {$summary['maintenance']} ({$summary['maintenance_done']} Selesai, {$summary['maintenance_pending']} Pending)";
         $lines[] = "";
 
-        // 7. STATUS TEKNISI
+        // 8. STATUS TEKNISI
         $lines[] = "👷 *STATUS TEKNISI*";
         $tekLiburStr = !empty($tekStatus['off']) ? implode(', ', $tekStatus['off']) : '-';
         $tekMalamStr = !empty($tekStatus['night']) ? implode(', ', $tekStatus['night']) : '-';
@@ -1727,7 +1805,7 @@ class OperationalDailyProgressController extends Controller
         $lines[] = "Teknisi Masuk Malam: {$tekMalamStr}";
         $lines[] = "";
 
-        // 8. STATUS MAINTENANCE
+        // 9. STATUS MAINTENANCE
         $lines[] = "🛠️ *STATUS MAINTENANCE*";
         $maintLiburStr = !empty($maintStatus['off']) ? implode(', ', $maintStatus['off']) : '-';
         $lines[] = "Maintenance Bertugas: {$maintDutyStr}";
@@ -1738,7 +1816,7 @@ class OperationalDailyProgressController extends Controller
         }
         $lines[] = "";
 
-        // 9. NOTE
+        // 10. NOTE
         $lines[] = "📝 *NOTE*";
         $lines[] = $customNote ?: "Tetap semangat dan jaga keselamatan kerja! 💪";
 

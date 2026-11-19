@@ -1,5 +1,5 @@
 <template>
-    <AppLayout title="Progress Harian Operasional" subtitle="Laporan Terpadu Gangguan PGS/PGK/PGJ, Instalasi, Survey, CBP, Pemeliharaan Jalur & Shift Teknisi">
+    <AppLayout title="Progress Harian Operasional" subtitle="Laporan Terpadu Gangguan PGS/PGK, Gangguan Jalur PGJ, Instalasi, Survey, CBP, Pemeliharaan Jalur & Shift Teknisi">
         <div class="space-y-6 max-w-7xl mx-auto pb-12">
             
             <!-- TOP BAR: FILTER & ACTION CONTROLS -->
@@ -127,10 +127,10 @@
                 </div>
             </div>
 
-            <!-- STATS KPI SUMMARY CARDS (6 KOLOM) -->
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <!-- STATS KPI SUMMARY CARDS (7 KOLOM DEDIKASI PGJ MANDIRI) -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
                 
-                <!-- 1. Gangguan Card -->
+                <!-- 1. Gangguan Pelanggan (PGS / PGK) Card -->
                 <div 
                     @click="activeTab = 'gangguan'"
                     class="p-4 rounded-2xl border transition-all cursor-pointer group hover:shadow-md"
@@ -139,17 +139,40 @@
                         : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-rose-300'"
                 >
                     <div class="flex items-center justify-between text-rose-600 dark:text-rose-400">
-                        <span class="text-[11px] font-black uppercase tracking-wider">🆘 Gangguan</span>
+                        <span class="text-[11px] font-black uppercase tracking-wider">🆘 PGS / PGK</span>
                         <span class="text-xs font-bold px-1.5 py-0.5 rounded-md bg-rose-100 dark:bg-rose-900/60">{{ summary.gangguan || 0 }}</span>
                     </div>
                     <div class="mt-2 text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                         {{ summary.gangguan || 0 }}
                     </div>
-                    <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
-                        <span class="text-emerald-600 font-bold">✓ {{ summary.gangguan_done || 0 }} Selesai</span>
-                        <span v-if="summary.gangguan_in_progress > 0" class="text-blue-600 font-bold">· 🛠️ {{ summary.gangguan_in_progress }} Proses</span>
+                    <div class="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
+                        <span class="text-emerald-600 font-bold">✓ {{ summary.gangguan_done || 0 }}</span>
+                        <span v-if="summary.gangguan_in_progress > 0" class="text-blue-600 font-bold">· 🛠️ {{ summary.gangguan_in_progress }}</span>
                         <span>·</span>
-                        <span class="text-amber-600 font-bold">⏳ {{ summary.gangguan_pending || 0 }} Pending</span>
+                        <span class="text-amber-600 font-bold">⏳ {{ summary.gangguan_pending || 0 }}</span>
+                    </div>
+                </div>
+
+                <!-- 2. Gangguan Jalur (PGJ - MANDIRI) Card -->
+                <div 
+                    @click="activeTab = 'pgj'"
+                    class="p-4 rounded-2xl border transition-all cursor-pointer group hover:shadow-md"
+                    :class="activeTab === 'pgj' 
+                        ? 'bg-amber-50/70 dark:bg-amber-950/40 border-amber-400 dark:border-amber-700 ring-2 ring-amber-200 dark:ring-amber-900' 
+                        : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-amber-300'"
+                >
+                    <div class="flex items-center justify-between text-amber-600 dark:text-amber-400">
+                        <span class="text-[11px] font-black uppercase tracking-wider">⚡ Jalur (PGJ)</span>
+                        <span class="text-xs font-bold px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/60">{{ summary.pgj || 0 }}</span>
+                    </div>
+                    <div class="mt-2 text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                        {{ summary.pgj || 0 }}
+                    </div>
+                    <div class="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
+                        <span class="text-emerald-600 font-bold">✓ {{ summary.pgj_done || 0 }}</span>
+                        <span v-if="summary.pgj_in_progress > 0" class="text-blue-600 font-bold">· 🛠️ {{ summary.pgj_in_progress }}</span>
+                        <span>·</span>
+                        <span class="text-amber-600 font-bold">⏳ {{ summary.pgj_pending || 0 }}</span>
                     </div>
                 </div>
 
@@ -300,7 +323,7 @@
                         </button>
                     </div>
 
-                    <!-- TAB 1: GANGGUAN (PGS / PGK / PGJ) -->
+                    <!-- TAB 1: GANGGUAN (PGS / PGK) -->
                     <div v-if="activeTab === 'gangguan'" class="space-y-3">
                         <div v-if="gangguanList.length === 0" class="bg-white dark:bg-slate-900 rounded-3xl p-10 text-center border border-slate-200/80 dark:border-slate-800">
                             <div class="w-16 h-16 mx-auto rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-3xl mb-3">
@@ -325,7 +348,7 @@
                                             <span>{{ item.customer_name }}</span>
                                             <span 
                                                 class="px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider" 
-                                                :class="(item.type || item.source) === 'PGS' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300' : ((item.type || item.source) === 'PGK' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300' : 'bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border border-purple-300')"
+                                                :class="(item.type || item.source) === 'PGS' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300' : 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300'"
                                             >
                                                 {{ item.type || item.source }}
                                             </span>
@@ -395,7 +418,132 @@
                         </div>
                     </div>
 
-                    <!-- TAB 2: PEMASANGAN BARU (INSTALASI) -->
+                    <!-- TAB 2: GANGGUAN JALUR (PGJ - MANDIRI) -->
+                    <div v-if="activeTab === 'pgj'" class="space-y-3">
+                        <div v-if="pgjList.length === 0" class="bg-white dark:bg-slate-900 rounded-3xl p-10 text-center border border-slate-200/80 dark:border-slate-800">
+                            <div class="w-16 h-16 mx-auto rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center text-3xl mb-3">
+                                ⚡
+                            </div>
+                            <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">Nihil Gangguan Jalur Hari Ini</h3>
+                            <p class="text-xs text-slate-400 mt-1">Seluruh segmen kabel backbone, feeder, ODC, ODP, dan distribusi terpantau stabil normal tanpa tiket gangguan.</p>
+                        </div>
+
+                        <div 
+                            v-for="(item, idx) in pgjList" 
+                            :key="'pgj-' + (item.id || idx)"
+                            class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-amber-200/80 dark:border-amber-900/40 hover:shadow-md transition-all space-y-2.5 relative overflow-hidden"
+                        >
+                            <!-- Top accent bar -->
+                            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500"></div>
+
+                            <div class="flex items-start justify-between gap-3 pt-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-6 h-6 rounded-lg bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 text-xs font-black flex items-center justify-center">
+                                        {{ idx + 1 }}
+                                    </span>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
+                                            <span>{{ item.location_name }}</span>
+                                            <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300">
+                                                {{ item.segment_type || 'PGJ' }}
+                                            </span>
+                                            <span 
+                                                v-if="item.priority === 'emergency' || item.priority === 'urgent' || item.priority === 'high'" 
+                                                class="px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300 animate-pulse"
+                                            >
+                                                🔥 {{ item.priority }}
+                                            </span>
+                                        </h4>
+                                        <div class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5 flex-wrap">
+                                            <span class="font-mono font-bold text-slate-700 dark:text-slate-300">{{ item.ticket_number }}</span>
+                                            <span class="text-slate-300">·</span>
+                                            <span 
+                                                class="font-semibold flex items-center gap-1"
+                                                :class="item.technicians === 'Belum Ditugaskan' ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-slate-700 dark:text-slate-300'"
+                                            >
+                                                👷 {{ item.technicians }}
+                                            </span>
+                                            <span v-if="item.affected_customers_count > 0" class="text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1">
+                                                · 👥 {{ item.affected_customers_count }} Pelanggan
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <span 
+                                    class="px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 shrink-0 border"
+                                    :class="item.is_done ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' : (item.is_in_progress ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800' : (item.is_rescheduled ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800' : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800'))"
+                                >
+                                    {{ item.status_label }}
+                                </span>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs bg-amber-50/40 dark:bg-slate-800/60 p-3 rounded-xl border border-amber-100/50 dark:border-slate-800">
+                                <div>
+                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Wilayah & Area</span>
+                                    <span class="text-slate-700 dark:text-slate-300 font-semibold">{{ item.area_name || item.address || '-' }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">ODP / ODC / OLT Terkait</span>
+                                    <span class="text-slate-700 dark:text-slate-300 font-semibold">{{ item.infra_target || '-' }}</span>
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Kendala Gangguan Jalur</span>
+                                    <span class="text-slate-900 dark:text-slate-100 font-medium">{{ item.issue || '-' }}</span>
+                                </div>
+                                <div v-if="item.cause && item.cause !== '-'" class="sm:col-span-2">
+                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Indikasi Penyebab</span>
+                                    <span class="text-amber-700 dark:text-amber-300 font-medium">{{ item.cause }}</span>
+                                </div>
+                                <div v-if="item.action_taken && item.action_taken !== '-'" class="sm:col-span-2">
+                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Tindakan Lapangan / Solusi</span>
+                                    <span class="text-emerald-700 dark:text-emerald-300 font-medium">{{ item.action_taken }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Petugas Teknisi Jalur</span>
+                                    <span 
+                                        class="font-bold flex items-center gap-1 text-xs"
+                                        :class="item.technicians === 'Belum Ditugaskan' ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'"
+                                    >
+                                        👷 {{ item.technicians || '-' }}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Durasi Pengerjaan</span>
+                                    <span class="text-slate-700 dark:text-slate-300 font-mono">{{ item.duration || '-' }}</span>
+                                </div>
+                                <div v-if="item.optical_power_before || item.optical_power_after" class="sm:col-span-2 flex items-center gap-4 text-xs font-mono bg-white dark:bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                                    <span v-if="item.optical_power_before" class="text-rose-600 dark:text-rose-400 font-bold">
+                                        Loss Awal: {{ item.optical_power_before }}
+                                    </span>
+                                    <span v-if="item.optical_power_after" class="text-emerald-600 dark:text-emerald-400 font-bold">
+                                        Hasil Ukur: {{ item.optical_power_after }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Actions Row -->
+                            <div class="flex items-center justify-between pt-1 text-xs">
+                                <div class="flex items-center gap-2">
+                                    <button 
+                                        v-if="item.photo_before || item.photo_after"
+                                        type="button"
+                                        @click="viewPhotos(item)"
+                                        class="px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                                    >
+                                        <span>📷 Foto Bukti</span>
+                                    </button>
+                                </div>
+                                <Link 
+                                    :href="route('pgj.index')" 
+                                    class="px-2.5 py-1 text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 rounded-lg transition-colors flex items-center gap-1"
+                                >
+                                    <span>Kelola di Modul PGJ</span> ↗
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 3: PEMASANGAN BARU (INSTALASI) -->
                     <div v-if="activeTab === 'pemasangan'" class="space-y-3">
                         <div v-if="pemasanganList.length === 0" class="bg-white dark:bg-slate-900 rounded-3xl p-10 text-center border border-slate-200/80 dark:border-slate-800">
                             <div class="w-16 h-16 mx-auto rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center text-3xl mb-3">
@@ -2118,7 +2266,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { router, usePage } from '@inertiajs/vue3';
+import { router, usePage, Link } from '@inertiajs/vue3';
 import axios from 'axios';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { compressImage, formatBytes } from '@/Utils/imageCompressor';
@@ -2132,6 +2280,7 @@ const props = defineProps({
     indonesianDate: { type: String, default: '' },
     areaLabel: { type: String, default: '' },
     gangguanList: { type: Array, default: () => [] },
+    pgjList: { type: Array, default: () => [] },
     pemasanganList: { type: Array, default: () => [] },
     surveyList: { type: Array, default: () => [] },
     cbpList: { type: Array, default: () => [] },
@@ -2231,7 +2380,7 @@ onMounted(() => {
     if (typeof window !== 'undefined') {
         const urlParams = new URLSearchParams(window.location.search);
         const tabParam = urlParams.get('tab');
-        if (tabParam && ['gangguan', 'pemasangan', 'survey', 'cbp', 'maintenance', 'teknisi'].includes(tabParam)) {
+        if (tabParam && ['gangguan', 'pgj', 'pemasangan', 'survey', 'cbp', 'maintenance', 'teknisi'].includes(tabParam)) {
             activeTab.value = tabParam;
         } else if (window.location.pathname.includes('network-maintenance')) {
             activeTab.value = 'maintenance';
@@ -2242,7 +2391,8 @@ onMounted(() => {
 });
 
 const tabs = computed(() => [
-    { key: 'gangguan', label: 'Gangguan PGS/PGK/PGJ', icon: '🆘', count: props.summary?.gangguan || 0 },
+    { key: 'gangguan', label: 'Gangguan PGS/PGK', icon: '🆘', count: props.summary?.gangguan || 0 },
+    { key: 'pgj', label: 'Gangguan Jalur (PGJ)', icon: '⚡', count: props.summary?.pgj || 0 },
     { key: 'pemasangan', label: 'Pemasangan Baru', icon: '🛜', count: props.summary?.pemasangan || 0 },
     { key: 'survey', label: 'Survey PSB', icon: '🔎', count: props.summary?.survey || 0 },
     { key: 'cbp', label: 'Cabut Perangkat', icon: '🔌', count: props.summary?.cbp || 0 },
