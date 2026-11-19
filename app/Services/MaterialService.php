@@ -718,60 +718,141 @@ class MaterialService
 
     /**
      * Resolusi model Material yang terkait dengan suatu unit perangkat ONT.
+     * Menerima instance Ont, atau string brand dan string model.
+     * Prioritas:
+     * 1. material_transaction_item_id jika ada pada Ont
+     * 2. Model hardware spesifik (misal: H690e/H609e, F452, P613s, GM220, dll.)
+     * 3. Brand spesifik (misal: Zimm Link, Zvolin, ZTE, FiberHome)
+     * 4. Fallback ke generic ONT XPON / ONT (TIDAK PERNAH membajak ke ONT Zvolin XPON jika bukan Zvolin)
      */
-    public static function resolveOntMaterial(\App\Models\Ont $ont): ?Material
+    public static function resolveOntMaterial(\App\Models\Ont|string|null $ontOrBrand, ?string $model = null): ?Material
     {
-        if (!empty($ont->material_transaction_item_id)) {
-            $mItem = MaterialTransactionItem::with('material')->find($ont->material_transaction_item_id);
-            if ($mItem && $mItem->material) {
-                return $mItem->material;
+        if ($ontOrBrand instanceof \App\Models\Ont) {
+            $ont = $ontOrBrand;
+            if (!empty($ont->material_transaction_item_id)) {
+                $mItem = MaterialTransactionItem::with('material')->find($ont->material_transaction_item_id);
+                if ($mItem && $mItem->material) {
+                    return $mItem->material;
+                }
             }
+            $rawBrand = trim((string) ($ont->brand ?? ''));
+            $rawModel = trim((string) ($ont->model ?? ''));
+        } else {
+            $rawBrand = trim((string) $ontOrBrand);
+            $rawModel = trim((string) $model);
         }
 
-        $brand = trim((string) ($ont->brand ?? ''));
-        $model = trim((string) ($ont->model ?? ''));
-
-        if ($brand === '' && $model === '') {
+        if ($rawBrand === '' && $rawModel === '') {
             return null;
         }
 
-        $baseQuery = Material::where(function ($q) {
+        $materials = Material::where(function ($q) {
             $q->where('is_active', true)->orWhereNull('is_active');
         })->where(function ($q) {
             $q->where('category', 'ONT')
               ->orWhere('category', 'like', '%ont%')
-              ->orWhere('category', 'like', '%modem%');
+              ->orWhere('category', 'like', '%modem%')
+              ->orWhere('name', 'like', '%ont%');
+        })->get();
+
+        if ($materials->isEmpty()) {
+            return null;
+        }
+
+        $deviceText = strtolower("{$rawBrand} {$rawModel}");
+
+        // Normalisasi variasi nama brand/model umum dan typo
+        $normalizedText = str_replace(
+            ['zimmlink', 'zimm-link', 'h609e', 'h609', 'p613-s', 'fiber-home', 'fiber home'],
+            ['zimm link', 'zimm link', 'h690e', 'h690e', 'p613s', 'fiberhome', 'fiberhome'],
+            $deviceText
+        );
+
+        // 1. Kecocokan Model Hardware Spesifik (Prioritas Tertinggi)
+        $specificModels = [
+            'h690e', 'h609e', 'f452', 'p613s', 'p613', 'f609', 'f660', 'f670',
+            'gm220', 'hg8245', 'gl-01', 'nvb663', 'zl-2113x', 'z69lx'
+        ];
+        foreach ($specificModels as $sm) {
+            $searchKey = in_array($sm, ['h609e', 'h690e']) ? 'h690e' : $sm;
+            if (str_contains($normalizedText, $searchKey) || str_contains($normalizedText, $sm)) {
+                foreach ($materials as $m) {
+                    $mNorm = str_replace(['h609e', 'h609'], 'h690e', strtolower($m->name));
+                    if (str_contains($mNorm, $searchKey)) {
+                        return $m;
+                    }
+                }
+            }
+        }
+
+        // 2. Kecocokan Brand Spesifik (Hanya jika Brand Benar-Benar Cocok)
+        $brands = [
+            'zimm link' => ['zimm link', 'zimmlink', 'zimm'],
+            'zvolin'    => ['zvolin'],
+            'zte'       => ['zte'],
+            'fiberhome' => ['fiberhome', 'fiber home'],
+            'huawei'    => ['huawei'],
+        ];
+
+        foreach ($brands as $brandKey => $aliases) {
+            $hasBrand = false;
+            foreach ($aliases as $alias) {
+                if (str_contains($normalizedText, $alias)) {
+                    $hasBrand = true;
+                    break;
+                }
+            }
+
+            if ($hasBrand) {
+                $candidates = [];
+                foreach ($materials as $m) {
+                    $mLower = strtolower($m->name);
+                    foreach ($aliases as $alias) {
+                        if (str_contains($mLower, $alias)) {
+                            $candidates[] = $m;
+                            break;
+                        }
+                    }
+                }
+
+                if (!empty($candidates)) {
+                    // Jika ONT memiliki model khusus bukan generik XPON/EPON/GPON, coba cocokkan modelnya
+                    $cleanModel = strtolower(trim(preg_replace('/\b(ont|modem|xpon|epon|gpon|fiber|standar)\b/i', '', $rawModel)));
+                    if (!empty($cleanModel) && strlen($cleanModel) >= 2) {
+                        foreach ($candidates as $cand) {
+                            if (str_contains(strtolower($cand->name), $cleanModel)) {
+                                return $cand;
+                            }
+                        }
+                    }
+                    return $candidates[0];
+                }
+            }
+        }
+
+        // 3. Fallback: Cocokkan token unik selain istilah generik
+        $tokens = array_filter(preg_split('/[\s\-_/]+/', $normalizedText), function ($t) {
+            return strlen($t) >= 3 && !in_array($t, ['ont', 'modem', 'unit', 'gpon', 'xpon', 'epon', 'pcs', 'brand', 'model', 'bekas', 'rusak']);
         });
 
-        if ($brand !== '' && $model !== '' && stripos($brand, $model) === false) {
-            $exact = (clone $baseQuery)
-                ->where('name', 'like', "%{$brand}%")
-                ->where('name', 'like', "%{$model}%")
-                ->first();
-            if ($exact) {
-                return $exact;
+        if (!empty($tokens)) {
+            foreach ($materials as $m) {
+                $mLower = strtolower($m->name);
+                foreach ($tokens as $t) {
+                    if (str_contains($mLower, $t)) {
+                        return $m;
+                    }
+                }
             }
         }
 
-        if ($model !== '') {
-            $byModel = (clone $baseQuery)
-                ->where('name', 'like', "%{$model}%")
-                ->first();
-            if ($byModel) {
-                return $byModel;
-            }
-        }
-
-        if ($brand !== '') {
-            $byBrand = (clone $baseQuery)
-                ->where(function ($q) use ($brand) {
-                    $q->whereRaw('LOWER(TRIM(name)) = ?', [strtolower($brand)])
-                      ->orWhere('name', 'like', "%{$brand}%");
-                })
-                ->orderByRaw('CASE WHEN LOWER(TRIM(name)) = ? THEN 0 ELSE 1 END', [strtolower($brand)])
-                ->first();
-            if ($byBrand) {
-                return $byBrand;
+        // 4. Fallback Terakhir: Hanya cocokkan ke generic ONT XPON / ONT (TIDAK PERNAH ke ONT Zvolin XPON!)
+        if (str_contains($normalizedText, 'xpon') || str_contains($normalizedText, 'epon') || str_contains($normalizedText, 'gpon') || str_contains($normalizedText, 'ont')) {
+            foreach ($materials as $m) {
+                $mLower = strtolower(trim($m->name));
+                if ($mLower === 'ont xpon' || $mLower === 'ont') {
+                    return $m;
+                }
             }
         }
 

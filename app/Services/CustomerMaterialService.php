@@ -301,13 +301,26 @@ class CustomerMaterialService
                 }
             }
 
+            // Jika ONT lama teridentifikasi, pastikan material_id dan nama item akurat sesuai fisik ONT
+            if ($oldOnt) {
+                $resolvedMat = MaterialService::resolveOntMaterial($oldOnt);
+                if ($resolvedMat) {
+                    $materialId = $resolvedMat->id;
+                    if ($installedMat && $installedMat->material_id !== $materialId) {
+                        $installedMat->update(['material_id' => $materialId]);
+                    }
+                }
+                $ontBrandModel = trim(($oldOnt->brand ?: '') . ' ' . ($oldOnt->model ?: ''));
+                $itemName = 'ONT ' . ($ontBrandModel ?: 'Modem') . ($oldOnt->serial_number ? " (SN: {$oldOnt->serial_number})" : '');
+            }
+
             // 3. Buat Transaksi Serah Terima (MaterialTransaction pending_handover)
             $transNumber = MaterialService::generateTransactionNumber('RET-DISM-' . strtoupper(substr($ticketType, 0, 3)));
             $areaId = $customer->area_id;
 
             $conditionLabel = match ($condition) {
-                'rusak_scrap' => 'Rusak / Afkir',
-                'normal_reusable' => 'Layak Pakai',
+                'rusak_scrap', 'Rusak / Afkir', 'rusak', 'Rusak' => 'Rusak / Afkir',
+                'normal_reusable', 'Layak Pakai', 'normal' => 'Layak Pakai',
                 default => 'Perlu Pengecekan Lab',
             };
 
@@ -497,54 +510,7 @@ class CustomerMaterialService
      */
     public static function resolveOntMaterial(?string $ontBrand, ?string $ontModel = null): ?Material
     {
-        $brand = trim((string) $ontBrand);
-        $model = trim((string) $ontModel);
-
-        if (empty($brand) && empty($model)) {
-            return null;
-        }
-
-        // Bersihkan kata generik seperti 'ONT', 'Modem'
-        $cleanBrand = trim(preg_replace('/\b(ont|modem)\b/i', '', $brand));
-        $cleanModel = trim(preg_replace('/\b(ont|modem|fiber)\b/i', '', $model));
-
-        if (empty($cleanBrand) && empty($cleanModel)) {
-            return null;
-        }
-
-        $baseQuery = Material::where(function ($q) {
-            $q->where('category', 'ONT')
-              ->orWhere('category', 'like', '%ont%')
-              ->orWhere('category', 'like', '%modem%');
-        });
-
-        // 1. Kecocokan kombinasi Brand & Model spesifik
-        if ($cleanBrand && $cleanModel) {
-            $exact = (clone $baseQuery)->where('name', 'like', "%{$cleanBrand}%")
-                ->where('name', 'like', "%{$cleanModel}%")
-                ->first();
-            if ($exact) {
-                return $exact;
-            }
-        }
-
-        // 2. Kecocokan Brand spesifik
-        if ($cleanBrand && strlen($cleanBrand) >= 3) {
-            $byBrand = (clone $baseQuery)->where('name', 'like', "%{$cleanBrand}%")->first();
-            if ($byBrand) {
-                return $byBrand;
-            }
-        }
-
-        // 3. Kecocokan Model spesifik
-        if ($cleanModel && strlen($cleanModel) >= 3) {
-            $byModel = (clone $baseQuery)->where('name', 'like', "%{$cleanModel}%")->first();
-            if ($byModel) {
-                return $byModel;
-            }
-        }
-
-        return null;
+        return MaterialService::resolveOntMaterial($ontBrand, $ontModel);
     }
 }
 

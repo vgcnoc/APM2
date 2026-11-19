@@ -152,8 +152,29 @@ class MaterialHandoverService
                 $material = $materialId ? Material::find($materialId) : null;
                 $materialName = $item['material_name'] ?? ($material?->name ?? 'Material Tarikan / Diganti');
 
+                // Jika item adalah ONT atau ada oldOntId terkait, pastikan resolusi material akurat
+                if ($oldOntId && (!$material || stripos($materialName, 'ont') !== false || stripos($materialName, 'modem') !== false)) {
+                    $rOnt = Ont::find($oldOntId);
+                    if ($rOnt) {
+                        $resolvedMat = MaterialService::resolveOntMaterial($rOnt);
+                        if ($resolvedMat) {
+                            $material = $resolvedMat;
+                            $materialId = $resolvedMat->id;
+                        }
+                        if (empty($item['material_name']) || $materialName === 'Material Tarikan / Diganti' || $materialName === 'ONT') {
+                            $ontBrandModel = trim(($rOnt->brand ?: '') . ' ' . ($rOnt->model ?: ''));
+                            $materialName = 'ONT ' . ($ontBrandModel ?: 'Modem') . ($rOnt->serial_number ? " (SN: {$rOnt->serial_number})" : '');
+                        }
+                    }
+                }
+
                 $unit = $item['unit'] ?? ($material?->unit ?? 'pcs');
-                $condition = $item['condition'] ?? 'Rusak';
+                $rawCond = $item['condition'] ?? 'Rusak / Afkir';
+                $condition = match ($rawCond) {
+                    'normal_reusable', 'Layak Pakai', 'normal' => 'Layak Pakai',
+                    'rusak_scrap', 'Rusak / Afkir', 'rusak', 'Rusak', 'Tidak Layak' => 'Rusak / Afkir',
+                    default => 'Perlu Pengecekan Lab',
+                };
                 $ppu = $material ? MaterialService::calculateUnitPrice($material, $unit) : 0;
                 $itemCost = $ppu * $qty;
                 $totalCost += $itemCost;
