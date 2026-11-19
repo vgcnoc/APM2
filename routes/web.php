@@ -309,8 +309,8 @@ Route::middleware(['auth'])->group(function () {
             Route::delete('/{workOrder}', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'destroy'])->name('destroy');
         });
 
-        // Progress Terpadu Rollout Pembangunan ODC & ODP
-        Route::middleware(['permission:menu_infrastructure_work_orders|menu_rollout_progress'])->group(function () {
+        // Progress Terpadu Rollout Pembangunan ODC & ODP (Khusus Manajemen / Infrastruktur / NOC / Maintenance)
+        Route::middleware(['permission:menu_rollout_progress'])->group(function () {
             Route::get('/infrastructure/rollout-progress', [\App\Http\Controllers\RolloutProgressController::class, 'index'])->name('infrastructure.rollout-progress.index');
             Route::post('/infrastructure/rollout-progress/send-wa', [\App\Http\Controllers\RolloutProgressController::class, 'sendWa'])->name('infrastructure.rollout-progress.send-wa');
             Route::get('/operational/rollout-progress', [\App\Http\Controllers\RolloutProgressController::class, 'index'])->name('operational.rollout-progress.index');

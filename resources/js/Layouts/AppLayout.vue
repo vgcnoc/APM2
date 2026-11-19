@@ -1264,7 +1264,7 @@ const menuItems = [
         active: (url) => ['/olts', '/odcs', '/odps', '/onts', '/find-onu', '/infrastructure/work-orders', '/infrastructure/rollout-progress', '/operational/rollout-progress', '/network/capacity-monitoring'].some(path => (url || '').startsWith(path)),
         permission: ['menu_rollout_progress', 'menu_network_capacity', 'menu_infrastructure_work_orders', 'menu_network_olt', 'menu_network_odc', 'menu_network_odp', 'menu_network_ont', 'menu_network_find_onu'],
         children: [
-            { href: '/infrastructure/rollout-progress', label: '⚡ Progress Rollout ODC & ODP', active: (url) => (url || '').startsWith('/infrastructure/rollout-progress') || (url || '').startsWith('/operational/rollout-progress'), permission: ['menu_rollout_progress', 'menu_infrastructure_work_orders'] },
+            { href: '/infrastructure/rollout-progress', label: '⚡ Progress Rollout ODC & ODP', active: (url) => (url || '').startsWith('/infrastructure/rollout-progress') || (url || '').startsWith('/operational/rollout-progress'), permission: 'menu_rollout_progress' },
             { href: '/infrastructure/work-orders', label: '📋 Work Order Rollout', active: (url) => (url || '').startsWith('/infrastructure/work-orders'), permission: 'menu_infrastructure_work_orders' },
             { href: '/network/capacity-monitoring', label: '📊 Monitoring Kapasitas ODC/ODP', active: (url) => (url || '').startsWith('/network/capacity-monitoring'), permission: 'menu_network_capacity' },
             { href: '/olts', label: 'Data OLT', active: (url) => (url || '').startsWith('/olts'), permission: 'menu_network_olt' },
@@ -1477,6 +1477,10 @@ const isChildVisible = (c) => {
     if (c.module && !isModuleAllowed(c.module)) return false;
     if (c.href === '/settings/companies' && !isHoldingSuperAdmin()) return false;
     if (isPathHiddenByMasking(c.href)) return false;
+    // Menu Progress Rollout ODC & ODP khusus manajemen / infrastruktur / NOC / maintenance, tidak tampil di akun teknisi tim serbu
+    if ((c.href === '/infrastructure/rollout-progress' || c.href === '/operational/rollout-progress') && hasRole(['teknisi tim serbu', 'tim serbu', 'teknisi'])) {
+        return false;
+    }
     return !c.permission || hasPermission(c.permission);
 };
 
@@ -1586,7 +1590,7 @@ const searchResults = computed(() => {
                 const parentMatches = item.label.toLowerCase().includes(q);
                 if (Array.isArray(item.children)) {
                     item.children.forEach(child => {
-                        if (!child.permission || hasPermission(child.permission)) {
+                        if (isChildVisible(child)) {
                             if (parentMatches || child.label.toLowerCase().includes(q) || group.label.toLowerCase().includes(q)) {
                                 results.push({
                                     label: child.label,
