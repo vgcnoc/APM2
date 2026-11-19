@@ -1,5 +1,5 @@
 <script setup>
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import debounce from 'lodash/debounce';
@@ -17,6 +17,77 @@ const typeFilter = ref(props.filters.type || '');
 const statusFilter = ref(props.filters.status || '');
 const areaFilter = ref(props.filters.area_id || '');
 const techFilter = ref(props.filters.technician_id || '');
+
+// Modal & Form Edit Work Order
+const showEditModal = ref(false);
+const activeWo = ref(null);
+const editForm = useForm({
+    target_name: '',
+    device_type: 'Normal',
+    area_id: '',
+    capacity: 8,
+    core_capacity: null,
+    splitter_ratio: '',
+    location: '',
+    planned_latitude: '',
+    planned_longitude: '',
+    technician_id: '',
+    technician_ids: [],
+    scheduled_date: '',
+    start_point: '',
+    end_point: '',
+    cable_pull: '',
+    notes: '',
+});
+
+const openEditModal = (wo) => {
+    activeWo.value = wo;
+    editForm.target_name = wo.target_name || '';
+    editForm.device_type = wo.device_type || 'Normal';
+    editForm.area_id = wo.area_id || '';
+    editForm.capacity = wo.capacity || (wo.type === 'odc_deployment' ? 48 : 8);
+    editForm.core_capacity = wo.core_capacity || null;
+    editForm.splitter_ratio = wo.splitter_ratio || (wo.type === 'odc_deployment' ? '1:4' : '1:8');
+    editForm.location = wo.location || '';
+    editForm.planned_latitude = wo.planned_latitude || '';
+    editForm.planned_longitude = wo.planned_longitude || '';
+    editForm.technician_id = wo.technician_id || (wo.technicians && wo.technicians.length > 0 ? wo.technicians[0].id : '');
+    editForm.technician_ids = wo.technicians && wo.technicians.length > 0
+        ? wo.technicians.map(t => t.id)
+        : (wo.technician_id ? [wo.technician_id] : []);
+    editForm.scheduled_date = wo.scheduled_date ? wo.scheduled_date.substring(0, 10) : '';
+    editForm.start_point = wo.start_point || '';
+    editForm.end_point = wo.end_point || '';
+    editForm.cable_pull = wo.cable_pull || '';
+    editForm.notes = wo.notes || '';
+    showEditModal.value = true;
+};
+
+const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+        alert('Geolocation tidak didukung oleh browser Anda.');
+        return;
+    }
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            editForm.planned_latitude = position.coords.latitude.toFixed(7);
+            editForm.planned_longitude = position.coords.longitude.toFixed(7);
+        },
+        (error) => {
+            alert('Gagal mendeteksi lokasi GPS: ' + error.message);
+        }
+    );
+};
+
+const submitEditForm = () => {
+    if (!activeWo.value) return;
+    editForm.put(route('infrastructure.work-orders.update', activeWo.value.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showEditModal.value = false;
+        },
+    });
+};
 
 const applyFilters = debounce(() => {
     router.get(
@@ -349,6 +420,16 @@ const deleteWo = (wo) => {
                                             <span>&rarr;</span>
                                         </Link>
 
+                                        <button
+                                            type="button"
+                                            @click="openEditModal(wo)"
+                                            class="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold rounded-lg transition-colors border border-amber-200 text-xs flex items-center gap-1 cursor-pointer"
+                                            title="Edit Penugasan Pembangunan"
+                                        >
+                                            <span>✏️</span>
+                                            <span>Edit</span>
+                                        </button>
+
                                         <Link
                                             :href="route('infrastructure.work-orders.show', wo.id)"
                                             class="px-3 py-1.5 bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 font-bold rounded-lg transition-colors border border-slate-200/60"
@@ -392,6 +473,261 @@ const deleteWo = (wo) => {
                             :class="link.active ? 'bg-indigo-600 text-white font-bold border-indigo-600' : 'bg-white hover:bg-slate-50 text-slate-600 border-slate-200'"
                         />
                     </div>
+                </div>
+            </div>
+
+            <!-- MODAL: EDIT WORK ORDER ROLLOUT -->
+            <div v-if="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-xs" @click="showEditModal = false"></div>
+                <div class="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl overflow-y-auto max-h-[92vh] border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-200">
+                    
+                    <!-- Header Modal -->
+                    <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-lg border border-amber-200 dark:border-amber-800">
+                                ✏️
+                            </div>
+                            <div>
+                                <h3 class="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                                    Edit Penugasan Rollout
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide border uppercase" :class="activeWo?.type === 'odc_deployment' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'">
+                                        {{ activeWo?.type === 'odc_deployment' ? 'ODC Deployment' : 'ODP Deployment' }}
+                                    </span>
+                                </h3>
+                                <p class="text-xs text-slate-400 font-mono">{{ activeWo?.wo_number }}</p>
+                            </div>
+                        </div>
+                        <button @click="showEditModal = false" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg leading-none cursor-pointer">
+                            ✕
+                        </button>
+                    </div>
+
+                    <!-- Form Edit -->
+                    <form @submit.prevent="submitEditForm" class="p-6 space-y-4 text-xs">
+                        
+                        <!-- Target Name & Device Type -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                                    Nama Target Perangkat <span class="text-rose-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    v-model="editForm.target_name"
+                                    required
+                                    placeholder="Cth: ODP V-UBG 02 / ODC UBRUG"
+                                    class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                                    Tipe / Varian Perangkat
+                                </label>
+                                <select
+                                    v-model="editForm.device_type"
+                                    class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                                >
+                                    <option value="Normal">Normal</option>
+                                    <option value="Solid / Mini">Solid / Mini</option>
+                                    <option value="Splitter Box">Splitter Box</option>
+                                    <option value="ODP Pole">ODP Pole / Tiang</option>
+                                    <option value="Closure">Closure</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Area & Tanggal Jadwal -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                                    Wilayah / Area
+                                </label>
+                                <select
+                                    v-model="editForm.area_id"
+                                    class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                                >
+                                    <option value="">Pilih Area...</option>
+                                    <option v-for="area in areas" :key="area.id" :value="area.id">
+                                        {{ area.name }}
+                                    </option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                                    Tanggal Pelaksanaan / Jadwal
+                                </label>
+                                <input
+                                    type="date"
+                                    v-model="editForm.scheduled_date"
+                                    class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        <!-- Kapasitas Port & Splitter Ratio -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                                    Kapasitas Port / Core
+                                </label>
+                                <input
+                                    type="number"
+                                    v-model="editForm.capacity"
+                                    min="1"
+                                    placeholder="8, 16, 24, 48, dll"
+                                    class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                                    Rasio Splitter
+                                </label>
+                                <input
+                                    type="text"
+                                    v-model="editForm.splitter_ratio"
+                                    placeholder="Cth: 1:8, 1:16, 1:4"
+                                    class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        <!-- Lokasi Fisik / Tiang / Alamat -->
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                                Lokasi Fisik / Tiang / Titik Pemasangan
+                            </label>
+                            <input
+                                type="text"
+                                v-model="editForm.location"
+                                placeholder="Cth: TIANG PLN DEPAN GAPURA RW 02"
+                                class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                            />
+                        </div>
+
+                        <!-- Koordinat GPS -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Latitude</label>
+                                    <button type="button" @click="getCurrentLocation" class="text-[10px] text-amber-600 hover:text-amber-700 font-bold cursor-pointer">
+                                        📍 Deteksi GPS
+                                    </button>
+                                </div>
+                                <input
+                                    type="text"
+                                    v-model="editForm.planned_latitude"
+                                    placeholder="-6.912345"
+                                    class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Longitude</label>
+                                <input
+                                    type="text"
+                                    v-model="editForm.planned_longitude"
+                                    placeholder="107.612345"
+                                    class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        <!-- Personil Teknisi -->
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                                Lead Splicer / Penanggung Jawab Teknisi
+                            </label>
+                            <select
+                                v-model="editForm.technician_id"
+                                class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                            >
+                                <option value="">-- Pilih Lead Teknisi --</option>
+                                <option v-for="t in technicians" :key="t.id" :value="t.id">
+                                    {{ t.name }} ({{ t.role || 'Teknisi' }})
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- Anggota Tim Pelaksana -->
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                                Anggota Tim Teknisi / Serbu
+                            </label>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-36 overflow-y-auto p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
+                                <label v-for="tech in technicians" :key="'tech-' + tech.id" class="flex items-center gap-1.5 p-1 rounded-lg hover:bg-white dark:hover:bg-slate-800 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        :value="tech.id"
+                                        v-model="editForm.technician_ids"
+                                        class="rounded text-amber-600 focus:ring-amber-500 h-3.5 w-3.5"
+                                    />
+                                    <span class="text-[11px] text-slate-800 dark:text-slate-200 font-medium truncate">{{ tech.name }}</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Rute Tarikan Kabel -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Titik Awal</label>
+                                <input
+                                    type="text"
+                                    v-model="editForm.start_point"
+                                    placeholder="ODC / Tiang Asal"
+                                    class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Titik Akhir</label>
+                                <input
+                                    type="text"
+                                    v-model="editForm.end_point"
+                                    placeholder="Tiang Target ODP"
+                                    class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Est. Panjang Kabel (m)</label>
+                                <input
+                                    type="text"
+                                    v-model="editForm.cable_pull"
+                                    placeholder="150 m"
+                                    class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        <!-- Catatan -->
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                                Catatan / Instruksi Lapangan
+                            </label>
+                            <textarea
+                                v-model="editForm.notes"
+                                rows="2"
+                                placeholder="Instruksi rute penarikan, jalur kabel, atau catatan khusus tim lapangan..."
+                                class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                            ></textarea>
+                        </div>
+
+                        <!-- Footer Buttons -->
+                        <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
+                            <button
+                                type="button"
+                                @click="showEditModal = false"
+                                class="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 rounded-xl transition cursor-pointer"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="submit"
+                                :disabled="editForm.processing"
+                                class="px-5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                            >
+                                <span v-if="editForm.processing">⏳ Menyimpan...</span>
+                                <span v-else>💾 Simpan Perubahan</span>
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>

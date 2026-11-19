@@ -346,6 +346,7 @@ class InfrastructureWorkOrderController extends Controller
             'workOrder' => $workOrder,
             'materials' => $materials,
             'technicians' => $this->getEligibleTechnicians(),
+            'areas' => DataScopeService::getScopedAreas(Auth::user(), 'infrastructure_work_orders'),
         ]);
     }
 
@@ -423,7 +424,12 @@ class InfrastructureWorkOrderController extends Controller
      */
     public function update(Request $request, InfrastructureWorkOrder $workOrder)
     {
-        if (!Auth::user()->can('infrastructure_work_orders_edit') && !Auth::user()->hasRole('admin')) {
+        $user = Auth::user();
+        $allowedRoles = ['admin', 'super admin', 'superadmin', 'manager', 'maintenance', 'maintenance-1', 'infrastruktur', 'noc'];
+        $userRole = strtolower(trim((string) ($user->role ?? '')));
+        $hasSpatieRole = method_exists($user, 'hasAnyRole') ? $user->hasAnyRole($allowedRoles) : (method_exists($user, 'hasRole') ? $user->hasRole($allowedRoles) : false);
+
+        if (!$user->can('infrastructure_work_orders_edit') && !$user->can('infrastructure_work_orders_create') && !$hasSpatieRole && !in_array($userRole, $allowedRoles, true)) {
             abort(403, 'Anda tidak memiliki hak akses untuk mengedit penugasan pembangunan ODC/ODP.');
         }
 
@@ -432,6 +438,7 @@ class InfrastructureWorkOrderController extends Controller
         $validated = $request->validate([
             'target_name' => 'sometimes|required|string|max:255',
             'device_type' => 'nullable|string|max:50',
+            'area_id' => 'nullable|exists:areas,id',
             'capacity' => 'nullable|integer|min:1',
             'core_capacity' => 'nullable|integer|min:1',
             'splitter_ratio' => 'nullable|string|max:50',
@@ -471,7 +478,36 @@ class InfrastructureWorkOrderController extends Controller
             $workOrder->technicians()->sync($syncData);
         }
 
-        return redirect()->back()->with('success', "Penugasan {$workOrder->wo_number} berhasil diperbarui.");
+        // Sinkronisasi data ke master ODC / ODP jika status sudah selesai (aktif di GIS)
+        if ($workOrder->created_odc_id) {
+            $odc = \App\Models\Odc::find($workOrder->created_odc_id);
+            if ($odc) {
+                $odcUpdate = [];
+                if (!empty($validated['target_name'])) $odcUpdate['name'] = $validated['target_name'];
+                if (isset($validated['location'])) $odcUpdate['location'] = $validated['location'];
+                if (isset($validated['planned_latitude'])) $odcUpdate['latitude'] = $validated['planned_latitude'];
+                if (isset($validated['planned_longitude'])) $odcUpdate['longitude'] = $validated['planned_longitude'];
+                if (isset($validated['area_id'])) $odcUpdate['area_id'] = $validated['area_id'];
+                if (isset($validated['capacity'])) $odcUpdate['capacity'] = $validated['capacity'];
+                if (!empty($odcUpdate)) $odc->update($odcUpdate);
+            }
+        }
+        if ($workOrder->created_odp_id) {
+            $odp = \App\Models\Odp::find($workOrder->created_odp_id);
+            if ($odp) {
+                $odpUpdate = [];
+                if (!empty($validated['target_name'])) $odpUpdate['name'] = $validated['target_name'];
+                if (isset($validated['location'])) $odpUpdate['location'] = $validated['location'];
+                if (isset($validated['planned_latitude'])) $odpUpdate['latitude'] = $validated['planned_latitude'];
+                if (isset($validated['planned_longitude'])) $odpUpdate['longitude'] = $validated['planned_longitude'];
+                if (isset($validated['area_id'])) $odpUpdate['area_id'] = $validated['area_id'];
+                if (isset($validated['capacity'])) $odpUpdate['capacity'] = $validated['capacity'];
+                if (isset($validated['splitter_ratio'])) $odpUpdate['splitter_ratio'] = $validated['splitter_ratio'];
+                if (!empty($odpUpdate)) $odp->update($odpUpdate);
+            }
+        }
+
+        return redirect()->back()->with('success', "Penugasan {$workOrder->wo_number} ({$workOrder->target_name}) berhasil diperbarui.");
     }
 
     /**
