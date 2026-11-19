@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Router;
 use App\Models\User;
+use App\Models\Area;
 use App\Services\NasManagementService;
 use App\Services\NasConfigurationService;
 use App\Services\RouterConnectionService;
@@ -15,13 +16,26 @@ class RouterController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Router::with(['pic', 'nas', 'area']);
+        $search = trim($request->input('search', ''));
+        $query = Router::with([
+            'pic:id,name,role',
+            'nas',
+            'area' => function ($q) {
+                $q->withCount(['customers', 'odps']);
+            }
+        ]);
 
-        if ($request->search) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhereHas('area', function($sq) use ($search) {
+                  ->orWhereHas('area', function ($sq) use ($search) {
+                      $sq->where('name', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('nas', function ($sq) use ($search) {
+                      $sq->where('nasname', 'like', "%{$search}%")
+                        ->orWhere('vpn_ip', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('pic', function ($sq) use ($search) {
                       $sq->where('name', 'like', "%{$search}%");
                   });
             });
@@ -31,17 +45,34 @@ class RouterController extends Controller
             $query->where('area_id', $request->area_id);
         }
 
-        $routers = $query->paginate(10)->withQueryString();
+        $routers = $query->latest('id')->paginate(10)->withQueryString();
         
-        $users = User::select('id', 'name')->get();
-        $areas = \App\Models\Area::select('id', 'name')->orderBy('name')->get();
+        $users = User::select('id', 'name', 'role')->orderBy('name')->get();
+        $areas = Area::select('id', 'name')->withCount(['customers', 'odps'])->orderBy('name')->get();
+
+        $stats = [
+            'total_routers' => Router::count(),
+            'covered_areas' => Router::whereNotNull('area_id')->distinct('area_id')->count('area_id'),
+            'total_areas' => Area::count(),
+            'vpn_enabled' => (bool) config('radius.vpn.enabled'),
+        ];
 
         return Inertia::render('Routers/Index', [
             'routers' => $routers,
             'users' => $users,
             'areas' => $areas,
+            'stats' => $stats,
             'filters' => $request->only(['search', 'area_id']),
             'vpnEnabled' => (bool) config('radius.vpn.enabled'),
+            'serverIp' => config('radius.server_ip') !== '127.0.0.1' ? config('radius.server_ip') : $request->getHost(),
+            'vpn' => [
+                'enabled' => (bool) config('radius.vpn.enabled'),
+                'gateway' => config('radius.vpn.gateway'),
+                'endpoints' => config('radius.vpn.endpoints'),
+                'backup' => app(\App\Services\VpnAccountService::class)->backupClientConfig(),
+            ],
+            'clientPool' => config('radius.client_pool'),
+            'isolirUrl' => config('radius.isolir_url'),
         ]);
     }
 
@@ -57,14 +88,15 @@ class RouterController extends Controller
             'pic_id' => 'nullable|exists:users,id',
         ]);
 
-        $validated['api_port'] = $validated['api_port'] ?? 8728;
-        $validated['winbox_port'] = $validated['winbox_port'] ?? 8291;
+        $validated['name'] = trim($validated['name']);
+        $validated['api_port'] = !empty($validated['api_port']) ? (int) $validated['api_port'] : 8728;
+        $validated['winbox_port'] = !empty($validated['winbox_port']) ? (int) $validated['winbox_port'] : 8291;
 
         if (!empty($validated['new_area_name'])) {
-            $newArea = \App\Models\Area::findOrCreateFlexible(trim($validated['new_area_name']));
+            $newArea = Area::findOrCreateFlexible(trim($validated['new_area_name']));
             $validated['area_id'] = $newArea->id;
         } elseif (!empty($validated['area_id']) && $validated['area_id'] !== 'new') {
-            $validated['area_id'] = \App\Models\Area::where('id', $validated['area_id'])->value('id');
+            $validated['area_id'] = Area::where('id', $validated['area_id'])->value('id');
         } else {
             $validated['area_id'] = null;
         }
@@ -98,14 +130,15 @@ class RouterController extends Controller
             'pic_id' => 'nullable|exists:users,id',
         ]);
 
-        $validated['api_port'] = $validated['api_port'] ?? 8728;
-        $validated['winbox_port'] = $validated['winbox_port'] ?? 8291;
+        $validated['name'] = trim($validated['name']);
+        $validated['api_port'] = !empty($validated['api_port']) ? (int) $validated['api_port'] : 8728;
+        $validated['winbox_port'] = !empty($validated['winbox_port']) ? (int) $validated['winbox_port'] : 8291;
 
         if (!empty($validated['new_area_name'])) {
-            $newArea = \App\Models\Area::findOrCreateFlexible(trim($validated['new_area_name']));
+            $newArea = Area::findOrCreateFlexible(trim($validated['new_area_name']));
             $validated['area_id'] = $newArea->id;
         } elseif (!empty($validated['area_id']) && $validated['area_id'] !== 'new') {
-            $validated['area_id'] = \App\Models\Area::where('id', $validated['area_id'])->value('id');
+            $validated['area_id'] = Area::where('id', $validated['area_id'])->value('id');
         } else {
             $validated['area_id'] = null;
         }
@@ -124,15 +157,18 @@ class RouterController extends Controller
     {
         $nas = $router->nas;
         $router->delete();
-        if ($nas && !Router::where('nas_id', $nas->id)->exists()) app(NasManagementService::class)->delete($nas);
+        if ($nas && !Router::where('nas_id', $nas->id)->exists()) {
+            app(NasManagementService::class)->delete($nas);
+        }
         $state = app(NasConfigurationService::class)->afterMutation();
-        return redirect()->route('routers.index')->with($state['success'] ? 'success' : 'error', 'Router dihapus. '.$state['message']);
+        return redirect()->route('routers.index')->with($state['success'] ? 'success' : 'error', 'Router berhasil dihapus. '.$state['message']);
     }
 
-    public function ping(Router $router)
+    public function ping(Request $request, Router $router)
     {
+        $refresh = $request->boolean('refresh');
         return response()->json($router->nas
-            ? app(RouterConnectionService::class)->probe($router->nas, (int) ($router->api_port ?: 8728))
+            ? app(RouterConnectionService::class)->probe($router->nas, (int) ($router->api_port ?: 8728), $refresh)
             : ['status' => 'offline', 'message' => 'Router belum memiliki NAS.']);
     }
 }

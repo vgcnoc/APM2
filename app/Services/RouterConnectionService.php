@@ -9,9 +9,12 @@ use Throwable;
 
 class RouterConnectionService
 {
-    public function probe(Nas $nas, int $port = 8728): array
+    public function probe(Nas $nas, int $port = 8728, bool $refresh = false): array
     {
         $key = hash('sha256', implode('|', [$nas->id, $nas->apiHost(), $port, $nas->api_user, $nas->api_password]));
+        if ($refresh) {
+            Cache::forget('nas-health:'.$key);
+        }
         return Cache::remember('nas-health:'.$key, 15, function () use ($nas, $port) {
             $result = ['status' => 'offline', 'state' => 'unconfigured', 'api_authenticated' => false, 'accounting_last_seen' => null, 'accounting_fresh' => false, 'checked_at' => now()->toIso8601String()];
             try {
