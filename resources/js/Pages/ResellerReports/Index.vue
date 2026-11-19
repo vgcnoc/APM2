@@ -55,80 +55,260 @@
                 </div>
             </div>
 
-            <!-- Tabel Reseller -->
-            <div class="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-100 dark:border-slate-800 overflow-hidden min-w-0">
-                <div class="p-4 sm:p-6 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/40 flex flex-col gap-4">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                        <div>
-                            <h3 class="text-base sm:text-lg font-bold text-gray-900 dark:text-white">Rincian Per Reseller</h3>
-                            <p class="text-xs sm:text-sm text-gray-500 dark:text-slate-400">Analisis saldo dompet, kasbon, dan total uang masuk dari masing-masing mitra.</p>
+            <!-- ── FILTER UTAMA CERDAS & LENGKAP ── -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-xs border border-gray-200/80 dark:border-slate-800 p-4 sm:p-5 transition-all print:hidden">
+                <div class="space-y-3.5">
+                    
+                    <!-- Baris 1: Filter Presets Periode & Quick Action Buttons -->
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-slate-800">
+                        <!-- Presets Periode -->
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mr-1 flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                Periode:
+                            </span>
+                            <button 
+                                type="button" 
+                                v-for="preset in datePresets" 
+                                :key="preset.id"
+                                @click="applyDatePreset(preset.id)"
+                                class="px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer"
+                                :class="activePreset === preset.id 
+                                    ? 'bg-indigo-600 text-white shadow-xs' 
+                                    : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'"
+                            >
+                                {{ preset.label }}
+                            </button>
                         </div>
+
+                        <!-- Action Toolbar -->
                         <div class="flex flex-wrap items-center gap-2">
+                            <button 
+                                @click="exportCsv" 
+                                type="button" 
+                                title="Ekspor data hasil filter ke file CSV / Excel"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-bold transition cursor-pointer"
+                            >
+                                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                <span>Ekspor CSV</span>
+                            </button>
                             <button 
                                 @click="printReport" 
                                 type="button" 
-                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 text-xs font-bold transition cursor-pointer"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 border border-gray-200 dark:border-slate-700 text-xs font-bold transition cursor-pointer"
                             >
                                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                                 <span>Cetak Laporan</span>
                             </button>
                             <Link :href="route('reseller-requests.index')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-xs font-bold transition">
-                                <span>💳 Kelola Mutasi &amp; Saldo</span>
+                                <span>💳 Mutasi &amp; Saldo</span>
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                             </Link>
                         </div>
                     </div>
 
-                    <!-- Toolbar Filter & Search -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-center pt-2 border-t border-gray-100 dark:border-slate-800">
-                        <!-- Search Box -->
-                        <div class="lg:col-span-5 min-w-0">
+                    <!-- Baris 2: Controls Lengkap (Pencarian, Area, Tipe, Status, Urutan, dan Rentang Tanggal) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-12 gap-3 items-end">
+                        
+                        <!-- Pencarian Cepat Cerdas -->
+                        <div class="xl:col-span-3 min-w-0">
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-1">
+                                Cari Reseller
+                            </label>
                             <div class="relative">
                                 <input 
                                     type="text" 
-                                    v-model="searchQuery" 
-                                    placeholder="Cari nama mitra, kode, nomor WA..." 
-                                    class="block w-full text-xs rounded-xl border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 pl-8 pr-3 py-2 transition"
+                                    v-model="filtersForm.search" 
+                                    placeholder="Cari nama, kode, nomor WA, email..." 
+                                    class="block w-full text-xs rounded-xl border-gray-300 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 pl-8 pr-7 py-2 transition"
                                 />
                                 <svg class="w-4 h-4 text-gray-400 dark:text-slate-500 absolute left-2.5 top-2.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                 </svg>
+                                <button 
+                                    v-if="filtersForm.search" 
+                                    @click="filtersForm.search = ''" 
+                                    type="button" 
+                                    class="absolute right-2 top-2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 text-xs"
+                                >
+                                    ✕
+                                </button>
                             </div>
                         </div>
 
-                        <!-- Filter Status Pills -->
-                        <div class="lg:col-span-7 flex flex-wrap items-center gap-1.5 justify-start lg:justify-end">
-                            <button 
-                                type="button"
-                                @click="statusFilter = 'all'"
-                                class="px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer"
-                                :class="statusFilter === 'all' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'"
+                        <!-- Filter Wilayah / Area -->
+                        <div class="xl:col-span-2 min-w-0">
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-1">
+                                Wilayah / Area
+                            </label>
+                            <select 
+                                v-model="filtersForm.area_id" 
+                                @change="submitBackendFilter"
+                                class="block w-full text-xs rounded-xl border-gray-300 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800 text-gray-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 transition cursor-pointer"
                             >
-                                Semua ({{ resellers.length }})
+                                <option value="">Semua Wilayah</option>
+                                <option v-for="a in areas" :key="a.id" :value="a.id">
+                                    {{ a.name }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- Filter Tipe Reseller -->
+                        <div class="xl:col-span-2 min-w-0">
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-1">
+                                Tipe Mitra
+                            </label>
+                            <select 
+                                v-model="filtersForm.type" 
+                                class="block w-full text-xs rounded-xl border-gray-300 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800 text-gray-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 transition cursor-pointer"
+                            >
+                                <option value="all">Semua Tipe</option>
+                                <option value="pelanggan">Pelanggan (Loket Biller)</option>
+                                <option value="mitra_user">Mitra User (Direct)</option>
+                            </select>
+                        </div>
+
+                        <!-- Filter Status Saldo / Piutang -->
+                        <div class="xl:col-span-2 min-w-0">
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-1">
+                                Status Keuangan
+                            </label>
+                            <select 
+                                v-model="filtersForm.status" 
+                                class="block w-full text-xs rounded-xl border-gray-300 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800 text-gray-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 transition cursor-pointer"
+                            >
+                                <option value="all">Semua Status</option>
+                                <option value="has_balance">Ada Saldo (> Rp 0)</option>
+                                <option value="zero_balance">Saldo Kosong (Rp 0)</option>
+                                <option value="has_piutang">Punya Piutang Kasbon (> Rp 0)</option>
+                                <option value="lunas">Kasbon Lunas / Nol</option>
+                            </select>
+                        </div>
+
+                        <!-- Urutkan Berdasarkan (Sort) -->
+                        <div class="xl:col-span-3 min-w-0">
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-1">
+                                Urutkan Berdasarkan
+                            </label>
+                            <select 
+                                v-model="filtersForm.sort" 
+                                class="block w-full text-xs rounded-xl border-gray-300 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800 text-gray-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 transition cursor-pointer"
+                            >
+                                <option value="balance_desc">Saldo Tertinggi (Bawaan)</option>
+                                <option value="balance_asc">Saldo Terendah</option>
+                                <option value="paid_desc">Total Setoran / Modal Terbanyak</option>
+                                <option value="piutang_desc">Sisa Piutang Terbesar</option>
+                                <option value="usage_desc">Pemakaian Saldo Terbanyak</option>
+                                <option value="name_asc">Nama Reseller (A - Z)</option>
+                            </select>
+                        </div>
+
+                    </div>
+
+                    <!-- Baris 3: Tanggal Custom Dari - Sampai & Tombol Reset -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-12 gap-3 pt-3 border-t border-gray-100 dark:border-slate-800 items-center">
+                        <div class="xl:col-span-3 min-w-0">
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-1">
+                                Tanggal Mulai
+                            </label>
+                            <input 
+                                type="date" 
+                                v-model="filtersForm.start_date" 
+                                class="block w-full text-xs rounded-xl border-gray-300 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800 text-gray-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-1.5 transition"
+                            />
+                        </div>
+                        <div class="xl:col-span-3 min-w-0">
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-1">
+                                Sampai Tanggal
+                            </label>
+                            <input 
+                                type="date" 
+                                v-model="filtersForm.end_date" 
+                                class="block w-full text-xs rounded-xl border-gray-300 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800 text-gray-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-1.5 transition"
+                            />
+                        </div>
+                        <div class="sm:col-span-2 xl:col-span-6 flex flex-wrap items-center justify-start xl:justify-end gap-2 pt-1 xl:pt-4">
+                            <button 
+                                @click="submitBackendFilter" 
+                                type="button" 
+                                class="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1.5 px-3.5 rounded-xl transition shadow-xs cursor-pointer"
+                            >
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                                <span>Terapkan Rentang Tanggal</span>
                             </button>
                             <button 
-                                type="button"
-                                @click="statusFilter = 'has_balance'"
-                                class="px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1"
-                                :class="statusFilter === 'has_balance' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'"
+                                v-if="hasActiveFilters" 
+                                @click="resetAllFilters" 
+                                type="button" 
+                                class="inline-flex items-center gap-1.5 bg-gray-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-gray-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 text-xs font-bold py-1.5 px-3 rounded-xl transition border border-gray-200 dark:border-slate-700 cursor-pointer"
                             >
-                                <span>Ada Saldo</span>
-                                <span class="text-[10px] px-1.5 py-0.2 rounded-full" :class="statusFilter === 'has_balance' ? 'bg-indigo-700' : 'bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300'">
-                                    {{ countHasBalance }}
-                                </span>
-                            </button>
-                            <button 
-                                type="button"
-                                @click="statusFilter = 'has_piutang'"
-                                class="px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1"
-                                :class="statusFilter === 'has_piutang' ? 'bg-rose-600 text-white shadow-xs' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'"
-                            >
-                                <span>Ada Piutang</span>
-                                <span class="text-[10px] px-1.5 py-0.2 rounded-full" :class="statusFilter === 'has_piutang' ? 'bg-rose-700' : 'bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300'">
-                                    {{ countHasPiutang }}
-                                </span>
+                                <span>✕ Reset Semua Filter</span>
                             </button>
                         </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- ── RINGKASAN DINAMIS HASIL FILTER (CERDAS) ── -->
+            <div class="bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/50 rounded-2xl p-3 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                <div class="flex flex-wrap items-center gap-2 sm:gap-4 text-indigo-950 dark:text-indigo-200 font-semibold">
+                    <span class="inline-flex items-center gap-1.5 bg-indigo-100 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-200 px-2.5 py-1 rounded-lg text-xs font-bold">
+                        <span class="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+                        {{ filteredResellers.length }} dari {{ resellers.length }} Mitra
+                    </span>
+                    <span class="text-gray-400 dark:text-slate-600 hidden sm:inline">&vert;</span>
+                    <span>Saldo Tersaring: <b class="text-indigo-700 dark:text-indigo-300">Rp {{ formatRupiah(filteredTotals.balance) }}</b></span>
+                    <span class="text-gray-400 dark:text-slate-600 hidden sm:inline">&vert;</span>
+                    <span>Piutang Tersaring: <b :class="filteredTotals.piutang > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-gray-600 dark:text-slate-400'">Rp {{ formatRupiah(filteredTotals.piutang) }}</b></span>
+                    <span class="text-gray-400 dark:text-slate-600 hidden sm:inline">&vert;</span>
+                    <span>Setoran/Modal: <b class="text-emerald-700 dark:text-emerald-300">Rp {{ formatRupiah(filteredTotals.total_paid) }}</b></span>
+                </div>
+                <div v-if="hasActiveFilters" class="text-[11px] text-indigo-700 dark:text-indigo-300 font-medium">
+                    Filter aktif &bull; Menampilkan data spesifik
+                </div>
+            </div>
+
+            <!-- Tabel Reseller -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-100 dark:border-slate-800 overflow-hidden min-w-0">
+                <div class="p-4 sm:p-6 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/40 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div>
+                        <h3 class="text-base sm:text-lg font-bold text-gray-900 dark:text-white">Rincian Per Reseller</h3>
+                        <p class="text-xs sm:text-sm text-gray-500 dark:text-slate-400">Analisis saldo dompet, kasbon, dan total uang masuk dari masing-masing mitra.</p>
+                    </div>
+
+                    <!-- Status Quick Pills -->
+                    <div class="flex flex-wrap items-center gap-1.5 print:hidden">
+                        <button 
+                            type="button"
+                            @click="filtersForm.status = 'all'"
+                            class="px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer"
+                            :class="filtersForm.status === 'all' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'"
+                        >
+                            Semua ({{ resellers.length }})
+                        </button>
+                        <button 
+                            type="button"
+                            @click="filtersForm.status = 'has_balance'"
+                            class="px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1"
+                            :class="filtersForm.status === 'has_balance' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'"
+                        >
+                            <span>Ada Saldo</span>
+                            <span class="text-[10px] px-1.5 py-0.2 rounded-full" :class="filtersForm.status === 'has_balance' ? 'bg-indigo-700' : 'bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300'">
+                                {{ countHasBalance }}
+                            </span>
+                        </button>
+                        <button 
+                            type="button"
+                            @click="filtersForm.status = 'has_piutang'"
+                            class="px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1"
+                            :class="filtersForm.status === 'has_piutang' ? 'bg-rose-600 text-white shadow-xs' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'"
+                        >
+                            <span>Ada Piutang</span>
+                            <span class="text-[10px] px-1.5 py-0.2 rounded-full" :class="filtersForm.status === 'has_piutang' ? 'bg-rose-700' : 'bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300'">
+                                {{ countHasPiutang }}
+                            </span>
+                        </button>
                     </div>
                 </div>
 
@@ -195,7 +375,14 @@
                             </tr>
                             <tr v-if="!filteredResellers.length">
                                 <td colspan="5" class="px-6 py-12 text-center text-gray-500 dark:text-slate-400">
-                                    <p class="font-medium">Tidak ada data mitra reseller yang cocok dengan filter.</p>
+                                    <p class="font-medium">Tidak ada data mitra reseller yang cocok dengan filter yang dipilih.</p>
+                                    <button 
+                                        @click="resetAllFilters" 
+                                        type="button" 
+                                        class="mt-2 text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline cursor-pointer"
+                                    >
+                                        Reset Filter
+                                    </button>
                                 </td>
                             </tr>
                         </tbody>
@@ -208,7 +395,9 @@
                 <div class="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-100 dark:border-slate-800 p-4 sm:p-6 min-w-0">
                     <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 dark:text-white">Riwayat Mutasi Saldo &amp; Voucher</h3>
-                        <span class="text-xs font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-2.5 py-1 rounded-lg shrink-0">15 Terakhir</span>
+                        <span class="text-xs font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-2.5 py-1 rounded-lg shrink-0">
+                            {{ recent_transactions.length }} Terakhir
+                        </span>
                     </div>
                     
                     <div v-if="recent_transactions.length" class="space-y-3">
@@ -377,7 +566,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, reactive, computed } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Swal from 'sweetalert2';
@@ -395,9 +584,103 @@ const props = defineProps({
     filters: Object
 });
 
-const searchQuery = ref('');
-const statusFilter = ref('all');
+// Presets Periode Tanggal
+const datePresets = [
+    { id: 'all', label: 'Semua Waktu' },
+    { id: 'today', label: 'Hari Ini' },
+    { id: 'this_month', label: 'Bulan Ini' },
+    { id: 'last_month', label: 'Bulan Lalu' },
+    { id: 'this_year', label: 'Tahun Ini' },
+];
 
+const activePreset = ref(props.filters?.start_date ? 'custom' : 'all');
+
+// Form filter reaktif
+const filtersForm = reactive({
+    search: props.filters?.search || '',
+    area_id: props.filters?.area_id || '',
+    start_date: props.filters?.start_date || '',
+    end_date: props.filters?.end_date || '',
+    type: props.filters?.type || 'all',
+    status: props.filters?.status || 'all',
+    sort: props.filters?.sort || 'balance_desc',
+});
+
+// Deteksi apakah filter sedang aktif
+const hasActiveFilters = computed(() => {
+    return !!(
+        filtersForm.search ||
+        filtersForm.area_id ||
+        filtersForm.start_date ||
+        filtersForm.end_date ||
+        (filtersForm.type && filtersForm.type !== 'all') ||
+        (filtersForm.status && filtersForm.status !== 'all') ||
+        (filtersForm.sort && filtersForm.sort !== 'balance_desc')
+    );
+});
+
+// Terapkan preset periode
+const applyDatePreset = (presetId) => {
+    activePreset.value = presetId;
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    if (presetId === 'all') {
+        filtersForm.start_date = '';
+        filtersForm.end_date = '';
+    } else if (presetId === 'today') {
+        const todayStr = fmt(now);
+        filtersForm.start_date = todayStr;
+        filtersForm.end_date = todayStr;
+    } else if (presetId === 'this_month') {
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        filtersForm.start_date = fmt(firstDay);
+        filtersForm.end_date = fmt(lastDay);
+    } else if (presetId === 'last_month') {
+        const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
+        filtersForm.start_date = fmt(firstDay);
+        filtersForm.end_date = fmt(lastDay);
+    } else if (presetId === 'this_year') {
+        const firstDay = new Date(now.getFullYear(), 0, 1);
+        const lastDay = new Date(now.getFullYear(), 11, 31);
+        filtersForm.start_date = fmt(firstDay);
+        filtersForm.end_date = fmt(lastDay);
+    }
+
+    submitBackendFilter();
+};
+
+// Kirim filter tanggal/area ke backend untuk recalculate ringkasan KPI
+const submitBackendFilter = () => {
+    router.get(route('reseller-reports.index'), {
+        start_date: filtersForm.start_date || undefined,
+        end_date: filtersForm.end_date || undefined,
+        area_id: filtersForm.area_id || undefined,
+        type: filtersForm.type !== 'all' ? filtersForm.type : undefined,
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
+};
+
+// Reset semua filter
+const resetAllFilters = () => {
+    filtersForm.search = '';
+    filtersForm.area_id = '';
+    filtersForm.start_date = '';
+    filtersForm.end_date = '';
+    filtersForm.type = 'all';
+    filtersForm.status = 'all';
+    filtersForm.sort = 'balance_desc';
+    activePreset.value = 'all';
+    submitBackendFilter();
+};
+
+// Hitung cepat jumlah badge
 const countHasBalance = computed(() => {
     return (props.resellers || []).filter(r => (r.balance || 0) > 0).length;
 });
@@ -406,31 +689,131 @@ const countHasPiutang = computed(() => {
     return (props.resellers || []).filter(r => (r.piutang || 0) > 0).length;
 });
 
+// Filter & Sort cerdas secara reaktif di sisi klien
 const filteredResellers = computed(() => {
-    let list = props.resellers || [];
+    let list = [...(props.resellers || [])];
 
-    // Filter status
-    if (statusFilter.value === 'has_balance') {
-        list = list.filter(r => (r.balance || 0) > 0);
-    } else if (statusFilter.value === 'has_piutang') {
-        list = list.filter(r => (r.piutang || 0) > 0);
+    // 1. Filter Area (jika dipilih di form lokal)
+    if (filtersForm.area_id) {
+        list = list.filter(r => String(r.area_id) === String(filtersForm.area_id));
     }
 
-    // Search query
-    if (searchQuery.value && searchQuery.value.trim() !== '') {
-        const q = searchQuery.value.toLowerCase().trim();
+    // 2. Filter Tipe Mitra
+    if (filtersForm.type === 'pelanggan') {
+        list = list.filter(r => r.has_customer);
+    } else if (filtersForm.type === 'mitra_user') {
+        list = list.filter(r => !r.has_customer);
+    }
+
+    // 3. Filter Status Keuangan
+    if (filtersForm.status === 'has_balance') {
+        list = list.filter(r => (r.balance || 0) > 0);
+    } else if (filtersForm.status === 'zero_balance') {
+        list = list.filter(r => (r.balance || 0) <= 0);
+    } else if (filtersForm.status === 'has_piutang') {
+        list = list.filter(r => (r.piutang || 0) > 0);
+    } else if (filtersForm.status === 'lunas') {
+        list = list.filter(r => (r.piutang || 0) <= 0);
+    }
+
+    // 4. Pencarian Cerdas Multi-kolom (Nama, Kode, Telepon, Email, Area)
+    if (filtersForm.search && filtersForm.search.trim() !== '') {
+        const q = filtersForm.search.toLowerCase().trim();
         list = list.filter(r => {
             return (
                 (r.name || '').toLowerCase().includes(q) ||
                 (r.code || '').toLowerCase().includes(q) ||
                 (r.phone || '').toLowerCase().includes(q) ||
+                (r.email || '').toLowerCase().includes(q) ||
                 (r.area_name || '').toLowerCase().includes(q)
             );
         });
     }
 
+    // 5. Urutan (Sorting)
+    if (filtersForm.sort === 'balance_desc') {
+        list.sort((a, b) => (b.balance || 0) - (a.balance || 0));
+    } else if (filtersForm.sort === 'balance_asc') {
+        list.sort((a, b) => (a.balance || 0) - (b.balance || 0));
+    } else if (filtersForm.sort === 'paid_desc') {
+        list.sort((a, b) => (b.total_paid || 0) - (a.total_paid || 0));
+    } else if (filtersForm.sort === 'piutang_desc') {
+        list.sort((a, b) => (b.piutang || 0) - (a.piutang || 0));
+    } else if (filtersForm.sort === 'usage_desc') {
+        list.sort((a, b) => (b.total_usage || 0) - (a.total_usage || 0));
+    } else if (filtersForm.sort === 'name_asc') {
+        list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    }
+
     return list;
 });
+
+// Ringkasan Total untuk baris informasi cerdas
+const filteredTotals = computed(() => {
+    const list = filteredResellers.value;
+    return {
+        balance: list.reduce((sum, r) => sum + (r.balance || 0), 0),
+        piutang: list.reduce((sum, r) => sum + (r.piutang || 0), 0),
+        total_paid: list.reduce((sum, r) => sum + (r.total_paid || 0), 0),
+        total_kasbon: list.reduce((sum, r) => sum + (r.total_kasbon || 0), 0),
+    };
+});
+
+// Ekspor CSV langsung di browser
+const exportCsv = () => {
+    const rows = filteredResellers.value;
+    if (!rows.length) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Data Kosong',
+            text: 'Tidak ada data reseller yang dapat diekspor sesuai filter saat ini.'
+        });
+        return;
+    }
+
+    const headers = ['ID', 'Nama Reseller', 'Tipe Mitra', 'Wilayah / Area', 'Kode / Akun', 'No WhatsApp', 'Saldo Tersisa (Rp)', 'Total Kasbon (Rp)', 'Sisa Piutang (Rp)', 'Total Setoran / Modal (Rp)', 'Total Pemakaian Voucher (Rp)'];
+    
+    const escapeCsv = (val) => {
+        if (val === null || val === undefined) return '""';
+        return `"${String(val).replace(/"/g, '""')}"`;
+    };
+
+    const csvContent = [
+        headers.join(','),
+        ...rows.map(r => [
+            r.id,
+            escapeCsv(r.name),
+            escapeCsv(r.type),
+            escapeCsv(r.area_name),
+            escapeCsv(r.code),
+            escapeCsv(r.phone),
+            r.balance || 0,
+            r.total_kasbon || 0,
+            r.piutang || 0,
+            r.total_paid || 0,
+            r.total_usage || 0
+        ].join(','))
+    ].join('\r\n');
+
+    // Menambahkan UTF-8 BOM agar terbaca sempurna di Microsoft Excel
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const dateStr = new Date().toISOString().split('T')[0];
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Laporan_Keuangan_Reseller_${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    Swal.fire({
+        icon: 'success',
+        title: 'Berhasil Diekspor!',
+        text: `${rows.length} data mitra reseller berhasil diunduh ke CSV.`,
+        timer: 1600,
+        showConfirmButton: false
+    });
+};
 
 const printReport = () => {
     window.print();
