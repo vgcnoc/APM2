@@ -40,11 +40,7 @@ class CustomerMaterialService
             $ontName = "ONT {$ontBrand} {$ontModel}";
 
             if (!$existingOnt) {
-                $matOnt = Material::where(function ($mq) use ($ontBrand) {
-                    $mq->where('category', 'like', '%ont%')
-                       ->orWhere('category', 'like', '%modem%')
-                       ->orWhere('name', 'like', "%{$ontBrand}%");
-                })->first();
+                $matOnt = self::resolveOntMaterial($ontBrand, $ontModel);
 
                 $ontRecord = CustomerInstalledMaterial::create([
                     'customer_id' => $customer->id,
@@ -83,12 +79,8 @@ class CustomerMaterialService
                 $ontModel = $customer->ont->model ?: 'Fiber Modem';
                 $ontName = "ONT {$ontBrand} {$ontModel}";
                 
-                // Cari material ONT yang cocok jika ada
-                $matOnt = Material::where(function ($mq) use ($ontBrand) {
-                    $mq->where('category', 'like', '%ont%')
-                       ->orWhere('category', 'like', '%modem%')
-                       ->orWhere('name', 'like', "%{$ontBrand}%");
-                })->first();
+                // Cari material ONT yang cocok berdasarkan brand/model riil
+                $matOnt = self::resolveOntMaterial($ontBrand, $ontModel);
 
                 $ontRecord = CustomerInstalledMaterial::create([
                     'customer_id' => $customer->id,
@@ -104,10 +96,9 @@ class CustomerMaterialService
                 ]);
                 $created->push($ontRecord);
             } else {
-                $matOnt = Material::where('category', 'like', '%ont%')->orWhere('category', 'like', '%modem%')->first();
                 $ontRecord = CustomerInstalledMaterial::create([
                     'customer_id' => $customer->id,
-                    'material_id' => $matOnt?->id,
+                    'material_id' => null,
                     'item_name' => 'Unit ONT Modem FTTH Standar',
                     'quantity' => 1,
                     'unit' => 'unit',
@@ -499,6 +490,61 @@ class CustomerMaterialService
         $res = MaterialService::restoreOperationalStock($mat, $quantity, $areaId, $unit);
 
         \Illuminate\Support\Facades\Log::info("[CustomerMaterialService] Berhasil mengembalikan {$res['base_qty']} {$mat->unit} material {$mat->name} (ID: {$mat->id}) ke gudang (Area: {$areaId}).");
+    }
+
+    /**
+     * Resolusi Material ID untuk ONT berdasarkan brand dan model perangkat
+     */
+    public static function resolveOntMaterial(?string $ontBrand, ?string $ontModel = null): ?Material
+    {
+        $brand = trim((string) $ontBrand);
+        $model = trim((string) $ontModel);
+
+        if (empty($brand) && empty($model)) {
+            return null;
+        }
+
+        // Bersihkan kata generik seperti 'ONT', 'Modem'
+        $cleanBrand = trim(preg_replace('/\b(ont|modem)\b/i', '', $brand));
+        $cleanModel = trim(preg_replace('/\b(ont|modem|fiber)\b/i', '', $model));
+
+        if (empty($cleanBrand) && empty($cleanModel)) {
+            return null;
+        }
+
+        $baseQuery = Material::where(function ($q) {
+            $q->where('category', 'ONT')
+              ->orWhere('category', 'like', '%ont%')
+              ->orWhere('category', 'like', '%modem%');
+        });
+
+        // 1. Kecocokan kombinasi Brand & Model spesifik
+        if ($cleanBrand && $cleanModel) {
+            $exact = (clone $baseQuery)->where('name', 'like', "%{$cleanBrand}%")
+                ->where('name', 'like', "%{$cleanModel}%")
+                ->first();
+            if ($exact) {
+                return $exact;
+            }
+        }
+
+        // 2. Kecocokan Brand spesifik
+        if ($cleanBrand && strlen($cleanBrand) >= 3) {
+            $byBrand = (clone $baseQuery)->where('name', 'like', "%{$cleanBrand}%")->first();
+            if ($byBrand) {
+                return $byBrand;
+            }
+        }
+
+        // 3. Kecocokan Model spesifik
+        if ($cleanModel && strlen($cleanModel) >= 3) {
+            $byModel = (clone $baseQuery)->where('name', 'like', "%{$cleanModel}%")->first();
+            if ($byModel) {
+                return $byModel;
+            }
+        }
+
+        return null;
     }
 }
 
