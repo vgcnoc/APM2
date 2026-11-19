@@ -189,7 +189,10 @@ class DataPrivacyMaskingService
                 $uso_percent = 0.0;
             }
 
-            $invoice = $cust->invoices->where('period_month', now()->month)->where('period_year', now()->year)->first();
+            $invoice = $cust->invoices->first(function ($inv) {
+                return (int) $inv->period_month === (int) now()->month 
+                    && (int) $inv->period_year === (int) now()->year;
+            });
 
             if ($cust->service_status === 'gratis') {
                 $basePrice = 0;

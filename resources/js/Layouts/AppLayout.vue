@@ -502,6 +502,27 @@
                     </div>
             </header>
 
+            <!-- Data Masking Preview Mode Ambient Banner (Super Admin) -->
+            <div v-if="$page.props.dataMasking?.preview_mode" class="mx-6 mt-4 print:hidden">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:px-5 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-lg border border-amber-400/40 animate-fade-in-up">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <span class="text-xl shrink-0">👁️</span>
+                        <div class="text-xs leading-tight">
+                            <span class="font-black uppercase tracking-wide">Mode Simulasi Pratinjau Tersamar Aktif:</span>
+                            <span class="opacity-95 ml-1">Data pelanggan, tagihan, dan laporan dibatasi sesuai kalkulator target omset.</span>
+                        </div>
+                    </div>
+                    <Link 
+                        href="/settings/data-masking/toggle-preview" 
+                        method="post" 
+                        as="button"
+                        preserve-scroll
+                        class="px-4 py-2 rounded-xl bg-white text-amber-950 font-black text-xs hover:bg-amber-50 transition-all shrink-0 active:scale-95 shadow-sm text-center">
+                        ✕ Tutup Pratinjau (Data Asli 100%)
+                    </Link>
+                </div>
+            </div>
+
             <!-- Flash Messages -->
             <div v-if="$page.props.flash?.success" class="mx-6 mt-4 print:hidden">
                 <div class="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 animate-fade-in-up">

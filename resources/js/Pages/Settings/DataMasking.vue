@@ -136,14 +136,19 @@
                                             class="w-full pl-12 pr-4 py-3 bg-slate-50 border border-gray-200 rounded-2xl text-lg font-black text-gray-900 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all font-mono"
                                         >
                                     </div>
-                                    <p class="text-[11px] text-gray-500 mt-1">Ketik nominal seperti kalkulator, sistem langsung menghitung akumulasi pelanggan.</p>
+                                    <p class="text-[11px] text-gray-500 mt-1 flex items-center justify-between flex-wrap gap-1">
+                                        <span>Ketik nominal seperti kalkulator, sistem langsung menghitung akumulasi pelanggan.</span>
+                                        <span v-if="form.target_omset > 0" class="font-bold text-indigo-600">
+                                            ≈ {{ formatTerbilang(form.target_omset) }}
+                                        </span>
+                                    </p>
                                 </div>
 
                                 <!-- Preset Chips Omset -->
                                 <div class="flex flex-wrap items-center gap-2 pt-1">
                                     <span class="text-[11px] font-bold text-gray-400">Pilihan Cepat:</span>
                                     <button 
-                                        v-for="preset in [50000000, 100000000, 150000000, 200000000, 300000000, 500000000]" 
+                                        v-for="preset in [5000000, 8000000, 10000000, 25000000, 50000000, 100000000, 150000000, 200000000, 300000000, 500000000]" 
                                         :key="preset"
                                         type="button" 
                                         @click="applyOmsetPreset(preset)"
@@ -432,19 +437,22 @@
 
                 <!-- Right Column: Live Interactive Calculator Card (5 cols) -->
                 <div class="lg:col-span-5 space-y-6 lg:sticky lg:top-6">
-                    <div class="bg-gradient-to-br from-slate-900 to-indigo-950 rounded-3xl p-6 sm:p-7 text-white shadow-xl border border-indigo-800/50 relative overflow-hidden">
+                    <div class="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 rounded-3xl p-6 sm:p-7 text-white shadow-2xl border border-indigo-700/60 relative overflow-hidden max-h-[calc(100vh-2.5rem)] overflow-y-auto">
                         <div class="absolute -right-10 -bottom-10 w-44 h-44 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-                        <div class="flex items-center justify-between pb-4 border-b border-white/10 mb-5">
-                            <div class="flex items-center gap-2">
-                                <span class="text-lg">🧮</span>
-                                <h3 class="text-sm font-bold uppercase tracking-wider text-indigo-300">Hasil Kalkulasi Live</h3>
+                        <div class="flex items-center justify-between pb-4 border-b border-white/15 mb-5">
+                            <div class="flex items-center gap-2.5">
+                                <span class="text-xl">🧮</span>
+                                <div>
+                                    <div class="text-sm font-black uppercase tracking-wider !text-indigo-200">Hasil Kalkulasi Live</div>
+                                    <p class="text-[10px] !text-indigo-300/80">Simulasi instan penyamaran omset</p>
+                                </div>
                             </div>
-                            <span v-if="calculating" class="text-[11px] font-bold text-amber-400 flex items-center gap-1.5 animate-pulse">
+                            <span v-if="calculating" class="text-[11px] font-bold text-amber-400 flex items-center gap-1.5 animate-pulse bg-amber-400/10 px-2.5 py-1 rounded-full border border-amber-400/20">
                                 <span>⏳</span>
                                 <span>Menghitung...</span>
                             </span>
-                            <span v-else class="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
+                            <span v-else class="text-[11px] font-bold text-emerald-400 flex items-center gap-1 bg-emerald-400/10 px-2.5 py-1 rounded-full border border-emerald-400/20">
                                 <span>⚡</span>
                                 <span>Real-time</span>
                             </span>
@@ -453,16 +461,16 @@
                         <!-- Stat Cards Grid -->
                         <div class="space-y-4">
                             <!-- Main Reached Omset -->
-                            <div class="p-4 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm">
-                                <p class="text-[11px] font-bold text-indigo-200 uppercase tracking-wider">
+                            <div class="p-5 bg-white/10 rounded-2xl border border-white/20 backdrop-blur-md shadow-inner">
+                                <p class="text-[11px] font-extrabold !text-indigo-200 uppercase tracking-wider">
                                     {{ form.mode === 'omset' ? 'Omset Aktual yang Terpenuhi' : 'Total Omset yang Dihasilkan' }}
                                 </p>
-                                <div class="mt-1 flex items-baseline justify-between gap-2 flex-wrap">
-                                    <h4 class="text-2xl sm:text-3xl font-black text-white font-mono tracking-tight">
+                                <div class="mt-1.5 flex items-baseline justify-between gap-2 flex-wrap">
+                                    <div class="text-3xl sm:text-4xl font-black !text-emerald-400 font-mono tracking-tight drop-shadow-md">
                                         {{ formatCurrency(simResult.reached_omset || 0) }}
-                                    </h4>
-                                    <span v-if="form.mode === 'omset' && form.target_omset > 0" class="text-[11px] font-bold px-2 py-0.5 rounded-full"
-                                        :class="Math.abs(simResult.difference || 0) <= 100000 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'">
+                                    </div>
+                                    <span v-if="form.mode === 'omset' && form.target_omset > 0" class="text-[11px] font-bold px-2.5 py-1 rounded-full"
+                                        :class="Math.abs(simResult.difference || 0) <= 100000 ? 'bg-emerald-500/25 !text-emerald-300 border border-emerald-400/30' : 'bg-amber-500/25 !text-amber-300 border border-amber-400/30'">
                                         Selisih: {{ formatCurrency(Math.abs(simResult.difference || 0)) }}
                                     </span>
                                 </div>
@@ -470,63 +478,74 @@
 
                             <!-- Selected Customers vs Total -->
                             <div class="grid grid-cols-2 gap-3">
-                                <div class="p-4 bg-white/5 rounded-2xl border border-white/10">
-                                    <p class="text-[10px] font-bold text-indigo-200 uppercase">Pelanggan Terpilih</p>
+                                <div class="p-4 bg-white/10 rounded-2xl border border-white/20">
+                                    <p class="text-[10px] font-extrabold !text-indigo-200 uppercase tracking-wider">Pelanggan Terpilih</p>
                                     <div class="mt-1 flex items-baseline gap-1">
-                                        <span class="text-2xl font-black text-white font-mono">{{ simResult.selected_count || 0 }}</span>
-                                        <span class="text-xs text-indigo-300 font-bold">Orang</span>
+                                        <span class="text-2xl sm:text-3xl font-black !text-white font-mono">{{ simResult.selected_count || 0 }}</span>
+                                        <span class="text-xs !text-indigo-200 font-bold">Orang</span>
                                     </div>
-                                    <p class="text-[10px] text-indigo-300/70 mt-1">Ditampilkan di laporan</p>
+                                    <p class="text-[10px] !text-indigo-300 mt-1">Ditampilkan di laporan</p>
                                 </div>
 
-                                <div class="p-4 bg-white/5 rounded-2xl border border-white/10">
-                                    <p class="text-[10px] font-bold text-indigo-200 uppercase">Total Riil Sistem</p>
+                                <div class="p-4 bg-white/10 rounded-2xl border border-white/20">
+                                    <p class="text-[10px] font-extrabold !text-indigo-200 uppercase tracking-wider">Total Riil Sistem</p>
                                     <div class="mt-1 flex items-baseline gap-1">
-                                        <span class="text-2xl font-black text-white/60 font-mono">{{ simResult.total_active || 0 }}</span>
-                                        <span class="text-xs text-indigo-300/60 font-bold">Orang</span>
+                                        <span class="text-2xl sm:text-3xl font-black !text-slate-300 font-mono">{{ simResult.total_active || 0 }}</span>
+                                        <span class="text-xs !text-indigo-300 font-bold">Orang</span>
                                     </div>
-                                    <p class="text-[10px] text-indigo-300/70 mt-1">
+                                    <p class="text-[10px] !text-indigo-300 mt-1">
                                         {{ Math.round(((simResult.selected_count || 0) / (simResult.total_active || 1)) * 100) }}% ditampilkan
                                     </p>
                                 </div>
                             </div>
 
-                            <!-- Tax Breakdown -->
-                            <div class="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-2.5 text-xs font-mono">
-                                <div class="flex items-center justify-between text-indigo-200">
+                            <!-- Tax & Revenue Breakdown -->
+                            <div class="p-4 bg-white/10 rounded-2xl border border-white/20 space-y-2.5 text-xs font-mono">
+                                <div class="text-[11px] font-bold !text-indigo-200 uppercase tracking-wider pb-1.5 border-b border-white/10 flex items-center justify-between">
+                                    <span>Rincian Pendapatan Tagihan</span>
+                                    <span class="text-[10px] !text-emerald-400 font-bold">Invoice Pelanggan</span>
+                                </div>
+                                <div class="flex items-center justify-between !text-slate-200">
                                     <span class="text-[11px]">Total Dasar (DPP):</span>
-                                    <span class="font-bold text-white">{{ formatCurrency(simResult.base_price || 0) }}</span>
+                                    <span class="font-bold !text-white">{{ formatCurrency(simResult.base_price || 0) }}</span>
                                 </div>
-                                <div class="flex items-center justify-between text-indigo-200">
+                                <div class="flex items-center justify-between !text-slate-200">
                                     <span class="text-[11px]">Estimasi PPN:</span>
-                                    <span class="font-bold text-white">{{ formatCurrency(simResult.ppn || 0) }}</span>
+                                    <span class="font-bold !text-white">{{ formatCurrency(simResult.ppn || 0) }}</span>
                                 </div>
-                                <div class="flex items-center justify-between text-indigo-200">
-                                    <span class="text-[11px]">Estimasi BHP & USO:</span>
-                                    <span class="font-bold text-white">{{ formatCurrency(simResult.bhp_uso || 0) }}</span>
-                                </div>
-                                <div class="pt-2 border-t border-white/10 flex items-center justify-between text-sm font-bold text-emerald-300">
-                                    <span>Grand Total:</span>
+                                <div class="pt-2 border-t border-white/10 flex items-center justify-between text-sm font-black !text-emerald-300">
+                                    <span>Grand Total Omset (DPP + PPN):</span>
                                     <span>{{ formatCurrency(simResult.grand_total || simResult.reached_omset || 0) }}</span>
+                                </div>
+                                
+                                <!-- Regulatory PNBP Breakdown (BHP & USO) -->
+                                <div class="mt-2.5 pt-2 border-t border-dashed border-white/15">
+                                    <div class="flex items-center justify-between !text-amber-200 text-[11px]">
+                                        <span>Estimasi BHP & USO (1.75% DPP):</span>
+                                        <span class="font-bold !text-amber-300">{{ formatCurrency(simResult.bhp_uso || 0) }}</span>
+                                    </div>
+                                    <p class="text-[9px] !text-indigo-300/80 mt-1 leading-tight">
+                                        *Kewajiban PNBP disetor ISP ke Ditjen SDPPI Kominfo, bukan beban tambahan tagihan ke pelanggan.
+                                    </p>
                                 </div>
                             </div>
 
                             <!-- Sample Pelanggan Preview -->
                             <div v-if="simResult.sample_customers && simResult.sample_customers.length > 0" class="pt-2">
-                                <p class="text-[11px] font-bold text-indigo-300 mb-2 flex items-center justify-between">
-                                    <span>Contoh Pelanggan yang Masuk:</span>
-                                    <span class="text-[10px] text-indigo-400">Sample Teratas</span>
+                                <p class="text-[11px] font-bold !text-indigo-200 mb-2 flex items-center justify-between">
+                                    <span>Contoh Pelanggan Terpilih:</span>
+                                    <span class="text-[10px] !text-indigo-300">Sample Teratas</span>
                                 </p>
                                 <div class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                                     <div 
                                         v-for="c in simResult.sample_customers" 
                                         :key="c.id"
-                                        class="p-2 bg-white/5 hover:bg-white/10 rounded-xl flex items-center justify-between text-xs transition-colors">
+                                        class="p-2.5 bg-white/10 hover:bg-white/15 rounded-xl flex items-center justify-between text-xs transition-colors border border-white/5">
                                         <div class="truncate mr-2">
-                                            <p class="font-bold text-white truncate">{{ c.name }}</p>
-                                            <p class="text-[10px] text-indigo-300 font-mono">{{ c.customer_code }} • {{ c.package_name }}</p>
+                                            <p class="font-bold !text-white truncate">{{ c.name }}</p>
+                                            <p class="text-[10px] !text-indigo-200 font-mono">{{ c.customer_code }} • {{ c.package_name }}</p>
                                         </div>
-                                        <span class="font-mono text-emerald-300 font-bold shrink-0">{{ formatCurrency(c.total_price) }}</span>
+                                        <span class="font-mono !text-emerald-400 font-bold shrink-0">{{ formatCurrency(c.total_price) }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -729,6 +748,21 @@ const formatShortNumber = (val) => {
     if (val >= 1000000000) return (val / 1000000000) + ' M';
     if (val >= 1000000) return (val / 1000000) + ' Juta';
     return Number(val).toLocaleString('id-ID');
+};
+
+const formatTerbilang = (val) => {
+    const num = Number(val || 0);
+    if (num <= 0) return 'Rp 0';
+    if (num >= 1000000000) {
+        return (num / 1000000000).toLocaleString('id-ID', { maximumFractionDigits: 2 }) + ' Miliar Rupiah';
+    }
+    if (num >= 1000000) {
+        return (num / 1000000).toLocaleString('id-ID', { maximumFractionDigits: 2 }) + ' Juta Rupiah';
+    }
+    if (num >= 1000) {
+        return (num / 1000).toLocaleString('id-ID', { maximumFractionDigits: 2 }) + ' Ribu Rupiah';
+    }
+    return num.toLocaleString('id-ID') + ' Rupiah';
 };
 
 onMounted(() => {
