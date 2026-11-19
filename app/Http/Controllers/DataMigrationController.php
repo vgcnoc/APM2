@@ -45,6 +45,7 @@ class DataMigrationController extends Controller
         // Master Reference summary
         $references = [
             'areas' => Area::select('id', 'name')->orderBy('name')->get(),
+            'packages' => InternetPackage::select('id', 'name')->where('is_active', true)->orderBy('name')->get(),
             'sales' => User::select('id', 'name', 'email', 'role', 'phone')
                 ->where('is_active', true)
                 ->whereNotIn('role', ['customer'])

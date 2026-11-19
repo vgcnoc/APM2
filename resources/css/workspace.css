@@ -354,7 +354,7 @@
     }
 
     /* Universal Font, Table & Surface adaptation for ALL active patterns */
-    html[data-bg-pattern] .workspace-ui :is(h1, h2, h3, h4, h5, h6) { color: var(--ws-heading); }
+    html[data-bg-pattern] .workspace-ui :is(h1, h2, h3, h4, h5, h6):not(.text-white):not([class*="text-white"]):not([class*="!text-white"]) { color: var(--ws-heading); }
     html[data-bg-pattern] .workspace-ui :is(.text-gray-900, .text-slate-900, .text-gray-800, .text-slate-800) { color: var(--ws-heading) !important; }
     html[data-bg-pattern] .workspace-ui :is(.text-gray-700, .text-slate-700, .text-gray-600, .text-slate-600) { color: var(--ws-text) !important; }
     html[data-bg-pattern] .workspace-ui :is(.text-gray-500, .text-slate-500, .text-gray-400, .text-slate-400) { color: var(--ws-muted) !important; }
@@ -365,6 +365,24 @@
     html[data-bg-pattern] .workspace-ui :is(.data-table, table) tbody tr { border-color: var(--ws-border) !important; }
     html[data-bg-pattern] .workspace-ui :is(.data-table, table) tbody td { color: var(--ws-text) !important; }
     html[data-bg-pattern] .workspace-ui :is(.data-table, table) tbody tr:hover { background-color: var(--ws-subtle) !important; }
+
+    /* ── IMMUNITY: Dark Cards, Banners, Headers & Surfaces Protection ── */
+    .workspace-ui :is([class*="bg-slate-900"], [class*="bg-slate-950"], [class*="bg-slate-800"], [class*="bg-gray-900"], [class*="bg-gray-950"], [class*="bg-gray-800"], [class*="bg-indigo-950"], [class*="bg-indigo-900"], [class*="from-slate-900"], [class*="from-slate-950"], [class*="from-indigo-950"], [class*="from-indigo-900"], [class*="from-gray-900"], .bg-slate-900, .bg-indigo-950, .bg-gray-900) :is(h1, h2, h3, h4, h5, h6),
+    .workspace-ui :is(h1, h2, h3, h4, h5, h6):is(.text-white, [class*="!text-white"], [class*="text-white"]),
+    html[data-bg-pattern] .workspace-ui :is([class*="bg-slate-900"], [class*="bg-slate-950"], [class*="bg-slate-800"], [class*="bg-gray-900"], [class*="bg-gray-950"], [class*="bg-gray-800"], [class*="bg-indigo-950"], [class*="bg-indigo-900"], [class*="from-slate-900"], [class*="from-slate-950"], [class*="from-indigo-950"], [class*="from-indigo-900"], [class*="from-gray-900"], .bg-slate-900, .bg-indigo-950, .bg-gray-900) :is(h1, h2, h3, h4, h5, h6),
+    html[data-bg-pattern] .workspace-ui :is(h1, h2, h3, h4, h5, h6):is(.text-white, [class*="!text-white"], [class*="text-white"]) {
+        color: #ffffff !important;
+    }
+
+    .workspace-ui :is([class*="bg-slate-900"], [class*="bg-slate-950"], [class*="bg-slate-800"], [class*="bg-gray-900"], [class*="bg-gray-950"], [class*="bg-gray-800"], [class*="bg-indigo-950"], [class*="bg-indigo-900"], [class*="from-slate-900"], [class*="from-slate-950"], [class*="from-indigo-950"], [class*="from-indigo-900"], [class*="from-gray-900"]) :is(.text-slate-100, .text-slate-200, .text-slate-300, .text-slate-400, .text-gray-100, .text-gray-200, .text-gray-300, .text-gray-400, .text-indigo-100, .text-indigo-200),
+    html[data-bg-pattern] .workspace-ui :is([class*="bg-slate-900"], [class*="bg-slate-950"], [class*="bg-slate-800"], [class*="bg-gray-900"], [class*="bg-gray-950"], [class*="bg-gray-800"], [class*="bg-indigo-950"], [class*="bg-indigo-900"], [class*="from-slate-900"], [class*="from-slate-950"], [class*="from-indigo-950"], [class*="from-indigo-900"], [class*="from-gray-900"]) :is(.text-slate-100, .text-slate-200, .text-slate-300, .text-slate-400, .text-gray-100, .text-gray-200, .text-gray-300, .text-gray-400, .text-indigo-100, .text-indigo-200) {
+        color: rgba(226, 232, 240, 0.92) !important;
+    }
+
+    .workspace-ui :is([class*="bg-slate-900"], [class*="bg-slate-950"], [class*="bg-slate-800"], [class*="bg-gray-900"], [class*="bg-gray-950"], [class*="bg-gray-800"], [class*="bg-indigo-950"], [class*="bg-indigo-900"], [class*="from-slate-900"], [class*="from-slate-950"], [class*="from-indigo-950"], [class*="from-indigo-900"], [class*="from-gray-900"]) :is(.text-slate-500, .text-gray-500),
+    html[data-bg-pattern] .workspace-ui :is([class*="bg-slate-900"], [class*="bg-slate-950"], [class*="bg-slate-800"], [class*="bg-gray-900"], [class*="bg-gray-950"], [class*="bg-gray-800"], [class*="bg-indigo-950"], [class*="bg-indigo-900"], [class*="from-slate-900"], [class*="from-slate-950"], [class*="from-indigo-950"], [class*="from-indigo-900"], [class*="from-gray-900"]) :is(.text-slate-500, .text-gray-500) {
+        color: rgba(203, 213, 225, 0.75) !important;
+    }
 
     /* Preserve the chosen pattern, with quieter canvas and solid reading surfaces. */
     
@@ -420,7 +438,7 @@
     }
 
     /* Font & Surface adaptation specifically for Royal Terracotta Batik */
-    html[data-bg-pattern="royal-batik"] .workspace-ui :is(h1, h2, h3, h4, h5, h6) { color: var(--ws-heading); }
+    html[data-bg-pattern="royal-batik"] .workspace-ui :is(h1, h2, h3, h4, h5, h6):not(.text-white):not([class*="text-white"]):not([class*="!text-white"]) { color: var(--ws-heading); }
     html[data-bg-pattern="royal-batik"] .workspace-ui :is(.text-gray-900, .text-slate-900, .text-gray-800, .text-slate-800) { color: var(--ws-heading) !important; }
     html[data-bg-pattern="royal-batik"] .workspace-ui :is(.text-gray-700, .text-slate-700, .text-gray-600, .text-slate-600) { color: var(--ws-text) !important; }
     html[data-bg-pattern="royal-batik"] .workspace-ui :is(.text-gray-500, .text-slate-500, .text-gray-400, .text-slate-400) { color: var(--ws-muted) !important; }
@@ -492,7 +510,7 @@
     }
 
     /* Font & Surface adaptation specifically for Golden Wood & Amber */
-    html[data-bg-pattern="gold-wood"] .workspace-ui :is(h1, h2, h3, h4, h5, h6) { color: var(--ws-heading); }
+    html[data-bg-pattern="gold-wood"] .workspace-ui :is(h1, h2, h3, h4, h5, h6):not(.text-white):not([class*="text-white"]):not([class*="!text-white"]) { color: var(--ws-heading); }
     html[data-bg-pattern="gold-wood"] .workspace-ui :is(.text-gray-900, .text-slate-900, .text-gray-800, .text-slate-800) { color: var(--ws-heading) !important; }
     html[data-bg-pattern="gold-wood"] .workspace-ui :is(.text-gray-700, .text-slate-700, .text-gray-600, .text-slate-600) { color: var(--ws-text) !important; }
     html[data-bg-pattern="gold-wood"] .workspace-ui :is(.text-gray-500, .text-slate-500, .text-gray-400, .text-slate-400) { color: var(--ws-muted) !important; }
@@ -550,7 +568,7 @@
         box-shadow: var(--ws-shadow);
     }
 
-    .workspace-ui :is(h1, h2, h3, h4, h5, h6) { color: var(--ws-heading); letter-spacing: -.025em; }
+    .workspace-ui :is(h1, h2, h3, h4, h5, h6):not(.text-white):not([class*="text-white"]):not([class*="!text-white"]) { color: var(--ws-heading); letter-spacing: -.025em; }
     .workspace-ui :is(.text-gray-900, .text-slate-900, .text-gray-800, .text-slate-800) { color: var(--ws-heading) !important; }
     .workspace-ui :is(.text-gray-700, .text-slate-700, .text-gray-600, .text-slate-600) { color: var(--ws-text); }
     .workspace-ui :is(.text-gray-500, .text-slate-500, .text-gray-400, .text-slate-400) { color: var(--ws-muted); }

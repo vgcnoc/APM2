@@ -19,38 +19,38 @@
                                     Sistem Siap Migrasi
                                 </span>
                             </div>
-                            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight mt-2 text-white">
+                            <h1 class="text-2xl sm:text-3xl font-black tracking-tight mt-2 !text-white drop-shadow-sm">
                                 ⚡ Data Migration Center
                             </h1>
-                            <p class="text-sm sm:text-base text-slate-300 mt-1 max-w-3xl leading-relaxed">
+                            <p class="text-sm sm:text-base !text-indigo-100/90 mt-1 max-w-3xl leading-relaxed">
                                 Pusat migrasi data massal terintegrasi (Excel & CSV) untuk aplikasi billing ISP. Dilengkapi simulasi 
-                                <span class="text-indigo-300 font-semibold">Dry-Run</span>, verifikasi integritas database, dan pelindung 
-                                <span class="text-indigo-300 font-semibold">Safe Bypass</span> untuk mencegah efek samping pada operasional berjalan.
+                                <span class="!text-indigo-200 font-bold">Dry-Run</span>, verifikasi integritas database, dan pelindung 
+                                <span class="!text-indigo-200 font-bold">Safe Bypass</span> untuk mencegah efek samping pada operasional berjalan.
                             </p>
                         </div>
 
                         <!-- System Reference Chips -->
                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
-                            <div class="bg-slate-800/80 backdrop-blur rounded-xl p-3 border border-slate-700/60">
-                                <span class="text-slate-400 block text-[11px]">Master Area</span>
-                                <span class="text-base font-bold text-indigo-400">{{ references?.areas?.length || 0 }}</span>
-                                <span class="text-slate-500 ml-1">wilayah</span>
+                            <div class="bg-slate-800/80 backdrop-blur rounded-xl p-3 border border-slate-700/60 shadow-sm">
+                                <span class="!text-slate-300 block text-[11px] font-medium">Master Area</span>
+                                <span class="text-base font-extrabold text-indigo-400">{{ references?.areas?.length || 0 }}</span>
+                                <span class="!text-slate-400 ml-1">wilayah</span>
                             </div>
-                            <div class="bg-slate-800/80 backdrop-blur rounded-xl p-3 border border-slate-700/60">
-                                <span class="text-slate-400 block text-[11px]">Paket Aktif</span>
-                                <span class="text-base font-bold text-cyan-400">{{ references?.packages?.length || 0 }}</span>
-                                <span class="text-slate-500 ml-1">layanan</span>
+                            <div class="bg-slate-800/80 backdrop-blur rounded-xl p-3 border border-slate-700/60 shadow-sm">
+                                <span class="!text-slate-300 block text-[11px] font-medium">Paket Aktif</span>
+                                <span class="text-base font-extrabold text-cyan-400">{{ references?.packages?.length || 0 }}</span>
+                                <span class="!text-slate-400 ml-1">layanan</span>
                             </div>
-                            <div class="bg-slate-800/80 backdrop-blur rounded-xl p-3 border border-slate-700/60">
-                                <span class="text-slate-400 block text-[11px]">Perangkat FTTH</span>
-                                <span class="text-base font-bold text-emerald-400">
+                            <div class="bg-slate-800/80 backdrop-blur rounded-xl p-3 border border-slate-700/60 shadow-sm">
+                                <span class="!text-slate-300 block text-[11px] font-medium">Perangkat FTTH</span>
+                                <span class="text-base font-extrabold text-emerald-400">
                                     {{ references?.olts?.length || 0 }} OLT / {{ references?.odps?.length || 0 }} ODP
                                 </span>
                             </div>
-                            <div class="bg-slate-800/80 backdrop-blur rounded-xl p-3 border border-slate-700/60">
-                                <span class="text-slate-400 block text-[11px]">Karyawan & SDM</span>
-                                <span class="text-base font-bold text-amber-400">{{ references?.employees_count || 0 }}</span>
-                                <span class="text-slate-500 ml-1">orang</span>
+                            <div class="bg-slate-800/80 backdrop-blur rounded-xl p-3 border border-slate-700/60 shadow-sm">
+                                <span class="!text-slate-300 block text-[11px] font-medium">Karyawan & SDM</span>
+                                <span class="text-base font-extrabold text-amber-400">{{ references?.employees_count || 0 }}</span>
+                                <span class="!text-slate-400 ml-1">orang</span>
                             </div>
                         </div>
                     </div>
@@ -632,11 +632,11 @@
                                 <div>
                                     <div class="flex items-center gap-2">
                                         <span class="w-5 h-5 rounded-full bg-emerald-400 text-slate-950 text-xs flex items-center justify-center font-bold">5</span>
-                                        <h3 class="text-base sm:text-lg font-bold text-white">
+                                        <h3 class="text-base sm:text-lg font-bold !text-white">
                                             Komitmen Data ke Database (Eksekusi Impor)
                                         </h3>
                                     </div>
-                                    <p class="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl">
+                                    <p class="text-xs sm:text-sm !text-slate-200 mt-1 max-w-2xl">
                                         Semua data valid akan dimasukkan ke database dalam 
                                         <span class="text-emerald-400 font-semibold">Database Transaction</span> tunggal. 
                                         Jika terjadi galat fatal tak terduga, database akan di-rollback secara otomatis ke kondisi semula.
