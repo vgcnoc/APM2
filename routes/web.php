@@ -926,6 +926,10 @@ Route::middleware(['auth'])->group(function () {
                 ->withoutMiddleware(['permission:menu_routers|menu_radius_nas'])
                 ->middleware(['permission:menu_routers|menu_radius_nas|menu_radius_auth_logs'])
                 ->name('auth-logs.index');
+            Route::get('auth-logs/export', [\App\Http\Controllers\Radius\AuthLogController::class, 'export'])
+                ->withoutMiddleware(['permission:menu_routers|menu_radius_nas'])
+                ->middleware(['permission:menu_routers|menu_radius_nas|menu_radius_auth_logs'])
+                ->name('auth-logs.export');
             Route::delete('auth-logs/{id}', [\App\Http\Controllers\Radius\AuthLogController::class, 'destroy'])
                 ->withoutMiddleware(['permission:menu_routers|menu_radius_nas'])
                 ->middleware(['permission:menu_routers|menu_radius_nas|menu_radius_auth_logs|radius_auth_logs_delete'])
