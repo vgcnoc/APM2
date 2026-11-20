@@ -500,6 +500,13 @@ class CustomerMaterialService
             return;
         }
 
+        // Material migrasi adalah barang historis yang sudah terpasang di rumah pelanggan lama,
+        // sehingga tidak boleh menambah stok semu (ghost stock) di gudang.
+        if ($mat->is_migration || (int) $mat->id <= 260) {
+            \Illuminate\Support\Facades\Log::info("[CustomerMaterialService] Material {$mat->name} (ID: {$mat->id}) adalah material migrasi, penambahan sisa stok fisik gudang dilewati.");
+            return;
+        }
+
         $res = MaterialService::restoreOperationalStock($mat, $quantity, $areaId, $unit);
 
         \Illuminate\Support\Facades\Log::info("[CustomerMaterialService] Berhasil mengembalikan {$res['base_qty']} {$mat->unit} material {$mat->name} (ID: {$mat->id}) ke gudang (Area: {$areaId}).");

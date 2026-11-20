@@ -284,7 +284,7 @@ class Ont extends Model
             ) {
                 try {
                     $mat = \App\Services\MaterialService::resolveOntMaterial($ont);
-                    if ($mat) {
+                    if ($mat && !$mat->is_migration && (int) $mat->id > 260) {
                         \App\Services\CustomerMaterialService::returnMaterialToWarehouse(
                             $mat,
                             1,
