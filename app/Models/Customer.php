@@ -752,21 +752,32 @@ class Customer extends Model
             }
 
             // 4. Otomatis buat tiket Cabut Perangkat (CBP) jika status menjadi terminated / berhenti
+            // HANYA jika pelanggan BENAR-BENAR MEMILIKI PERANGKAT FISIK YANG PERNAH DIPASANG (ONT / Material / Aktivasi)
             if (($customer->wasChanged('status') && $customer->status === 'terminated') ||
                 ($customer->wasChanged('service_status') && $customer->service_status === 'berhenti')) {
-                $hasCbp = \App\Models\CbpRequest::where('customer_id', $customer->id)
-                    ->whereIn('status', ['pending', 'assigned'])
-                    ->exists();
-                if (!$hasCbp) {
-                    try {
-                        \App\Models\CbpRequest::create([
-                            'customer_id' => $customer->id,
-                            'status' => 'pending',
-                            'notes' => 'Otomatis dibuat saat status pelanggan diubah menjadi Terminated / Berhenti.',
-                            'created_by' => auth()->id() ?? 1,
-                        ]);
-                    } catch (\Throwable $e) {
-                        \Illuminate\Support\Facades\Log::warning('[CbpRequest] Auto-create CBP error: ' . $e->getMessage());
+                
+                $hasEquipment = $customer->ont()->exists()
+                    || $customer->onts()->exists()
+                    || !empty($customer->activation_date)
+                    || $customer->activeInstalledMaterials()->exists()
+                    || $customer->installedMaterials()->exists()
+                    || $customer->technicianSchedules()->where('type', 'installation')->where('status', 'completed')->exists();
+
+                if ($hasEquipment) {
+                    $hasCbp = \App\Models\CbpRequest::where('customer_id', $customer->id)
+                        ->whereIn('status', ['pending', 'assigned'])
+                        ->exists();
+                    if (!$hasCbp) {
+                        try {
+                            \App\Models\CbpRequest::create([
+                                'customer_id' => $customer->id,
+                                'status' => 'pending',
+                                'notes' => 'Otomatis dibuat saat status pelanggan diubah menjadi Terminated / Berhenti.',
+                                'created_by' => auth()->id() ?? 1,
+                            ]);
+                        } catch (\Throwable $e) {
+                            \Illuminate\Support\Facades\Log::warning('[CbpRequest] Auto-create CBP error: ' . $e->getMessage());
+                        }
                     }
                 }
             }

@@ -399,6 +399,18 @@ class CbpRequestController extends Controller
 
         $customer = \App\Models\Customer::findOrFail($validated['customer_id']);
 
+        // Pastikan pelanggan benar-benar memiliki perangkat fisik / pernah terpasang
+        $hasEquipment = $customer->ont()->exists()
+            || $customer->onts()->exists()
+            || !empty($customer->activation_date)
+            || $customer->activeInstalledMaterials()->exists()
+            || $customer->installedMaterials()->exists()
+            || $customer->technicianSchedules()->where('type', 'installation')->where('status', 'completed')->exists();
+
+        if (!$hasEquipment) {
+            return redirect()->back()->with('error', 'Pelanggan ' . $customer->name . ' (' . $customer->customer_code . ') belum pernah dipasang perangkat (tidak ada ONT / aktivasi). Tiket Cabut Perangkat tidak dapat dibuat.');
+        }
+
         // Stop Permanen the customer
         if ($customer->status !== 'terminated') {
             \App\Services\AffiliateService::handleEarlyTerminationPenalty($customer, now()->toDateString());
@@ -1115,8 +1127,8 @@ class CbpRequestController extends Controller
         $canDelete = $user && (
             $user->can('cbp_btn_delete') ||
             $user->can('cbp_manage') ||
-            $user->hasRole(['admin', 'kepala teknisi']) ||
-            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi'])
+            $user->hasRole(['admin', 'super admin', 'superadmin', 'kepala teknisi']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'super admin', 'superadmin', 'kepala teknisi'])
         );
         if (!$canDelete) {
             abort(403, 'Anda tidak memiliki hak akses untuk menghapus tiket CBP.');
@@ -1167,8 +1179,8 @@ class CbpRequestController extends Controller
             $user->can('cbp_btn_delete_all') ||
             $user->can('cbp_btn_delete') ||
             $user->can('cbp_manage') ||
-            $user->hasRole('admin') ||
-            in_array(strtolower($user->role ?? ''), ['admin'])
+            $user->hasRole(['admin', 'super admin', 'superadmin', 'kepala teknisi']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'super admin', 'superadmin', 'kepala teknisi'])
         );
         if (!$canBulkDelete) {
             abort(403, 'Anda tidak memiliki hak akses untuk menghapus massal tiket CBP.');

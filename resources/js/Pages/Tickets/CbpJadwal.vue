@@ -195,9 +195,12 @@
                                         <span>{{ req.customer?.name || '-' }}</span>
                                         <svg class="w-3.5 h-3.5 text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
                                     </div>
-                                    <div class="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                                    <div class="text-[11px] text-gray-500 flex flex-wrap items-center gap-1 mt-0.5">
                                         <span class="px-1.5 py-0.5 rounded bg-gray-100 border border-gray-200 font-mono">{{ req.customer?.customer_code || '-' }}</span>
                                         <span v-if="req.customer?.areaModel?.name || req.customer?.area" class="text-slate-400">• {{ req.customer?.areaModel?.name || req.customer?.area }}</span>
+                                        <span v-if="!req.customer?.ont && !req.customer?.activation_date" class="px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold" title="Pelanggan belum pernah dipasang perangkat / tidak memiliki ONT">
+                                            ⚠️ Belum Pasang / Tanpa ONT
+                                        </span>
                                     </div>
                                 </td>
                                 <td class="p-4">
@@ -1225,6 +1228,22 @@
                                 <div class="text-[10px] text-slate-400">Pelanggan lanjut & aktifkan kembali</div>
                             </div>
                         </button>
+
+                        <!-- Hapus Tiket CBP (Misal Tiket Invalid / Belum Pasang) -->
+                        <button 
+                            v-if="can('cbp_btn_delete') || can('cbp_manage')" 
+                            type="button" 
+                            @click="runAction((row) => deleteCbp(row || activeActionRow))"
+                            class="w-full text-left px-3 py-2 hover:bg-red-50/80 text-slate-700 flex items-center gap-2.5 transition-colors font-medium group cursor-pointer border-t border-slate-100 mt-1"
+                        >
+                            <div class="w-7 h-7 rounded-lg bg-red-50 text-red-600 group-hover:bg-red-100 flex items-center justify-center shrink-0 border border-red-200 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </div>
+                            <div>
+                                <div class="font-bold text-xs text-red-700 group-hover:text-red-800">Hapus Tiket CBP</div>
+                                <div class="text-[10px] text-slate-400">Hapus permanen dari sistem</div>
+                            </div>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1701,6 +1720,42 @@ function openCancelModal(req) {
                 },
                 onError: (err) => {
                     Swal.fire('Gagal!', err?.message || 'Gagal membatalkan tiket CBP.', 'error');
+                }
+            });
+        }
+    });
+}
+
+// Hapus Tiket CBP (Misal Tiket Invalid / Belum Pasang)
+function deleteCbp(req) {
+    const target = req || activeActionRow.value;
+    if (!target) return;
+    const custName = target.customer?.name || 'Pelanggan';
+
+    Swal.fire({
+        title: 'Hapus Tiket CBP?',
+        html: `Apakah Anda yakin ingin menghapus tiket CBP <b>${target.cbp_number}</b> (${custName})?<br><br><div class="p-3 bg-red-50 border border-red-200 rounded-xl text-left text-xs text-red-800 space-y-1"><p class="font-bold">Perhatian:</p><ul class="list-disc list-inside space-y-0.5"><li>Tindakan ini permanen dan akan menghapus tiket CBP dari sistem.</li><li>Gunakan opsi ini jika tiket CBP dibuat karena kesalahan atau pelanggan belum pernah dipasang perangkat.</li></ul></div>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Hapus Tiket!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.delete(`/cbp/${target.id}`, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Tiket Berhasil Dihapus!',
+                        text: `Tiket ${target.cbp_number} telah dihapus dari sistem.`,
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                },
+                onError: (err) => {
+                    Swal.fire('Gagal!', err?.message || 'Gagal menghapus tiket CBP.', 'error');
                 }
             });
         }

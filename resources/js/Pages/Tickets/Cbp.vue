@@ -296,7 +296,10 @@
                                     </div>
                                     <div class="text-[11px] text-gray-500 flex flex-wrap items-center gap-1.5 mt-0.5">
                                         <span class="px-1.5 py-0.5 rounded bg-gray-100 border border-gray-200 font-mono">{{ req.customer?.customer_code || '-' }}</span>
-                                        <span v-if="req.customer?.area_model" class="px-1.5 py-0.5 rounded bg-slate-100 border text-slate-600 text-[10px]">📍 {{ req.customer?.area_model?.name }}</span>
+                                        <span v-if="req.customer?.area_model || req.customer?.areaModel" class="px-1.5 py-0.5 rounded bg-slate-100 border text-slate-600 text-[10px]">📍 {{ req.customer?.area_model?.name || req.customer?.areaModel?.name }}</span>
+                                        <span v-if="!req.customer?.ont && !req.customer?.activation_date" class="px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold" title="Pelanggan belum pernah dipasang perangkat / tidak memiliki ONT">
+                                            ⚠️ Belum Pasang / Tanpa ONT
+                                        </span>
                                     </div>
                                     <div v-if="req.customer?.phone" class="text-[11px] text-gray-400 mt-0.5 font-mono">
                                         📞 {{ req.customer.phone }}
