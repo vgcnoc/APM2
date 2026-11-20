@@ -389,7 +389,7 @@
                                         </button>
 
                                         <!-- Badge Status Sudah di Jadwal + Opsi Tarik Kembali -->
-                                        <div v-else-if="req.sent_to_schedule_at && req.status === 'pending'" class="inline-flex items-center gap-1">
+                                        <div v-else-if="req.sent_to_schedule_at && (req.status === 'pending' || req.status === 'assigned')" class="inline-flex items-center gap-1">
                                             <span class="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg whitespace-nowrap" :title="'Terkirim ke Jadwal pada ' + formatDate(req.sent_to_schedule_at)">
                                                 <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                                 Di Jadwal
@@ -437,13 +437,13 @@
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                         </button>
 
-                                        <!-- Batalkan Request CBP -->
+                                        <!-- Batalkan Request CBP / Batal Stop Permanen -->
                                         <button 
-                                            v-if="req.status === 'pending' && can('cbp_btn_cancel')" 
+                                            v-if="req.status !== 'completed' && req.status !== 'canceled' && can('cbp_btn_cancel')" 
                                             type="button" 
                                             @click="cancelCbp(req)" 
                                             class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-rose-600 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 border border-rose-200/80 shadow-2xs hover:shadow-xs transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0" 
-                                            title="Batalkan CBP"
+                                            title="Batalkan CBP (Pelanggan Batal Berhenti)"
                                         >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                         </button>
@@ -976,6 +976,7 @@ import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { usePermission } from '@/Composables/usePermission';
 import CustomerQuickDetailModal from '@/Components/CustomerQuickDetailModal.vue';
+import Swal from 'sweetalert2';
 
 const { can } = usePermission();
 
@@ -1272,11 +1273,37 @@ function submitDispatch() {
 
 // Retract from Schedule
 function retractCbp(cbp) {
-    if (confirm(`Tarik kembali tiket ${cbp.cbp_number} dari Jadwal CBP? Tiket tidak akan muncul di menu 2. Jadwal CBP sampai Anda mengirimnya kembali.`)) {
-        router.post(`/cbp/${cbp.id}/retract-schedule`, {}, {
-            preserveScroll: true
-        });
-    }
+    if (!cbp) return;
+    const custName = cbp.customer?.name || 'Pelanggan';
+
+    Swal.fire({
+        title: 'Tarik ke Request Cabut?',
+        html: `Apakah Anda yakin ingin menarik tiket <b>${cbp.cbp_number}</b> (${custName}) dari Jadwal CBP?<br><br><div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-left text-xs text-amber-800 space-y-1"><p class="font-bold">Dampak Tindakan Ini:</p><ul class="list-disc list-inside space-y-0.5"><li>Jadwal pencabutan dan penugasan teknisi dibatalkan.</li><li>Tiket dipindahkan kembali ke tab <i>Belum Dikirim ke Jadwal</i> di halaman ini.</li><li>Status pelanggan tetap <i>Berhenti/Terminated</i> sampai ada keputusan lebih lanjut.</li></ul></div>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#d97706',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Tarik ke Request!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.post(`/cbp/${cbp.id}/retract-schedule`, {}, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil Ditarik!',
+                        text: `Tiket ${cbp.cbp_number} telah ditarik kembali ke antrean request.`,
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                },
+                onError: (err) => {
+                    Swal.fire('Gagal!', err?.message || 'Gagal menarik tiket dari jadwal.', 'error');
+                }
+            });
+        }
+    });
 }
 
 // History Modal
@@ -1293,13 +1320,66 @@ function closeHistoryModal() {
     selectedHistoryCbp.value = null;
 }
 
-// Cancel
+// Batal Stop Permanen / Batalkan CBP & Reaktivasi
 function cancelCbp(cbp) {
-    if (confirm(`Yakin ingin membatalkan request CBP (${cbp.cbp_number}) ini?`)) {
-        router.post(`/cbp/${cbp.id}/cancel`, {}, {
-            preserveScroll: true
-        });
-    }
+    if (!cbp) return;
+    const custName = cbp.customer?.name || 'Pelanggan';
+
+    Swal.fire({
+        title: 'Batalkan Stop Permanen?',
+        html: `
+            <div class="text-left text-xs space-y-3">
+                <p class="text-slate-600">
+                    Pelanggan <b>${custName}</b> batal stop permanen? Tiket <b>${cbp.cbp_number}</b> akan dibatalkan resmi dan penugasan teknisi dicabut.
+                </p>
+                <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
+                    <label class="flex items-center gap-2 cursor-pointer font-bold text-emerald-900">
+                        <input type="checkbox" id="swal-cbp-reactivate-cust" checked class="w-4 h-4 text-emerald-600 rounded">
+                        <span>Aktifkan Kembali Status Pelanggan (Reaktivasi)</span>
+                    </label>
+                    <p class="text-[11px] text-emerald-700 pl-6">
+                        Status pelanggan akan otomatis diubah kembali menjadi <b>Aktif</b> (atau <i>Isolir</i> jika masih ada tagihan belum lunas) agar layanan internet dapat digunakan kembali.
+                    </p>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Alasan Pembatalan / Catatan:</label>
+                    <input id="swal-cbp-cancel-reason" type="text" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs" placeholder="Misal: Pelanggan melunasi tunggakan / lanjut berlangganan" value="Pelanggan tidak jadi stop permanen / lanjut berlangganan">
+                </div>
+            </div>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Batalkan & Pulihkan!',
+        cancelButtonText: 'Tutup',
+        preConfirm: () => {
+            const reasonInput = document.getElementById('swal-cbp-cancel-reason')?.value;
+            const reactivateCust = document.getElementById('swal-cbp-reactivate-cust')?.checked;
+            return {
+                cancel_reason: reasonInput || 'Pelanggan tidak jadi stop permanen / lanjut berlangganan',
+                reactivate_customer: reactivateCust !== false
+            };
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.post(`/cbp/${cbp.id}/cancel`, result.value, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Tiket Dibatalkan!',
+                        text: `Tiket ${cbp.cbp_number} telah dibatalkan & status pelanggan berhasil dipulihkan.`,
+                        timer: 2200,
+                        showConfirmButton: false
+                    });
+                },
+                onError: (err) => {
+                    Swal.fire('Gagal!', err?.message || 'Gagal membatalkan tiket CBP.', 'error');
+                }
+            });
+        }
+    });
 }
 
 function formatDate(dateStr) {

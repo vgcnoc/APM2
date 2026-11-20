@@ -1194,19 +1194,35 @@
                             </div>
                         </button>
 
-                        <!-- Batalkan CBP (Pending) -->
+                        <!-- Tarik ke Antrean Request Cabut -->
                         <button 
-                            v-if="activeActionRow.status === 'pending'" 
+                            v-if="activeActionRow.status !== 'completed' && activeActionRow.status !== 'canceled'" 
                             type="button" 
-                            @click="runAction((row) => cancelCbp(row || activeActionRow))"
+                            @click="runAction((row) => retractFromSchedule(row || activeActionRow))"
+                            class="w-full text-left px-3 py-2 hover:bg-amber-50/80 text-slate-700 flex items-center gap-2.5 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 group-hover:bg-amber-100 flex items-center justify-center shrink-0 border border-amber-200 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                            </div>
+                            <div>
+                                <div class="font-bold text-xs text-amber-700 group-hover:text-amber-800">Tarik ke Request Cabut</div>
+                                <div class="text-[10px] text-slate-400">Batal jadwal & kembali ke antrean</div>
+                            </div>
+                        </button>
+
+                        <!-- Batal Stop Permanen / Batalkan CBP & Reaktivasi Pelanggan -->
+                        <button 
+                            v-if="activeActionRow.status !== 'completed' && activeActionRow.status !== 'canceled'" 
+                            type="button" 
+                            @click="runAction((row) => openCancelModal(row || activeActionRow))"
                             class="w-full text-left px-3 py-2 hover:bg-rose-50/80 text-slate-700 flex items-center gap-2.5 transition-colors font-medium group cursor-pointer"
                         >
-                            <div class="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 group-hover:bg-rose-100 flex items-center justify-center shrink-0 border border-rose-100 transition-colors">
+                            <div class="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 group-hover:bg-rose-100 flex items-center justify-center shrink-0 border border-rose-200 transition-colors">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                             </div>
                             <div>
-                                <div class="font-bold text-xs text-rose-700 group-hover:text-rose-800">Batalkan CBP</div>
-                                <div class="text-[10px] text-slate-400">Batalkan tiket jadwal</div>
+                                <div class="font-bold text-xs text-rose-700 group-hover:text-rose-800">Batal Stop Permanen (Reaktivasi)</div>
+                                <div class="text-[10px] text-slate-400">Pelanggan lanjut & aktifkan kembali</div>
                             </div>
                         </button>
                     </div>
@@ -1230,6 +1246,7 @@ import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { usePermission } from '@/Composables/usePermission';
 import CustomerQuickDetailModal from '@/Components/CustomerQuickDetailModal.vue';
+import Swal from 'sweetalert2';
 
 const { can } = usePermission();
 
@@ -1592,15 +1609,102 @@ function closeHistoryModal() {
     selectedHistoryCbp.value = null;
 }
 
-// Cancel
-function cancelCbp(cbp) {
-    const target = cbp || activeActionRow.value;
+// Tarik ke Request Cabut (Antrean Request)
+function retractFromSchedule(req) {
+    const target = req || activeActionRow.value;
     if (!target) return;
-    if (confirm('Yakin ingin membatalkan request CBP ini?')) {
-        router.post(`/cbp/${target.id}/cancel`, {}, {
-            preserveScroll: true
-        });
-    }
+
+    Swal.fire({
+        title: 'Tarik ke Request Cabut?',
+        html: `Apakah Anda yakin ingin menarik tiket <b>${target.cbp_number}</b> (${target.customer?.name || 'Pelanggan'}) dari Jadwal CBP?<br><br><div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-left text-xs text-amber-800 space-y-1"><p class="font-bold">Dampak Tindakan Ini:</p><ul class="list-disc list-inside space-y-0.5"><li>Jadwal pencabutan dan penugasan teknisi dibatalkan.</li><li>Tiket dipindahkan kembali ke <b>Antrean Request CBP (/cbp)</b> pada tab <i>Belum Dikirim ke Jadwal</i>.</li><li>Status pelanggan tetap <i>Berhenti/Terminated</i> sampai ada keputusan lebih lanjut.</li></ul></div>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#d97706',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Tarik ke Request!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.post(`/cbp/${target.id}/retract-schedule`, {}, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil Ditarik!',
+                        text: `Tiket ${target.cbp_number} telah dipindahkan kembali ke Antrean Request CBP.`,
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                },
+                onError: (err) => {
+                    Swal.fire('Gagal!', err?.message || 'Gagal menarik tiket dari jadwal.', 'error');
+                }
+            });
+        }
+    });
+}
+
+// Batal Stop Permanen / Batalkan CBP & Reaktivasi Pelanggan
+function openCancelModal(req) {
+    const target = req || activeActionRow.value;
+    if (!target) return;
+    const custName = target.customer?.name || 'Pelanggan';
+
+    Swal.fire({
+        title: 'Batalkan Stop Permanen?',
+        html: `
+            <div class="text-left text-xs space-y-3">
+                <p class="text-slate-600">
+                    Pelanggan <b>${custName}</b> batal stop permanen? Tiket <b>${target.cbp_number}</b> akan dibatalkan resmi dan penugasan teknisi dicabut.
+                </p>
+                <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
+                    <label class="flex items-center gap-2 cursor-pointer font-bold text-emerald-900">
+                        <input type="checkbox" id="swal-reactivate-cust" checked class="w-4 h-4 text-emerald-600 rounded">
+                        <span>Aktifkan Kembali Status Pelanggan (Reaktivasi)</span>
+                    </label>
+                    <p class="text-[11px] text-emerald-700 pl-6">
+                        Status pelanggan akan otomatis diubah kembali menjadi <b>Aktif</b> (atau <i>Isolir</i> jika masih ada tagihan belum lunas) agar layanan internet dapat digunakan kembali.
+                    </p>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Alasan Pembatalan / Catatan:</label>
+                    <input id="swal-cancel-reason" type="text" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs" placeholder="Misal: Pelanggan melunasi tunggakan / lanjut berlangganan" value="Pelanggan tidak jadi stop permanen / lanjut berlangganan">
+                </div>
+            </div>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Batalkan & Pulihkan!',
+        cancelButtonText: 'Tutup',
+        preConfirm: () => {
+            const reasonInput = document.getElementById('swal-cancel-reason')?.value;
+            const reactivateCust = document.getElementById('swal-reactivate-cust')?.checked;
+            return {
+                cancel_reason: reasonInput || 'Pelanggan tidak jadi stop permanen / lanjut berlangganan',
+                reactivate_customer: reactivateCust !== false
+            };
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.post(`/cbp/${target.id}/cancel`, result.value, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Tiket Dibatalkan!',
+                        text: `Tiket ${target.cbp_number} telah dibatalkan & status pelanggan berhasil dipulihkan.`,
+                        timer: 2200,
+                        showConfirmButton: false
+                    });
+                },
+                onError: (err) => {
+                    Swal.fire('Gagal!', err?.message || 'Gagal membatalkan tiket CBP.', 'error');
+                }
+            });
+        }
+    });
 }
 
 // WhatsApp Dispatch to Lead Technician
@@ -1774,8 +1878,8 @@ function toggleActionMenu(event, req) {
         return;
     }
     const rect = event.currentTarget.getBoundingClientRect();
-    const menuWidth = 240;
-    const menuHeight = 310;
+    const menuWidth = 250;
+    const menuHeight = 380;
 
     let top = rect.bottom + 6;
     if (top + menuHeight > window.innerHeight) {

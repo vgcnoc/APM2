@@ -989,48 +989,77 @@ class CbpRequestController extends Controller
             $user->can('cbp_btn_dispatch') ||
             $user->can('cbp_btn_request') ||
             $user->can('cbp_manage') ||
-            $user->hasRole(['admin', 'kepala teknisi', 'dispatcher', 'cs', 'admin cs']) ||
-            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'dispatcher', 'cs', 'admin cs'])
+            $user->hasRole(['admin', 'super admin', 'superadmin', 'kepala teknisi', 'dispatcher', 'cs', 'admin cs']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'super admin', 'superadmin', 'kepala teknisi', 'dispatcher', 'cs', 'admin cs'])
         );
         if (!$canRetract) {
             abort(403, 'Anda tidak memiliki hak akses untuk menarik kembali tiket CBP.');
         }
 
-        if ($cbp->status === 'assigned' || $cbp->status === 'completed') {
-            return redirect()->back()->with('error', 'Tiket sudah ditugaskan / dieksekusi teknisi dan tidak dapat ditarik kembali.');
+        if ($cbp->status === 'completed') {
+            return redirect()->back()->with('error', 'Tiket sudah selesai dieksekusi teknisi dan tidak dapat ditarik kembali.');
+        }
+
+        $oldStatus = $cbp->status;
+
+        // Jika statusnya 'assigned', lepaskan penugasan teknisi
+        if ($cbp->status === 'assigned') {
+            $cbp->technicians()->detach();
         }
 
         $cbp->update([
+            'status' => 'pending',
             'sent_to_schedule_at' => null,
             'sent_to_schedule_by' => null,
+            'assigned_to' => null,
         ]);
 
         \App\Models\AuditLog::createLog(
             'Tarik dari Jadwal CBP',
             $cbp,
-            'scheduled_ready',
-            'draft_request',
-            'Tiket CBP ditarik kembali dari Jadwal CBP ke antrean request oleh ' . (auth()->user()?->name ?? 'Admin')
+            $oldStatus,
+            'pending',
+            'Tiket CBP ditarik kembali dari Jadwal CBP ke antrean request (jadwal & penugasan teknisi dibatalkan) oleh ' . ($user?->name ?? 'Admin')
         );
 
-        return redirect()->back()->with('success', 'Tiket ' . $cbp->cbp_number . ' berhasil ditarik kembali dari Jadwal CBP.');
+        return redirect()->back()->with('success', 'Tiket ' . $cbp->cbp_number . ' berhasil ditarik kembali dari Jadwal CBP ke Antrean Request Cabut.');
     }
 
-    public function cancel(CbpRequest $cbp)
+    public function cancel(Request $request, CbpRequest $cbp)
     {
-        $user = request()->user();
+        $user = $request->user();
         $canCancel = $user && (
             $user->can('cbp_btn_cancel') ||
             $user->can('cbp_manage') ||
-            $user->hasRole(['admin', 'kepala teknisi']) ||
-            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi'])
+            $user->hasRole(['admin', 'super admin', 'superadmin', 'kepala teknisi', 'dispatcher', 'cs', 'admin cs']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'super admin', 'superadmin', 'kepala teknisi', 'dispatcher', 'cs', 'admin cs'])
         );
         if (!$canCancel) {
             abort(403, 'Anda tidak memiliki hak akses untuk membatalkan CBP.');
         }
 
+        if ($cbp->status === 'completed') {
+            return redirect()->back()->with('error', 'Tiket CBP yang sudah selesai dieksekusi tidak dapat dibatalkan.');
+        }
+
         $oldStatus = $cbp->status;
-        $cbp->update(['status' => 'canceled']);
+        $reason = trim((string) $request->input('cancel_reason', 'Pelanggan tidak jadi stop permanen / lanjut berlangganan'));
+        if ($reason === '') {
+            $reason = 'Pelanggan tidak jadi stop permanen / lanjut berlangganan';
+        }
+        $reactivateCustomer = $request->boolean('reactivate_customer', true);
+
+        // Lepas teknisi dari penugasan jika tiket sudah assigned
+        if ($cbp->status === 'assigned') {
+            $cbp->technicians()->detach();
+        }
+
+        // Update status CBP
+        $cbp->update([
+            'status' => 'canceled',
+            'assigned_to' => null,
+            'notes' => ($cbp->notes ? $cbp->notes . ' | ' : '') . 'Dibatalkan: ' . $reason . ' (oleh ' . ($user?->name ?? 'Admin') . ')',
+        ]);
         
         // Pulihkan / bersihkan transaksi material jika ada
         try {
@@ -1039,9 +1068,45 @@ class CbpRequestController extends Controller
             \Illuminate\Support\Facades\Log::warning('[CbpRequestController::cancel] Gagal restore material: ' . $e->getMessage());
         }
 
-        \App\Models\AuditLog::createLog('CBP Dibatalkan', $cbp, $oldStatus, 'canceled', 'Membatalkan permintaan cabut perangkat ' . $cbp->cbp_number);
+        // Reaktivasi data pelanggan jika dipilih
+        $customerMsg = '';
+        if ($reactivateCustomer && $cbp->customer) {
+            $customer = $cbp->customer;
+            $oldCustomerStatus = $customer->status;
 
-        return redirect()->back()->with('success', 'Permintaan Cabut Perangkat berhasil dibatalkan.');
+            // Periksa apakah pelanggan masih memiliki invoice yang belum lunas
+            $hasUnpaidInvoice = \App\Models\Invoice::where('customer_id', $customer->id)
+                ->whereIn('status', ['unpaid', 'partially_paid'])
+                ->exists();
+
+            $newStatus = $hasUnpaidInvoice ? 'suspended' : 'active';
+
+            $customer->update([
+                'status' => $newStatus,
+                'service_status' => $newStatus,
+                'notes' => ($customer->notes ? $customer->notes . "\n" : '') . "Reaktivasi: Pembatalan CBP #{$cbp->cbp_number} pada " . now()->format('d/m/Y H:i') . " ({$reason})",
+            ]);
+
+            \App\Models\AuditLog::createLog(
+                'Reaktivasi Pelanggan (Batal CBP)',
+                $customer,
+                $oldCustomerStatus,
+                $newStatus,
+                "Status pelanggan dikembalikan menjadi '{$newStatus}' karena tiket CBP #{$cbp->cbp_number} dibatalkan (Alasan: {$reason}) oleh " . ($user?->name ?? 'Admin')
+            );
+
+            $customerMsg = " Data pelanggan ({$customer->name}) telah diaktifkan kembali ke status '{$newStatus}'.";
+        }
+
+        \App\Models\AuditLog::createLog(
+            'CBP Dibatalkan',
+            $cbp,
+            $oldStatus,
+            'canceled',
+            "Membatalkan tiket cabut perangkat {$cbp->cbp_number}. Alasan: {$reason}" . ($reactivateCustomer ? " (Pelanggan di-reaktivasi)" : "")
+        );
+
+        return redirect()->back()->with('success', 'Permintaan Cabut Perangkat ' . $cbp->cbp_number . ' berhasil dibatalkan.' . $customerMsg);
     }
 
     public function destroy(CbpRequest $cbp)
