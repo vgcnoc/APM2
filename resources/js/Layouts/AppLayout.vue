@@ -271,7 +271,7 @@
                                                     'flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all duration-150 relative group/sub',
                                                     child.active($page.url)
                                                         ? (themeMap[grp.theme]?.subActive || 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 font-bold shadow-sm')
-                                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/50 font-medium'
+                                                        : 'text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/50 font-semibold'
                                                 ]"
                                             >
                                                 <span
@@ -431,7 +431,7 @@
                     <div class="min-w-0 workspace-page-heading">
                         <p class="workspace-eyebrow">VIZBILL <span>/</span> Ruang kerja</p>
                         <h2 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white truncate">{{ title }}</h2>
-                        <p v-if="subtitle" class="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 mt-0.5 truncate">{{ subtitle }}</p>
+                        <p v-if="subtitle" class="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 mt-0.5 truncate">{{ subtitle }}</p>
                     </div>
                 </div>
                     <div class="flex items-center gap-2 sm:gap-3">

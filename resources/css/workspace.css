@@ -6,9 +6,9 @@
         --ws-subtle: #f7f9fc;
         --ws-raised: #edf2f8;
         --ws-border: #e1e7ef;
-        --ws-heading: #14243b;
-        --ws-text: #42536a;
-        --ws-muted: #6b7c93;
+        --ws-heading: #0f172a;
+        --ws-text: #1e293b;
+        --ws-muted: #475569;
         --ws-accent: #2563eb;
         --ws-accent-soft: #eaf1ff;
         --ws-accent-text: #1d4ed8;
@@ -61,9 +61,9 @@
         --ws-subtle: #f4ebfc;
         --ws-raised: #ebd4f9;
         --ws-border: #e1c4f6;
-        --ws-heading: #24083d;
-        --ws-text: #451b6a;
-        --ws-muted: #7b4ea3;
+        --ws-heading: #1e0538;
+        --ws-text: #2e1065;
+        --ws-muted: #581c87;
         --ws-accent: #9333ea;
         --ws-accent-soft: #f3e8ff;
         --ws-accent-text: #7e22ce;
@@ -609,25 +609,100 @@
     }
     .workspace-ui .apm-sidebar nav :is(a, button) > div[class*="w-7"] {
         border: 0;
-        background: transparent !important;
-        color: var(--ws-muted);
         transform: none;
     }
     .workspace-ui .apm-sidebar nav :is(a, button):hover { background-color: var(--ws-subtle); }
     .workspace-ui .apm-sidebar nav [class*="text-white"] > svg { color: currentColor; }
     .workspace-ui .apm-sidebar nav [class*="text-white"] > span.bg-white { background: var(--ws-accent); animation: none; }
+
+    /* Proteksi Tipografi Navigasi Sidebar: Kontras Tinggi, Tajam, Tidak Samar Abu Muda */
+    .workspace-ui .apm-sidebar nav :is(a, button):not([class*="bg-gradient-to-r"]):not([data-active="true"]):not([aria-current="page"]) {
+        color: #1e293b !important;
+        font-weight: 600;
+    }
+    .workspace-ui .apm-sidebar nav :is(a, button):not([class*="bg-gradient-to-r"]):not([data-active="true"]):not([aria-current="page"]):hover {
+        color: #0f172a !important;
+        background-color: var(--ws-subtle);
+    }
+    html.dark .workspace-ui .apm-sidebar nav :is(a, button):not([class*="bg-gradient-to-r"]):not([data-active="true"]):not([aria-current="page"]) {
+        color: #f1f5f9 !important;
+    }
+    html.dark .workspace-ui .apm-sidebar nav :is(a, button):not([class*="bg-gradient-to-r"]):not([data-active="true"]):not([aria-current="page"]):hover {
+        color: #ffffff !important;
+    }
+
+    /* Submenu Tree Link Items di Sidebar */
+    .workspace-ui .apm-sidebar nav a[class*="group/sub"] {
+        color: #334155 !important;
+        font-weight: 600 !important;
+        font-size: 11.5px;
+    }
+    .workspace-ui .apm-sidebar nav a[class*="group/sub"]:hover {
+        color: #0f172a !important;
+        background-color: var(--ws-subtle);
+    }
+    html.dark .workspace-ui .apm-sidebar nav a[class*="group/sub"] {
+        color: #e2e8f0 !important;
+    }
+    html.dark .workspace-ui .apm-sidebar nav a[class*="group/sub"]:hover {
+        color: #ffffff !important;
+    }
+
+    /* Kategori / Accordion Group Headers di Sidebar */
     .workspace-ui .apm-sidebar .group-badge {
-        padding: 8px 0 4px;
-        color: var(--ws-muted) !important;
-        background: transparent !important;
-        border: 0;
-        box-shadow: none;
-        font-size: 9px;
-        letter-spacing: .13em;
-        font-weight: 700;
+        padding: 8px 4px 4px;
+        color: #1e293b !important;
+        font-size: 10px;
+        letter-spacing: .08em;
+        font-weight: 800;
+    }
+    html.dark .workspace-ui .apm-sidebar .group-badge {
+        color: #e2e8f0 !important;
+    }
+
+    /* Submenu Bullet Dot */
+    .workspace-ui .apm-sidebar nav a[class*="group/sub"] span[class*="rounded-full"]:not([class*="scale-125"]) {
+        background-color: #64748b !important;
+    }
+    html.dark .workspace-ui .apm-sidebar nav a[class*="group/sub"] span[class*="rounded-full"]:not([class*="scale-125"]) {
+        background-color: #94a3b8 !important;
     }
     .workspace-ui .group-badge__dot { display: none; }
     .workspace-ui .apm-sidebar input { border-radius: 10px; font-size: 11px; box-shadow: none; }
+
+    /* Topbar Subtitle & Header Typography */
+    .workspace-ui .apm-topbar p,
+    .workspace-ui .workspace-page-heading p {
+        color: #334155 !important;
+        font-weight: 550;
+    }
+    html.dark .workspace-ui .apm-topbar p,
+    html.dark .workspace-ui .workspace-page-heading p {
+        color: #cbd5e1 !important;
+    }
+
+    /* Tab Buttons & Table Headers */
+    .workspace-ui :is(.data-table, table) thead th {
+        color: #1e293b !important;
+        font-weight: 700;
+    }
+    html.dark .workspace-ui :is(.data-table, table) thead th {
+        color: #e2e8f0 !important;
+    }
+
+    .workspace-ui nav[class*="flex"] button:not([class*="border-b-2"]):not([class*="bg-"]):not([class*="text-white"]),
+    .workspace-ui .flex[class*="border-b"] button:not([class*="border-b-2"]):not([class*="bg-"]):not([class*="text-white"]) {
+        color: #334155 !important;
+        font-weight: 600;
+    }
+    .workspace-ui nav[class*="flex"] button:not([class*="border-b-2"]):not([class*="bg-"]):not([class*="text-white"]):hover,
+    .workspace-ui .flex[class*="border-b"] button:not([class*="border-b-2"]):not([class*="bg-"]):not([class*="text-white"]):hover {
+        color: #0f172a !important;
+    }
+    html.dark .workspace-ui nav[class*="flex"] button:not([class*="border-b-2"]):not([class*="bg-"]):not([class*="text-white"]),
+    html.dark .workspace-ui .flex[class*="border-b"] button:not([class*="border-b-2"]):not([class*="bg-"]):not([class*="text-white"]) {
+        color: #e2e8f0 !important;
+    }
 
     .workspace-ui .apm-topbar {
         min-height: 92px;
