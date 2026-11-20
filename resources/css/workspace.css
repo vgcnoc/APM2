@@ -660,6 +660,52 @@
         color: #e2e8f0 !important;
     }
 
+    /* Proteksi Panah & Indikator Kategori Accordion Sidebar: Kontras Tinggi, Tebal, Tajam */
+    .workspace-ui .apm-sidebar .group\/grp svg,
+    .workspace-ui .apm-sidebar nav button svg[class*="transition-transform"],
+    .workspace-ui .apm-sidebar button[title*="Ciutkan"] svg,
+    .workspace-ui .apm-sidebar button[title*="Bentangkan"] svg {
+        color: #1e293b !important;
+        stroke: #1e293b !important;
+        stroke-width: 2.5px !important;
+        opacity: 1 !important;
+    }
+    .workspace-ui .apm-sidebar .group\/grp:hover svg,
+    .workspace-ui .apm-sidebar nav button:hover svg[class*="transition-transform"],
+    .workspace-ui .apm-sidebar button[title*="Ciutkan"]:hover svg,
+    .workspace-ui .apm-sidebar button[title*="Bentangkan"]:hover svg {
+        color: #0f172a !important;
+        stroke: #0f172a !important;
+    }
+    html.dark .workspace-ui .apm-sidebar .group\/grp svg,
+    html.dark .workspace-ui .apm-sidebar nav button svg[class*="transition-transform"],
+    html.dark .workspace-ui .apm-sidebar button[title*="Ciutkan"] svg,
+    html.dark .workspace-ui .apm-sidebar button[title*="Bentangkan"] svg {
+        color: #f1f5f9 !important;
+        stroke: #f1f5f9 !important;
+        stroke-width: 2.5px !important;
+        opacity: 1 !important;
+    }
+    html.dark .workspace-ui .apm-sidebar .group\/grp:hover svg,
+    html.dark .workspace-ui .apm-sidebar nav button:hover svg[class*="transition-transform"],
+    html.dark .workspace-ui .apm-sidebar button[title*="Ciutkan"]:hover svg,
+    html.dark .workspace-ui .apm-sidebar button[title*="Bentangkan"]:hover svg {
+        color: #ffffff !important;
+        stroke: #ffffff !important;
+    }
+
+    /* Counter Jumlah Menu Pada Kategori Accordion */
+    .workspace-ui .apm-sidebar .group\/grp span[class*="text-[10px]"] {
+        color: #1e293b !important;
+        font-weight: 800 !important;
+        opacity: 1 !important;
+    }
+    html.dark .workspace-ui .apm-sidebar .group\/grp span[class*="text-[10px]"] {
+        color: #e2e8f0 !important;
+        font-weight: 800 !important;
+        opacity: 1 !important;
+    }
+
     /* Submenu Bullet Dot */
     .workspace-ui .apm-sidebar nav a[class*="group/sub"] span[class*="rounded-full"]:not([class*="scale-125"]) {
         background-color: #64748b !important;

@@ -19,10 +19,10 @@
                     v-if="sidebarOpen"
                     type="button"
                     @click="setSidebarOpen(false)"
-                    class="hidden lg:flex p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                    class="hidden lg:flex p-1.5 rounded-lg text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
                     title="Ciutkan Sidebar (Ctrl+B)"
                 >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
+                    <svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
                 </button>
                 <!-- Mobile Close Button -->
                 <button 
@@ -116,7 +116,7 @@
                                     {{ res.group }} <span v-if="res.parentLabel">› {{ res.parentLabel }}</span>
                                 </p>
                             </div>
-                            <svg class="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                            <svg class="w-3.5 h-3.5 text-slate-700 dark:text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
                         </Link>
                     </template>
                 </div>
@@ -139,16 +139,16 @@
                                         {{ grp.label }}
                                     </span>
                                 </div>
-                                <div class="flex items-center gap-1.5 text-slate-400 group-hover/grp:text-slate-600 dark:group-hover/grp:text-slate-300 transition-colors">
-                                    <span class="text-[10px] font-bold opacity-60 group-hover/grp:opacity-100 transition-opacity">{{ grp.items.length }}</span>
+                                <div class="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 group-hover/grp:text-slate-900 dark:group-hover/grp:text-white transition-colors">
+                                    <span class="text-[10px] font-extrabold text-slate-600 dark:text-slate-300 group-hover/grp:text-slate-900 dark:group-hover/grp:text-white transition-colors">{{ grp.items.length }}</span>
                                     <svg
-                                        class="w-3.5 h-3.5 transition-transform duration-200"
-                                        :class="isGroupCollapsed(grp) ? '-rotate-90 text-slate-400' : 'rotate-0 text-slate-500'"
+                                        class="w-3.5 h-3.5 transition-transform duration-200 shrink-0"
+                                        :class="isGroupCollapsed(grp) ? '-rotate-90 text-slate-700 dark:text-slate-200 group-hover/grp:text-slate-900 dark:group-hover/grp:text-white' : 'rotate-0 text-slate-800 dark:text-slate-100 group-hover/grp:text-black dark:group-hover/grp:text-white'"
                                         fill="none"
                                         stroke="currentColor"
                                         viewBox="0 0 24 24"
                                     >
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
                                     </svg>
                                 </div>
                             </button>
@@ -245,14 +245,14 @@
                                             v-if="sidebarOpen"
                                             :class="[
                                                 'w-3.5 h-3.5 shrink-0 transition-transform duration-200',
-                                                item.active($page.url) ? 'text-white' : 'text-slate-400',
+                                                item.active($page.url) ? 'text-white' : 'text-slate-700 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white',
                                                 isDropdownOpen(item) ? 'rotate-90' : 'rotate-0'
                                             ]"
                                             fill="none"
                                             stroke="currentColor"
                                             viewBox="0 0 24 24"
                                         >
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
                                         </svg>
                                     </button>
 
@@ -392,7 +392,7 @@
                     @click="hoveredFlyout = null"
                 >
                     <span>Buka Halaman</span>
-                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    <svg class="w-4 h-4 text-slate-700 dark:text-slate-200 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
                 </Link>
 
                 <!-- If Dropdown with Submenus -->
@@ -402,14 +402,14 @@
                             v-if="isChildVisible(child)"
                             :href="child.href"
                             class="flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all"
-                            :class="child.active($page.url) ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white font-medium'"
+                            :class="child.active($page.url) ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white font-semibold'"
                             @click="hoveredFlyout = null"
                         >
                             <div class="flex items-center gap-2 truncate">
-                                <span class="w-1.5 h-1.5 rounded-full" :class="child.active($page.url) ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-300 dark:bg-slate-600'"></span>
+                                <span class="w-1.5 h-1.5 rounded-full" :class="child.active($page.url) ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-500'"></span>
                                 <span class="truncate">{{ child.label }}</span>
                             </div>
-                            <svg class="w-3.5 h-3.5 text-slate-400 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                            <svg class="w-3.5 h-3.5 text-slate-700 dark:text-slate-200 shrink-0 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
                         </Link>
                     </template>
                 </div>
