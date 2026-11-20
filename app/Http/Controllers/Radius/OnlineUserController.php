@@ -56,12 +56,12 @@ class OnlineUserController extends Controller
         // Customer mapping
         $customerMap = collect();
         if (!empty($usernames)) {
-            $customerMap = \App\Models\Customer::whereIn('customer_id', $usernames)
-                ->orWhereHas('ont', fn ($q) => $q->whereIn('pppoe_user', $usernames))
-                ->with(['package:id,name', 'area:id,name', 'ont:id,customer_id,pppoe_user'])
+            $customerMap = \App\Models\Customer::whereIn('customer_code', $usernames)
+                ->orWhereHas('ont', fn ($q) => $q->whereIn('pppoe_user', $usernames)->orWhereIn('hotspot_user', $usernames))
+                ->with(['package:id,name', 'area:id,name', 'ont:id,customer_id,pppoe_user,hotspot_user'])
                 ->get()
                 ->keyBy(function ($c) {
-                    return $c->ont?->pppoe_user ?: $c->customer_id;
+                    return $c->ont?->pppoe_user ?: ($c->ont?->hotspot_user ?: $c->customer_code);
                 });
         }
 

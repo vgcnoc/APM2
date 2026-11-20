@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Radius;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Models\Ont;
 use App\Models\Radius\RadCheck;
 use App\Models\Radius\RadPostAuth;
 use App\Models\Voucher;
@@ -87,27 +88,91 @@ class AuthLogController extends Controller
 
         // Resolusi data Customer, Voucher, dan RadCheck untuk item di halaman saat ini
         $items = collect($logs->items());
-        $usernames = $items->pluck('username')->filter()->unique();
+        $usernames = $items->pluck('username')->filter()->unique()->values();
 
-        $customers = Customer::whereIn('username', $usernames)
-            ->with(['package:id,name,speed_mbps,price', 'area:id,name'])
-            ->get(['id', 'name', 'username', 'customer_id', 'package_id', 'area_id', 'status', 'phone'])
-            ->keyBy('username');
+        $customers = collect();
+        if ($usernames->isNotEmpty()) {
+            // 1. Cari via ONT (pppoe_user atau hotspot_user)
+            $onts = Ont::where(function ($q) use ($usernames) {
+                    $q->whereIn('pppoe_user', $usernames)
+                      ->orWhereIn('hotspot_user', $usernames);
+                })
+                ->whereNotNull('customer_id')
+                ->with(['customer.package:id,name,speed_mbps,price', 'customer.area:id,name'])
+                ->get();
 
-        $vouchers = Voucher::whereIn('code', $usernames)
-            ->with('package:id,name,speed_mbps,price')
-            ->get(['id', 'code', 'package_id', 'status', 'is_used'])
-            ->keyBy('code');
+            foreach ($onts as $ont) {
+                if ($ont->customer) {
+                    if ($ont->pppoe_user) {
+                        $customers->put($ont->pppoe_user, $ont->customer);
+                        $customers->put(strtolower($ont->pppoe_user), $ont->customer);
+                    }
+                    if ($ont->hotspot_user) {
+                        $customers->put($ont->hotspot_user, $ont->customer);
+                        $customers->put(strtolower($ont->hotspot_user), $ont->customer);
+                    }
+                }
+            }
 
-        $radChecks = RadCheck::whereIn('username', $usernames)
-            ->get(['username', 'attribute', 'value'])
-            ->groupBy('username');
+            // 2. Cari via Customer langsung (customer_code, email, atau phone)
+            $directCustomers = Customer::whereIn('customer_code', $usernames)
+                ->orWhereIn('email', $usernames)
+                ->orWhereIn('phone', $usernames)
+                ->with(['package:id,name,speed_mbps,price', 'area:id,name'])
+                ->get(['id', 'name', 'customer_code', 'email', 'package_id', 'area_id', 'status', 'phone']);
 
-        $transformedItems = $items->map(function ($item) use ($customers, $vouchers, $radChecks) {
+            foreach ($directCustomers as $cust) {
+                if ($cust->customer_code) {
+                    $customers->put($cust->customer_code, $cust);
+                    $customers->put(strtolower($cust->customer_code), $cust);
+                }
+                if ($cust->email) {
+                    $customers->put($cust->email, $cust);
+                    $customers->put(strtolower($cust->email), $cust);
+                }
+                if ($cust->phone) {
+                    $customers->put($cust->phone, $cust);
+                }
+            }
+        }
+
+        // Resolusi Voucher
+        $voucherMap = collect();
+        if ($usernames->isNotEmpty()) {
+            $vouchers = Voucher::where(function ($q) use ($usernames) {
+                    $q->whereIn('code', $usernames)
+                      ->orWhereIn('username', $usernames);
+                })
+                ->with('profile:id,name')
+                ->get(['id', 'code', 'username', 'voucher_profile_id', 'status', 'used_at']);
+
+            foreach ($vouchers as $voucher) {
+                if ($voucher->code) {
+                    $voucherMap->put($voucher->code, $voucher);
+                    $voucherMap->put(strtolower($voucher->code), $voucher);
+                }
+                if ($voucher->username) {
+                    $voucherMap->put($voucher->username, $voucher);
+                    $voucherMap->put(strtolower($voucher->username), $voucher);
+                }
+            }
+        }
+
+        // Resolusi RadCheck
+        $radChecks = collect();
+        if ($usernames->isNotEmpty()) {
+            $radChecks = RadCheck::whereIn('username', $usernames)
+                ->get(['username', 'attribute', 'value'])
+                ->groupBy(fn ($rc) => strtolower($rc->username));
+        }
+
+        $transformedItems = $items->map(function ($item) use ($customers, $voucherMap, $radChecks) {
             $u = (string) $item->username;
-            $customer = $customers->get($u);
-            $voucher = $vouchers->get($u);
-            $radCheck = $radChecks->get($u);
+            $uLower = strtolower($u);
+
+            $customer = $customers->get($u) ?: $customers->get($uLower);
+            $voucher = $voucherMap->get($u) ?: $voucherMap->get($uLower);
+            $radCheck = $radChecks->get($uLower);
 
             $userType = 'unknown';
             if ($customer) {
@@ -132,7 +197,7 @@ class AuthLogController extends Controller
                     }
                 } elseif ($voucher) {
                     $vStatus = strtolower((string) $voucher->status);
-                    if ($voucher->is_used || $vStatus === 'expired') {
+                    if ($voucher->used_at || $vStatus === 'used' || $vStatus === 'expired') {
                         $diagnosis = 'Voucher Kadaluarsa / Habis Kuota';
                         $diagnosisType = 'warning';
                     } else {
@@ -157,7 +222,7 @@ class AuthLogController extends Controller
                 'customer' => $customer ? [
                     'id' => $customer->id,
                     'name' => $customer->name,
-                    'customer_id' => $customer->customer_id,
+                    'customer_id' => $customer->customer_code,
                     'package_name' => $customer->package->name ?? '-',
                     'speed' => $customer->package->speed_mbps ? $customer->package->speed_mbps . ' Mbps' : '-',
                     'area_name' => $customer->area->name ?? '-',
@@ -166,10 +231,10 @@ class AuthLogController extends Controller
                 ] : null,
                 'voucher' => $voucher ? [
                     'id' => $voucher->id,
-                    'code' => $voucher->code,
-                    'package_name' => $voucher->package->name ?? 'Hotspot',
+                    'code' => $voucher->code ?: $voucher->username,
+                    'package_name' => $voucher->profile->name ?? 'Hotspot',
                     'status' => $voucher->status,
-                    'is_used' => (bool) $voucher->is_used,
+                    'is_used' => (bool) ($voucher->used_at || $voucher->status === 'used'),
                 ] : null,
                 'has_radcheck' => (bool) ($radCheck && $radCheck->isNotEmpty()),
                 'diagnosis' => $diagnosis,
