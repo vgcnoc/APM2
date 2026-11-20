@@ -275,7 +275,18 @@
                     </div>
                     <p class="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
                         <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                        Saldo aktif cetak voucher
+                        <template v-if="canSellVouchers && canPayBills">
+                            Saldo modal loket &amp; cetak voucher
+                        </template>
+                        <template v-else-if="canPayBills && !canSellVouchers">
+                            Saldo modal loket pembayaran tagihan
+                        </template>
+                        <template v-else-if="canSellVouchers && !canPayBills">
+                            Saldo aktif cetak voucher
+                        </template>
+                        <template v-else>
+                            Saldo deposit mitra
+                        </template>
                     </p>
                 </div>
 
@@ -803,9 +814,9 @@
                                 <button 
                                     @click="printSelected" 
                                     class="px-4 py-2 bg-slate-800 hover:bg-slate-900 active:bg-black text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                                    :disabled="vouchers.data.length === 0"
+                                    :disabled="(vouchers?.data?.length ?? 0) === 0"
                                 >
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                                     {{ selectedVouchers.length > 0 ? `Print Terpilih (${selectedVouchers.length})` : 'Print Semua Voucher' }}
                                 </button>
                             </div>
@@ -821,7 +832,7 @@
                                                 :checked="isAllSelected" 
                                                 @change="toggleSelectAll"
                                                 class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500 cursor-pointer"
-                                                :disabled="vouchers.data.length === 0"
+                                                :disabled="(vouchers?.data?.length ?? 0) === 0"
                                             />
                                         </th>
                                         <th scope="col" class="px-3 py-3.5 text-xs font-bold uppercase tracking-wider text-gray-500">Kode</th>
@@ -833,7 +844,7 @@
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-100 bg-white">
-                                    <tr v-for="voucher in vouchers.data" :key="voucher.id" class="hover:bg-slate-50/70 transition-colors" :class="{ 'bg-indigo-50/30': selectedVouchers.includes(voucher.id) }">
+                                    <tr v-for="voucher in (vouchers?.data || [])" :key="voucher.id" class="hover:bg-slate-50/70 transition-colors" :class="{ 'bg-indigo-50/30': selectedVouchers.includes(voucher.id) }">
                                         <td class="py-3.5 pl-4 pr-3 text-center sm:pl-6">
                                             <input 
                                                 type="checkbox" 
@@ -890,7 +901,7 @@
                                             </button>
                                         </td>
                                     </tr>
-                                    <tr v-if="vouchers.data.length === 0">
+                                    <tr v-if="(vouchers?.data?.length ?? 0) === 0">
                                         <td colspan="7" class="px-6 py-12 text-center">
                                             <div class="flex flex-col items-center justify-center text-gray-400">
                                                 <svg class="w-12 h-12 mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
@@ -904,7 +915,7 @@
                         </div>
 
                         <!-- Pagination -->
-                        <div v-if="vouchers.links && vouchers.links.length > 3" class="px-6 py-4 bg-white border-t border-gray-100">
+                        <div v-if="vouchers?.links && vouchers.links.length > 3" class="px-6 py-4 bg-white border-t border-gray-100">
                             <div class="flex flex-wrap gap-1.5 justify-center sm:justify-start">
                                 <template v-for="(link, p) in vouchers.links" :key="p">
                                     <div v-if="link.url === null" class="px-3 py-1.5 text-xs font-medium text-gray-300 border border-gray-100 rounded-lg bg-gray-50" v-html="link.label" />
@@ -2345,12 +2356,13 @@ const submitBulkForm = () => {
 const selectedVouchers = ref([]);
 
 const isAllSelected = computed(() => {
-    return props.vouchers.data.length > 0 && selectedVouchers.value.length === props.vouchers.data.length;
+    const list = props.vouchers?.data || [];
+    return list.length > 0 && selectedVouchers.value.length === list.length;
 });
 
 const toggleSelectAll = (e) => {
     if (e.target.checked) {
-        selectedVouchers.value = props.vouchers.data.map(v => v.id);
+        selectedVouchers.value = (props.vouchers?.data || []).map(v => v.id);
     } else {
         selectedVouchers.value = [];
     }
@@ -2358,10 +2370,11 @@ const toggleSelectAll = (e) => {
 
 const printSelected = () => {
     let idsToPrint = [];
+    const list = props.vouchers?.data || [];
     if (selectedVouchers.value.length > 0) {
         idsToPrint = selectedVouchers.value;
-    } else if (props.vouchers.data.length > 0) {
-        idsToPrint = props.vouchers.data.map(v => v.id);
+    } else if (list.length > 0) {
+        idsToPrint = list.map(v => v.id);
     } else {
         Swal.fire('Info', 'Belum ada voucher untuk dicetak.', 'info');
         return;

@@ -71,7 +71,7 @@ Route::middleware(['auth'])->group(function () {
 
 
     // Client Area (Reseller)
-    Route::middleware(['role:reseller|customer'])->prefix('client-area')->name('client-area.')->group(function () {
+    Route::middleware(['role:reseller|customer|admin|super admin|superadmin'])->prefix('client-area')->name('client-area.')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\ResellerClientController::class, 'dashboard'])->name('dashboard');
         Route::get('/billing', [\App\Http\Controllers\ResellerClientController::class, 'billing'])->name('billing');
         Route::get('/biller', [\App\Http\Controllers\ResellerClientController::class, 'biller'])->name('biller');

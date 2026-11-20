@@ -54,7 +54,16 @@ class DashboardController extends Controller
             return redirect()->route('affiliate.dashboard');
         }
 
-        if (auth()->check() && (
+        $isAdminOrStaff = auth()->check() && (
+            in_array(strtolower(trim((string) auth()->user()->role)), ['admin', 'superadmin', 'super admin', 'super-admin', 'noc', 'teknisi', 'cs', 'finance', 'manager']) ||
+            (method_exists(auth()->user(), 'hasRole') && (
+                auth()->user()->hasRole('admin') || 
+                auth()->user()->hasRole('super admin') || 
+                auth()->user()->hasRole('super-admin')
+            ))
+        );
+
+        if (!$isAdminOrStaff && auth()->check() && (
             auth()->user()->role === 'reseller' || 
             auth()->user()->role === 'customer' || 
             (method_exists(auth()->user(), 'hasRole') && (auth()->user()->hasRole('customer') || auth()->user()->hasRole('reseller')))

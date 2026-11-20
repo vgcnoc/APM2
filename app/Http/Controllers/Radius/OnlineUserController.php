@@ -84,7 +84,7 @@ class OnlineUserController extends Controller
             if ($customer) {
                 $u->setAttribute('customer_name', $customer->name);
                 $u->setAttribute('customer_id', $customer->id);
-                $u->setAttribute('customer_code', $customer->customer_id);
+                $u->setAttribute('customer_code', $customer->customer_code ?: ($customer->customer_id ?? ('CUST-' . $customer->id)));
                 $u->setAttribute('package_name', $customer->package?->name);
                 $u->setAttribute('area_name', $customer->area?->name);
                 $u->setAttribute('user_type', 'pppoe');

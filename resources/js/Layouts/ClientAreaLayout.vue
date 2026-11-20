@@ -177,6 +177,19 @@
 
                     <!-- Pattern & Theme Toggles & User Menu Profile -->
                     <div class="flex items-center gap-2 sm:gap-2.5 shrink-0 relative">
+                        <!-- Quick Switcher to Admin ISP Panel -->
+                        <Link 
+                            v-if="isAdmin"
+                            href="/" 
+                            class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/80 dark:border-indigo-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition shadow-2xs"
+                            title="Beralih ke Panel Utama Admin ISP"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                            </svg>
+                            <span>Panel Admin ISP</span>
+                        </Link>
+
                         <!-- Corak Background Picker -->
                         <PatternPicker />
 
@@ -222,7 +235,7 @@
                                     </div>
                                 </div>
                                 <Link 
-                                    v-if="['admin', 'superadmin', 'super admin', 'super-admin'].includes(String($page.props.auth?.user?.role || '').toLowerCase())"
+                                    v-if="isAdmin"
                                     href="/" 
                                     class="w-full text-left flex items-center gap-2 px-4 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer"
                                 >
@@ -345,7 +358,7 @@
 
                     <!-- Link to Admin Panel for Admin / Superadmin -->
                     <Link 
-                        v-if="['admin', 'superadmin', 'super admin', 'super-admin'].includes(String($page.props.auth?.user?.role || '').toLowerCase())"
+                        v-if="isAdmin"
                         href="/" 
                         @click="showMobileMenu = false"
                         class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-blue-600 dark:text-blue-400 bg-blue-50/70 dark:bg-blue-950/40"
@@ -385,6 +398,12 @@ import PatternPicker from '@/Components/PatternPicker.vue';
 import { initTheme } from '@/Composables/useTheme';
 
 const page = usePage();
+
+const isAdmin = computed(() => {
+    const role = String(page.props.auth?.user?.role || '').toLowerCase();
+    const hasRole = page.props.auth?.user?.roles?.some(r => ['admin', 'superadmin', 'super admin', 'super-admin'].includes(String(r.name || '').toLowerCase()));
+    return ['admin', 'superadmin', 'super admin', 'super-admin'].includes(role) || Boolean(hasRole);
+});
 
 const canSellVouchers = computed(() => {
     if (page.props.can_sell_vouchers !== undefined) return Boolean(page.props.can_sell_vouchers);
