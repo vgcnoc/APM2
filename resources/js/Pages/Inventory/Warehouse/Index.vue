@@ -38,6 +38,15 @@
                                 <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                                 Rekap Kondisi
                             </Link>
+                            <button 
+                                type="button" 
+                                @click="openPrintModal" 
+                                class="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm hover:shadow transition-all cursor-pointer" 
+                                title="Cetak Laporan Rekapitulasi Stok Gudang (Lengkap Tanggal & Tanda Tangan Pemilik Akun)"
+                            >
+                                <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                                <span>Print / Cetak Stok</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -660,15 +669,177 @@
                 </DialogPanel>
             </div>
         </Dialog>
+
+        <!-- Modal Pengaturan Cetak Laporan Stok (Print Setup Modal) -->
+        <Dialog :open="isPrintModalOpen" @close="isPrintModalOpen = false" class="relative z-50">
+            <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" aria-hidden="true" />
+            <div class="fixed inset-0 flex items-center justify-center p-4">
+                <DialogPanel class="w-full max-w-xl bg-white rounded-3xl shadow-2xl overflow-hidden transform transition-all border border-slate-100">
+                    <div class="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-slate-900 to-indigo-950 text-white flex items-center justify-between">
+                        <DialogTitle class="text-base font-black flex items-center gap-2.5">
+                            <span class="p-1.5 rounded-xl bg-white/10 text-white">🖨️</span>
+                            <span>Cetak Laporan Rekapitulasi Stok Gudang</span>
+                        </DialogTitle>
+                        <button type="button" @click="isPrintModalOpen = false" class="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer">✕</button>
+                    </div>
+
+                    <div class="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+                        <!-- 1. Pilihan Cakupan Data (Scope) -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">1. Cakupan Data Laporan</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <label 
+                                    class="p-3.5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between"
+                                    :class="[printScope === 'filtered' ? 'border-indigo-600 bg-indigo-50/50 shadow-2xs' : 'border-slate-200 hover:border-slate-300 bg-white']"
+                                >
+                                    <div class="flex items-start gap-2.5">
+                                        <input type="radio" v-model="printScope" value="filtered" class="mt-0.5 text-indigo-600 focus:ring-indigo-500" />
+                                        <div>
+                                            <p class="text-xs font-bold text-slate-900">Sesuai Filter Saat Ini</p>
+                                            <p class="text-[11px] text-slate-500 mt-0.5">Mencetak data sesuai filter aktif di layar ({{ materials.total || 0 }} barang).</p>
+                                        </div>
+                                    </div>
+                                    <div v-if="activeFilterCount > 0" class="mt-2 pt-2 border-t border-slate-200/60 text-[10px] text-indigo-700 font-semibold">
+                                        {{ activeFilterCount }} filter diterapkan
+                                    </div>
+                                </label>
+
+                                <label 
+                                    class="p-3.5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between"
+                                    :class="[printScope === 'all' ? 'border-indigo-600 bg-indigo-50/50 shadow-2xs' : 'border-slate-200 hover:border-slate-300 bg-white']"
+                                >
+                                    <div class="flex items-start gap-2.5">
+                                        <input type="radio" v-model="printScope" value="all" class="mt-0.5 text-indigo-600 focus:ring-indigo-500" />
+                                        <div>
+                                            <p class="text-xs font-bold text-slate-900">Semua Stok Gudang</p>
+                                            <p class="text-[11px] text-slate-500 mt-0.5">Mencetak seluruh katalog master material ({{ summary?.total_materials || materials.total || 0 }} barang).</p>
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 2. Pengaturan Tanggal & Tempat Dokumen -->
+                        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">2. Tanggal & Lokasi Dokumen</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 mb-1">Tempat / Kota Dokumen</label>
+                                    <input 
+                                        type="text" 
+                                        v-model="printCity" 
+                                        class="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-medium" 
+                                        placeholder="Misal: Sukabumi" 
+                                    />
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 mb-1">Tanggal Dokumen</label>
+                                    <input 
+                                        type="date" 
+                                        v-model="printDate" 
+                                        class="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-medium" 
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Tanda Tangan Pemilik Akun -->
+                        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">3. Tanda Tangan Pemilik Akun</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 mb-1">Nama Pemilik Akun / Pelapor</label>
+                                    <input 
+                                        type="text" 
+                                        v-model="printSignerName" 
+                                        class="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-bold text-slate-900" 
+                                        placeholder="Nama Lengkap Pemilik Akun" 
+                                    />
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 mb-1">Jabatan / Role</label>
+                                    <input 
+                                        type="text" 
+                                        v-model="printSignerRole" 
+                                        class="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-medium text-slate-800" 
+                                        placeholder="Jabatan" 
+                                    />
+                                </div>
+                            </div>
+
+                            <!-- Mode Tanda Tangan: Digital vs Basah -->
+                            <div class="pt-2">
+                                <label class="block text-[11px] font-bold text-slate-600 mb-1.5">Model Tanda Tangan</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button 
+                                        type="button" 
+                                        @click="printSigMode = 'digital'" 
+                                        class="p-2.5 rounded-xl border text-left flex items-center gap-2 transition-all cursor-pointer"
+                                        :class="[printSigMode === 'digital' ? 'border-indigo-600 bg-indigo-50 text-indigo-900 font-bold shadow-2xs' : 'border-slate-200 bg-white text-slate-600']"
+                                    >
+                                        <span>✍️</span>
+                                        <div class="text-[11px]">
+                                            <p class="font-bold leading-tight">Digital Otomatis</p>
+                                            <p class="text-[9px] text-slate-400">Cap resmi & QR verifikasi</p>
+                                        </div>
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        @click="printSigMode = 'manual'" 
+                                        class="p-2.5 rounded-xl border text-left flex items-center gap-2 transition-all cursor-pointer"
+                                        :class="[printSigMode === 'manual' ? 'border-indigo-600 bg-indigo-50 text-indigo-900 font-bold shadow-2xs' : 'border-slate-200 bg-white text-slate-600']"
+                                    >
+                                        <span>📝</span>
+                                        <div class="text-[11px]">
+                                            <p class="font-bold leading-tight">Fisik / Basah</p>
+                                            <p class="text-[9px] text-slate-400">Kolom tanda tangan kosong</p>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Kolom Mengetahui (Pimpinan) -->
+                            <div class="pt-2 border-t border-slate-200 flex items-center justify-between">
+                                <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
+                                    <input type="checkbox" v-model="printShowApprover" class="rounded text-indigo-600 focus:ring-indigo-500" />
+                                    <span>Sertakan Kolom Mengetahui (Pimpinan / Manager)</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer Action Buttons -->
+                    <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                        <button 
+                            type="button" 
+                            @click="isPrintModalOpen = false" 
+                            class="px-4 py-2.5 text-xs font-bold text-slate-600 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition cursor-pointer"
+                        >
+                            Batal
+                        </button>
+                        <button 
+                            type="button" 
+                            @click="executePrint(true)" 
+                            class="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-black text-white bg-gradient-to-r from-slate-900 to-indigo-950 hover:from-slate-800 hover:to-indigo-900 rounded-xl shadow-md shadow-slate-900/20 transition-all cursor-pointer"
+                        >
+                            <span>🖨️</span>
+                            <span>Buka & Cetak Dokumen (PDF)</span>
+                        </button>
+                    </div>
+                </DialogPanel>
+            </div>
+        </Dialog>
     </AppLayout>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue';
-import { router, Link, useForm } from '@inertiajs/vue3';
+import { router, Link, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/vue';
 import { debounce } from 'lodash';
+
+const page = usePage();
 
 const props = defineProps({
     materials: Object,
@@ -959,5 +1130,68 @@ const submitDistributeForm = () => {
             distributeForm.reset();
         }
     });
+};
+
+// ── Modal Print / Cetak Laporan ─────────────────────────────────
+const isPrintModalOpen = ref(false);
+const printScope = ref('filtered');
+const printCity = ref('Sukabumi');
+const printDate = ref('');
+const printSignerName = ref('');
+const printSignerRole = ref('');
+const printSigMode = ref('digital');
+const printShowApprover = ref(true);
+const printApproverTitle = ref('Pimpinan / Manager Operasional');
+
+const openPrintModal = () => {
+    const u = page.props.auth?.user;
+    
+    let defaultCity = 'Sukabumi';
+    if (u?.last_location_name) {
+        const parts = u.last_location_name.split(',');
+        defaultCity = (parts[parts.length - 1] || parts[0]).trim();
+    }
+    printCity.value = defaultCity;
+
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    printDate.value = `${yyyy}-${mm}-${dd}`;
+
+    printSignerName.value = u?.name || 'Super Admin';
+    printSignerRole.value = u?.role ? (u.role === 'admin' ? 'Super Admin / Penanggung Jawab Gudang' : u.role) : 'Penanggung Jawab Gudang & Logistik';
+    printSigMode.value = 'digital';
+    printShowApprover.value = true;
+    printApproverTitle.value = 'Pimpinan / Manager Operasional';
+
+    isPrintModalOpen.value = true;
+};
+
+const executePrint = (directAutoprint = true) => {
+    const params = new URLSearchParams();
+
+    if (printScope.value === 'filtered') {
+        if (filterSearch.value) params.set('search', filterSearch.value);
+        if (filterCategory.value) params.set('category', filterCategory.value);
+        if (filterAreaId.value) params.set('area_id', filterAreaId.value);
+        if (filterStockStatus.value) params.set('stock_status', filterStockStatus.value);
+        if (filterUnit.value) params.set('unit', filterUnit.value);
+        if (filterCondition.value) params.set('condition', filterCondition.value);
+        if (filterSortBy.value && filterSortBy.value !== 'name_asc') params.set('sort_by', filterSortBy.value);
+    }
+
+    if (printCity.value) params.set('city', printCity.value);
+    if (printDate.value) params.set('date', printDate.value);
+    if (printSignerName.value) params.set('signer_name', printSignerName.value);
+    if (printSignerRole.value) params.set('signer_role', printSignerRole.value);
+    params.set('signature_mode', printSigMode.value);
+    params.set('show_approver', printShowApprover.value ? '1' : '0');
+    if (printApproverTitle.value) params.set('approver_title', printApproverTitle.value);
+    if (directAutoprint) params.set('autoprint', '1');
+
+    const printUrl = `/warehouse-stocks/print?${params.toString()}`;
+    window.open(printUrl, '_blank');
+    isPrintModalOpen.value = false;
 };
 </script>

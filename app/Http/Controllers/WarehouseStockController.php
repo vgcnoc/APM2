@@ -323,4 +323,251 @@ class WarehouseStockController extends Controller
             return redirect()->back()->with('error', 'Gagal menghapus barang: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Halaman Cetak Dokumen Rekapitulasi Stok Gudang (Print View)
+     */
+    public function print(Request $request)
+    {
+        $user = auth()->user();
+        $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('warehouse_stocks_view_all') || $user->can('materials_view_all');
+        $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
+
+        $selectedAreaId = $request->filled('area_id') ? $request->area_id : null;
+        $scopedAreaIds = $selectedAreaId ? [$selectedAreaId] : (!$isGlobal && !empty($accessibleAreas) ? $accessibleAreas : null);
+
+        $warehouseFilter = function ($q) use ($scopedAreaIds) {
+            $q->where(function ($sub) use ($scopedAreaIds) {
+                $sub->where(function ($catQ) {
+                    $catQ->where('id', '>', 260)
+                         ->where(function ($mq) {
+                             $mq->where('is_migration', false)->orWhereNull('is_migration');
+                         });
+                })
+                ->orWhere(function ($migQ) use ($scopedAreaIds) {
+                    $migQ->where(function ($mq) {
+                        $mq->where('id', '<=', 260)->orWhere('is_migration', true);
+                    })
+                    ->whereHas('stocks', function ($sq) use ($scopedAreaIds) {
+                        if ($scopedAreaIds) {
+                            $sq->whereIn('area_id', $scopedAreaIds);
+                        }
+                        $sq->where('stock', '>', 0);
+                    });
+                });
+            });
+        };
+
+        $query = Material::where(function ($q) {
+            $q->where('is_active', true)->orWhereNull('is_active');
+        })
+        ->visibleInMaterialsTable()
+        ->where($warehouseFilter)
+        ->with(['transactionItems:id,material_id,condition', 'stocks' => function ($sq) use ($accessibleAreas, $isGlobal) {
+            if (!$isGlobal && !empty($accessibleAreas)) {
+                $sq->whereIn('area_id', $accessibleAreas);
+            }
+            $sq->with('area');
+        }]);
+
+        // 1. Scope restriction & Area filter
+        if (!$isGlobal && !empty($accessibleAreas)) {
+            $query->whereHas('stocks', function ($sq) use ($accessibleAreas, $selectedAreaId) {
+                if ($selectedAreaId) {
+                    $sq->where('area_id', $selectedAreaId);
+                } else {
+                    $sq->whereIn('area_id', $accessibleAreas);
+                }
+            });
+            $areas = Area::whereIn('id', $accessibleAreas)->orderBy('name')->get(['id', 'name']);
+        } else {
+            if ($selectedAreaId) {
+                $query->whereHas('stocks', function ($q) use ($selectedAreaId) {
+                    $q->where('area_id', $selectedAreaId);
+                });
+            } else {
+                $query->whereHas('stocks');
+            }
+            $areas = Area::orderBy('name')->get(['id', 'name']);
+        }
+
+        // 2. Search
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('category', 'like', "%{$search}%")
+                  ->orWhere('supplier', 'like', "%{$search}%")
+                  ->orWhere('unit', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        // 3. Category
+        if ($request->filled('category')) {
+            $query->where('category', $request->category);
+        }
+
+        // 4. Unit
+        if ($request->filled('unit')) {
+            $query->where('unit', $request->unit);
+        }
+
+        // 5. Stock Status
+        if ($request->filled('stock_status')) {
+            if ($scopedAreaIds) {
+                if ($request->stock_status === 'out_of_stock') {
+                    $query->whereDoesntHave('stocks', function ($sq) use ($scopedAreaIds) {
+                        $sq->whereIn('area_id', $scopedAreaIds)->where('stock', '>', 0);
+                    });
+                } elseif ($request->stock_status === 'available') {
+                    $query->whereHas('stocks', function ($sq) use ($scopedAreaIds) {
+                        $sq->whereIn('area_id', $scopedAreaIds)->where('stock', '>', 0);
+                    });
+                } elseif ($request->stock_status === 'low_stock') {
+                    $query->whereHas('stocks', function ($sq) use ($scopedAreaIds) {
+                        $sq->whereIn('area_id', $scopedAreaIds)->where('stock', '>', 0)->where('stock', '<=', 20);
+                    });
+                }
+            } else {
+                if ($request->stock_status === 'out_of_stock') {
+                    $query->whereDoesntHave('stocks', function ($sq) {
+                        $sq->where('stock', '>', 0);
+                    });
+                } elseif ($request->stock_status === 'available') {
+                    $query->whereHas('stocks', function ($sq) {
+                        $sq->where('stock', '>', 0);
+                    });
+                } elseif ($request->stock_status === 'low_stock') {
+                    $query->whereHas('stocks', function ($sq) {
+                        $sq->where('stock', '>', 0)->where('stock', '<=', 20);
+                    });
+                }
+            }
+        }
+
+        // 6. Condition
+        if ($request->filled('condition')) {
+            $cond = $request->condition;
+            if ($cond === 'layak') {
+                $query->where(function ($kq) {
+                    $kq->where('name', 'not like', '%rusak%')
+                       ->where('name', 'not like', '%afkir%')
+                       ->where('name', 'not like', '%tidak layak%')
+                       ->where(function ($dq) {
+                           $dq->whereNull('description')
+                              ->orWhere(function ($ddq) {
+                                  $ddq->where('description', 'not like', '%rusak%')
+                                      ->where('description', 'not like', '%tidak layak%');
+                              });
+                       });
+                });
+            } elseif ($cond === 'tidak_layak') {
+                $query->where(function ($sq) {
+                    $sq->where('name', 'like', '%tidak layak%')
+                       ->orWhere('description', 'like', '%tidak layak%');
+                });
+            } elseif ($cond === 'rusak') {
+                $query->where(function ($sq) {
+                    $sq->where('name', 'like', '%rusak%')
+                       ->orWhere('name', 'like', '%afkir%')
+                       ->orWhere('name', 'like', '%scrap%')
+                       ->orWhere('description', 'like', '%rusak%')
+                       ->orWhere('description', 'like', '%afkir%')
+                       ->orWhere('description', 'like', '%scrap%');
+                });
+            }
+        }
+
+        // 7. Sorting
+        $sortBy = $request->get('sort_by', 'name_asc');
+        switch ($sortBy) {
+            case 'name_desc':
+                $query->orderBy('name', 'desc');
+                break;
+            case 'category':
+                $query->orderBy('category')->orderBy('name');
+                break;
+            case 'name_asc':
+            default:
+                $query->orderBy('name', 'asc');
+                break;
+        }
+
+        $materials = $query->get();
+
+        $materials->transform(function ($material) {
+            $nameLower = strtolower($material->name . ' ' . ($material->description ?? ''));
+            if (str_contains($nameLower, 'rusak') || str_contains($nameLower, 'afkir') || str_contains($nameLower, 'scrap')) {
+                $material->condition_label = 'Rusak';
+            } elseif (str_contains($nameLower, 'tidak layak')) {
+                $material->condition_label = 'Tidak Layak';
+            } else {
+                $material->condition_label = 'Layak Pakai';
+            }
+            return $material;
+        });
+
+        // Company
+        $company = ($user && $user->company) ? $user->company : \App\Models\Company::holding();
+        if (!$company) {
+            $company = (object) [
+                'name' => 'PT VIRUZS GLOBAL CONNECTION',
+                'brand_name' => 'VIZBILL',
+                'tagline' => 'Internet & Digital Infrastructure Services',
+                'address' => 'Desa Sirnajaya, Kec. Gunungguruh, Kab. Sukabumi, Jawa Barat',
+                'phone' => '0823-1864-5178',
+                'email' => 'support@viruzs.net',
+                'website' => 'https://viruzs.net',
+            ];
+        }
+
+        $totalItems = $materials->count();
+        $availableItems = $materials->filter(fn($m) => $m->stocks->sum('stock') > 0)->count();
+        $outOfStockItems = $materials->filter(fn($m) => $m->stocks->sum('stock') <= 0)->count();
+        $layakItems = $materials->filter(fn($m) => $m->condition_label === 'Layak Pakai')->count();
+        $tidakLayakItems = $materials->filter(fn($m) => $m->condition_label === 'Tidak Layak')->count();
+        $rusakItems = $materials->filter(fn($m) => $m->condition_label === 'Rusak')->count();
+
+        $selectedArea = $selectedAreaId ? Area::find($selectedAreaId) : null;
+
+        // Signer / Account Owner info
+        $defaultCity = 'Sukabumi';
+        if (!empty($user?->last_location_name)) {
+            $parts = explode(',', $user->last_location_name);
+            $defaultCity = trim(end($parts) ?: $parts[0]);
+        }
+        $signerCity = $request->get('city') ?: $defaultCity;
+        $signerDate = $request->get('date') ?: now()->toDateString();
+        $signerName = $request->get('signer_name') ?: ($user?->name ?? 'Super Admin');
+        $signerRole = $request->get('signer_role') ?: (ucwords(str_replace('_', ' ', $user?->role ?? 'Penanggung Jawab Gudang')));
+
+        return Inertia::render('Inventory/Warehouse/Print', [
+            'materials' => $materials,
+            'areas' => $areas,
+            'company' => $company,
+            'user' => $user,
+            'filters' => $request->only(['search', 'category', 'unit', 'area_id', 'stock_status', 'sort_by', 'condition']),
+            'selectedArea' => $selectedArea,
+            'summary' => [
+                'total' => $totalItems,
+                'available' => $availableItems,
+                'out_of_stock' => $outOfStockItems,
+                'layak' => $layakItems,
+                'tidak_layak' => $tidakLayakItems,
+                'rusak' => $rusakItems,
+            ],
+            'meta' => [
+                'city' => trim($signerCity),
+                'date' => $signerDate,
+                'signer_name' => $signerName,
+                'signer_role' => $signerRole,
+                'signature_mode' => $request->get('signature_mode', 'digital'),
+                'show_approver' => $request->boolean('show_approver', true),
+                'approver_title' => $request->get('approver_title', 'Pimpinan / Manager Operasional'),
+                'printed_at' => now()->format('Y-m-d H:i:s'),
+                'report_number' => 'INV-RPT-' . now()->format('Ymd-His'),
+            ]
+        ]);
+    }
 }

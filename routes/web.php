@@ -449,6 +449,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('order-toko', \App\Http\Controllers\PurchaseOrderController::class);
     Route::post('order-toko/{id}/send-ont', [\App\Http\Controllers\PurchaseOrderController::class, 'sendOnt'])->name('order-toko.send-ont');
     Route::resource('stok-in-out', \App\Http\Controllers\StockInOutController::class);
+    Route::get('warehouse-stocks/print', [\App\Http\Controllers\WarehouseStockController::class, 'print'])->name('warehouse-stocks.print');
     Route::get('warehouse-stocks', [\App\Http\Controllers\WarehouseStockController::class, 'index'])->name('warehouse-stocks.index');
     Route::delete('warehouse-stocks/{id}', [\App\Http\Controllers\WarehouseStockController::class, 'destroy'])->name('warehouse-stocks.destroy');
 
