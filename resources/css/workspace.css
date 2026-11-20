@@ -866,6 +866,26 @@
     body.workspace-ui-page :is(.swal2-title, .swal2-html-container) { color: var(--ws-heading); }
     body.workspace-ui-page > :is(.glass, .glass-card),
     body.workspace-ui-page > div :is([role="dialog"], [aria-modal="true"]) .glass-card { background: var(--ws-surface) !important; border-color: var(--ws-border) !important; box-shadow: var(--ws-shadow) !important; }
+
+    /* ── HIGH CONTRAST & LEGIBILITY PROTECTION (Anti-Font Samar / Washed Out) ── */
+    /* Pastikan label metrik, kartu, dan teks berukuran kecil tidak pernah pudar / samar abu muda */
+    .workspace-ui :is(.text-gray-400, .text-slate-400):not([class*="text-white"]):not(.text-white):not([class*="text-emerald"]):not([class*="text-amber"]):not([class*="text-rose"]):not([class*="text-indigo"]):not([class*="text-blue"]):not([class*="text-purple"]) {
+        color: #475569 !important; /* Solid Slate 600 contrast */
+    }
+    html.dark .workspace-ui :is(.text-gray-400, .text-slate-400):not([class*="text-white"]):not(.text-white):not([class*="text-emerald"]):not([class*="text-amber"]):not([class*="text-rose"]):not([class*="text-indigo"]):not([class*="text-blue"]):not([class*="text-purple"]) {
+        color: #94a3b8 !important; /* Crisp Slate 400 */
+    }
+    .workspace-ui :is(.text-gray-500, .text-slate-500):not([class*="text-white"]):not(.text-white):not([class*="text-emerald"]):not([class*="text-amber"]):not([class*="text-rose"]):not([class*="text-indigo"]):not([class*="text-blue"]):not([class*="text-purple"]) {
+        color: #334155 !important; /* High-contrast Slate 700 */
+    }
+    html.dark .workspace-ui :is(.text-gray-500, .text-slate-500):not([class*="text-white"]):not(.text-white):not([class*="text-emerald"]):not([class*="text-amber"]):not([class*="text-rose"]):not([class*="text-indigo"]):not([class*="text-blue"]):not([class*="text-purple"]) {
+        color: #cbd5e1 !important; /* Clear Slate 300 */
+    }
+    /* Ketegasan visual micro-typography (9px-11px) pada kartu statistik dan ringkasan */
+    .workspace-ui :is([class*="text-[9px]"], [class*="text-[10px]"], [class*="text-[11px]"]):not([class*="text-emerald"]):not([class*="text-indigo"]):not([class*="text-amber"]):not([class*="text-rose"]):not([class*="text-blue"]):not([class*="text-white"]):not(.text-white):not([class*="text-purple"]) {
+        font-weight: 600;
+        letter-spacing: 0.025em;
+    }
 }
 
 @media screen and (max-width: 1279px) {

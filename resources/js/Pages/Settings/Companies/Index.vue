@@ -8,9 +8,9 @@
                         🏢
                     </div>
                     <div>
-                        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Mitra</p>
+                        <p class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Total Mitra</p>
                         <h3 class="text-2xl font-black text-gray-900 dark:text-white mt-0.5">{{ companies.length }} Perusahaan</h3>
-                        <p class="text-[11px] text-indigo-600 dark:text-indigo-400 font-medium mt-0.5">1 Holding Pusat + {{ Math.max(0, companies.length - 1) }} Mitra Cabang</p>
+                        <p class="text-[11px] text-indigo-700 dark:text-indigo-400 font-bold mt-0.5">1 Holding Pusat + {{ Math.max(0, companies.length - 1) }} Mitra Cabang</p>
                     </div>
                 </div>
 
@@ -19,9 +19,9 @@
                         👥
                     </div>
                     <div>
-                        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Pelanggan</p>
+                        <p class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Total Pelanggan</p>
                         <h3 class="text-2xl font-black text-gray-900 dark:text-white mt-0.5">{{ totalAllCustomers.toLocaleString('id-ID') }}</h3>
-                        <p class="text-[11px] text-gray-500 dark:text-gray-400 font-medium mt-0.5">Akumulasi seluruh mitra</p>
+                        <p class="text-[11px] text-slate-600 dark:text-slate-300 font-semibold mt-0.5">Akumulasi seluruh mitra</p>
                     </div>
                 </div>
 
@@ -30,9 +30,9 @@
                         🧾
                     </div>
                     <div>
-                        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Tagihan</p>
+                        <p class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Total Tagihan</p>
                         <h3 class="text-2xl font-black text-gray-900 dark:text-white mt-0.5">{{ totalAllInvoices.toLocaleString('id-ID') }}</h3>
-                        <p class="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">Transaksi invoice tercatat</p>
+                        <p class="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold mt-0.5">Transaksi invoice tercatat</p>
                     </div>
                 </div>
 
@@ -41,9 +41,9 @@
                         🛡️
                     </div>
                     <div>
-                        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Mode Isolasi</p>
+                        <p class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Mode Isolasi</p>
                         <h3 class="text-lg font-black text-purple-700 dark:text-purple-400 mt-0.5">Aktif (100% Kedap)</h3>
-                        <p class="text-[11px] text-gray-500 dark:text-gray-400 font-medium mt-0.5">Zero Data Leakage antar mitra</p>
+                        <p class="text-[11px] text-slate-600 dark:text-slate-300 font-semibold mt-0.5">Zero Data Leakage antar mitra</p>
                     </div>
                 </div>
             </div>
@@ -57,7 +57,7 @@
                             {{ companies.length }} Terdaftar
                         </span>
                     </h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    <p class="text-xs text-slate-600 dark:text-slate-300 font-medium mt-1">
                         Setiap mitra memiliki rekening pembayaran, invoice, dan data pelanggan yang terisolasi secara mandiri.
                     </p>
                 </div>
@@ -124,9 +124,9 @@
                                             ⭐ PUSAT (HOLDING)
                                         </span>
                                     </div>
-                                    <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-                                        Merek: <strong class="text-gray-800 dark:text-gray-200">{{ company.brand_name || '-' }}</strong> 
-                                        &bull; Telp: {{ company.phone || '-' }}
+                                    <p class="text-xs font-medium text-slate-600 dark:text-slate-300 mt-0.5 truncate">
+                                        Merek: <strong class="text-gray-900 dark:text-white font-bold">{{ company.brand_name || '-' }}</strong> 
+                                        &bull; Telp: <span class="text-slate-700 dark:text-slate-200 font-semibold">{{ company.phone || '-' }}</span>
                                     </p>
                                 </div>
                             </div>
@@ -135,7 +135,7 @@
                                 <button 
                                     type="button" 
                                     @click="openEditModal(company)"
-                                    class="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition cursor-pointer"
+                                    class="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition cursor-pointer"
                                     title="Edit Profil & Pengaturan Mitra"
                                 >
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
@@ -151,8 +151,8 @@
                         </div>
 
                         <!-- Info Alamat -->
-                        <p v-if="company.address" class="text-xs text-gray-600 dark:text-gray-400 mt-3 line-clamp-1 flex items-center gap-1">
-                            <svg class="w-3.5 h-3.5 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        <p v-if="company.address" class="text-xs text-slate-600 dark:text-slate-300 font-medium mt-3 line-clamp-1 flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5 shrink-0 text-slate-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                             <span>{{ company.address }}</span>
                         </p>
                     </div>
@@ -160,47 +160,47 @@
                     <!-- Card Body: Stats & Billing Settings -->
                     <div class="p-5 sm:p-6 space-y-4 text-xs">
                         <!-- Metrik Angka -->
-                        <div class="grid grid-cols-3 gap-3 bg-gray-50 dark:bg-gray-700/40 p-3 rounded-xl border border-gray-100 dark:border-gray-700">
+                        <div class="grid grid-cols-3 gap-3 bg-slate-50/90 dark:bg-gray-700/50 p-3.5 rounded-xl border border-slate-200/90 dark:border-gray-700 shadow-2xs">
                             <div class="text-center">
-                                <p class="text-[10px] uppercase font-bold text-gray-400">Pelanggan</p>
+                                <p class="text-[11px] uppercase tracking-wider font-extrabold text-slate-700 dark:text-slate-200">Pelanggan</p>
                                 <p class="text-base font-black text-gray-900 dark:text-white mt-0.5">{{ company.customers_count }}</p>
-                                <span v-if="company.max_customers" class="text-[9px] text-gray-400">Maks. {{ company.max_customers }}</span>
-                                <span v-else class="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold">Unlimited</span>
+                                <span v-if="company.max_customers" class="text-[10px] font-bold text-slate-600 dark:text-slate-300">Maks. {{ company.max_customers }}</span>
+                                <span v-else class="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold">Unlimited</span>
                             </div>
-                            <div class="text-center border-x border-gray-200 dark:border-gray-700">
-                                <p class="text-[10px] uppercase font-bold text-gray-400">Total Tagihan</p>
+                            <div class="text-center border-x border-slate-200 dark:border-gray-700">
+                                <p class="text-[11px] uppercase tracking-wider font-extrabold text-slate-700 dark:text-slate-200">Total Tagihan</p>
                                 <p class="text-base font-black text-gray-900 dark:text-white mt-0.5">{{ company.invoices_count }}</p>
-                                <span class="text-[9px] text-gray-400">Invoice</span>
+                                <span class="text-[10px] font-bold text-slate-600 dark:text-slate-300">Invoice</span>
                             </div>
                             <div class="text-center">
-                                <p class="text-[10px] uppercase font-bold text-gray-400">Karyawan</p>
+                                <p class="text-[11px] uppercase tracking-wider font-extrabold text-slate-700 dark:text-slate-200">Karyawan</p>
                                 <p class="text-base font-black text-gray-900 dark:text-white mt-0.5">{{ company.users_count }}</p>
-                                <span class="text-[9px] text-gray-400">User Akun</span>
+                                <span class="text-[10px] font-bold text-slate-600 dark:text-slate-300">User Akun</span>
                             </div>
                         </div>
 
                         <!-- Info Siklus Penagihan & Rekening Bank -->
                         <div class="space-y-2">
-                            <div class="flex items-center justify-between text-xs py-1 border-b border-gray-100 dark:border-gray-700/60">
-                                <span class="text-gray-500 dark:text-gray-400">Siklus Penagihan:</span>
-                                <span class="font-bold text-gray-800 dark:text-gray-200">
+                            <div class="flex items-center justify-between text-xs py-1.5 border-b border-gray-100 dark:border-gray-700/60">
+                                <span class="text-slate-700 dark:text-slate-300 font-bold">Siklus Penagihan:</span>
+                                <span class="font-extrabold text-gray-900 dark:text-gray-100">
                                     Invoice Tgl {{ company.invoice_issue_date }} &bull; {{ company.billing_cycle === 'calendar' ? 'Kalender Bulanan' : 'Anniversary (Tgl Pasang)' }}
                                 </span>
                             </div>
 
-                            <div class="flex items-center justify-between text-xs py-1 border-b border-gray-100 dark:border-gray-700/60">
-                                <span class="text-gray-500 dark:text-gray-400">Rekening Pembayaran:</span>
+                            <div class="flex items-center justify-between text-xs py-1.5 border-b border-gray-100 dark:border-gray-700/60">
+                                <span class="text-slate-700 dark:text-slate-300 font-bold">Rekening Pembayaran:</span>
                                 <div class="text-right">
-                                    <span v-if="company.payment_banks && company.payment_banks.length > 0" class="font-bold text-emerald-700 dark:text-emerald-400">
+                                    <span v-if="company.payment_banks && company.payment_banks.length > 0" class="font-extrabold text-emerald-700 dark:text-emerald-400">
                                         {{ company.payment_banks.length }} Rekening Bank Terdaftar
                                     </span>
-                                    <span v-else class="text-amber-600 italic">Mengikuti Rekening Pusat</span>
+                                    <span v-else class="text-amber-700 dark:text-amber-400 font-bold italic">Mengikuti Rekening Pusat</span>
                                 </div>
                             </div>
 
-                            <div class="flex items-center justify-between text-xs py-1">
-                                <span class="text-gray-500 dark:text-gray-400">Payment Gateway (Midtrans):</span>
-                                <span class="font-bold" :class="company.midtrans_server_key ? 'text-emerald-600' : 'text-gray-400'">
+                            <div class="flex items-center justify-between text-xs py-1.5">
+                                <span class="text-slate-700 dark:text-slate-300 font-bold">Payment Gateway (Midtrans):</span>
+                                <span class="font-extrabold" :class="company.midtrans_server_key ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300'">
                                     {{ company.midtrans_server_key ? '✅ Aktif (Mandiri)' : '⚪ Belum Dikonfigurasi' }}
                                 </span>
                             </div>
@@ -208,7 +208,7 @@
 
                         <!-- Modul yang Diizinkan -->
                         <div>
-                            <p class="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Modul Diizinkan:</p>
+                            <p class="text-[11px] font-extrabold text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-2">Modul Diizinkan:</p>
                             <div class="flex flex-wrap gap-1.5">
                                 <span 
                                     v-if="company.is_holding"
@@ -220,7 +220,7 @@
                                     v-else 
                                     v-for="mod in (company.allowed_modules || [])" 
                                     :key="mod"
-                                    class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600"
+                                    class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-600"
                                 >
                                     {{ getModuleName(mod) }}
                                 </span>
@@ -279,9 +279,9 @@
                             <h3 class="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
                                 <span>🏢 Tambah Mitra Baru</span>
                             </h3>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Daftarkan perusahaan mitra dan akun admin utama mereka</p>
+                            <p class="text-xs text-slate-600 dark:text-slate-300 font-medium mt-0.5">Daftarkan perusahaan mitra dan akun admin utama mereka</p>
                         </div>
-                        <button @click="showCreateModal = false" class="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-white dark:hover:bg-gray-700">
+                        <button @click="showCreateModal = false" class="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-white dark:hover:bg-gray-700">
                             ✕
                         </button>
                     </div>
@@ -296,7 +296,7 @@
                             <div>
                                 <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Kode Singkatan (Prefix Unik) *</label>
                                 <input v-model="createForm.code" type="text" required placeholder="Contoh: SIM / MTR1" class="input-text w-full text-xs uppercase" />
-                                <span class="text-[10px] text-gray-400">Digunakan untuk prefix invoice & kode pelanggan</span>
+                                <span class="text-[10px] text-slate-600 dark:text-slate-300 font-medium">Digunakan untuk prefix invoice & kode pelanggan</span>
                             </div>
                         </div>
 
@@ -369,7 +369,7 @@
                                     <input type="checkbox" :value="mod.id" v-model="createForm.allowed_modules" class="rounded mt-0.5 text-indigo-600 focus:ring-indigo-500" />
                                     <div>
                                         <p class="text-xs font-bold text-gray-900 dark:text-white">{{ mod.name }}</p>
-                                        <p class="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">{{ mod.desc }}</p>
+                                        <p class="text-[10px] text-slate-600 dark:text-slate-300 font-medium leading-tight">{{ mod.desc }}</p>
                                     </div>
                                 </label>
                             </div>
@@ -396,9 +396,9 @@
                             <h3 class="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
                                 <span>✏️ Edit Data & Pengaturan Mitra: {{ editForm.name }}</span>
                             </h3>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Perbarui profil perusahaan, kontak, alamat, rekening, gateway, dan izin modul</p>
+                            <p class="text-xs text-slate-600 dark:text-slate-300 font-medium mt-0.5">Perbarui profil perusahaan, kontak, alamat, rekening, gateway, dan izin modul</p>
                         </div>
-                        <button @click="showEditModal = false" class="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-white dark:hover:bg-gray-700">
+                        <button @click="showEditModal = false" class="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-white dark:hover:bg-gray-700">
                             ✕
                         </button>
                     </div>
@@ -413,7 +413,7 @@
                             <div>
                                 <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Kode Singkatan (Prefix) *</label>
                                 <input v-model="editForm.code" type="text" required class="input-text w-full text-xs uppercase" />
-                                <span class="text-[10px] text-gray-400">Prefix invoice & ID pelanggan mitra</span>
+                                <span class="text-[10px] text-slate-600 dark:text-slate-300 font-medium">Prefix invoice & ID pelanggan mitra</span>
                             </div>
                         </div>
 
@@ -457,7 +457,7 @@
                         <div v-if="!selectedEditCompany?.is_holding">
                             <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Batas Kuota Pelanggan (Maksimal)</label>
                             <input v-model="editForm.max_customers" type="number" min="1" placeholder="Kosongkan jika unlimited" class="input-text w-full text-xs" />
-                            <span class="text-[10px] text-gray-400">Kosongkan jika tidak ada batasan kuota pelanggan untuk mitra ini</span>
+                            <span class="text-[10px] text-slate-600 dark:text-slate-300 font-medium">Kosongkan jika tidak ada batasan kuota pelanggan untuk mitra ini</span>
                         </div>
 
                         <!-- Rekening Bank Mitra -->
@@ -477,7 +477,7 @@
                                     <button type="button" @click="removeBankRow(bIdx)" class="p-1 text-red-500 hover:bg-red-50 rounded">✕</button>
                                 </div>
                             </div>
-                            <p v-if="!editForm.payment_banks || editForm.payment_banks.length === 0" class="text-xs text-gray-500 italic">Belum ada rekening khusus, invoice akan memakai rekening default holding.</p>
+                            <p v-if="!editForm.payment_banks || editForm.payment_banks.length === 0" class="text-xs text-slate-600 dark:text-slate-300 font-medium italic">Belum ada rekening khusus, invoice akan memakai rekening default holding.</p>
                         </div>
 
                         <!-- Payment Gateway Mandiri -->
@@ -529,7 +529,7 @@
                                     <input type="checkbox" :value="mod.id" v-model="editForm.allowed_modules" class="rounded mt-0.5 text-indigo-600 focus:ring-indigo-500" />
                                     <div>
                                         <p class="text-xs font-bold text-gray-900 dark:text-white">{{ mod.name }}</p>
-                                        <p class="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">{{ mod.desc }}</p>
+                                        <p class="text-[10px] text-slate-600 dark:text-slate-300 font-medium leading-tight">{{ mod.desc }}</p>
                                     </div>
                                 </label>
                             </div>
