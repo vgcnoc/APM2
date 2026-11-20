@@ -1319,10 +1319,23 @@ class PgkController extends Controller
                         'status' => 'rusak',
                     ]);
 
-                if ($oldOnt && $pgk->ont_replacement_status !== 'installed') {
-                    $oldOnt->update([
-                        'description' => trim(($oldOnt->description ? $oldOnt->description . ' | ' : '') . 'Diganti dengan SN ' . $preparedOnt->serial_number . ' pada tiket PGK ' . $pgk->ticket_number . ' (' . now()->format('Y-m-d H:i') . ')'),
-                    ]);
+                if ($oldOnt) {
+                    $oldOntUpdates = [];
+                    if ($request->filled('old_ont_brand')) {
+                        $oldOntUpdates['brand'] = trim($request->input('old_ont_brand'));
+                    }
+                    if ($request->filled('old_ont_model')) {
+                        $oldOntUpdates['model'] = trim($request->input('old_ont_model'));
+                    }
+                    if ($request->filled('old_ont_serial_number')) {
+                        $oldOntUpdates['serial_number'] = trim($request->input('old_ont_serial_number'));
+                    }
+                    if ($pgk->ont_replacement_status !== 'installed') {
+                        $oldOntUpdates['description'] = trim(($oldOnt->description ? $oldOnt->description . ' | ' : '') . 'Diganti dengan SN ' . $preparedOnt->serial_number . ' pada tiket PGK ' . $pgk->ticket_number . ' (' . now()->format('Y-m-d H:i') . ')');
+                    }
+                    if (!empty($oldOntUpdates)) {
+                        $oldOnt->update($oldOntUpdates);
+                    }
                 }
 
                 // 2. Parse redaman baru & petugas teknisi
@@ -1493,6 +1506,12 @@ class PgkController extends Controller
                 if (!empty($rep['item_name']) && (float) ($rep['quantity'] ?? 0) > 0) {
                     if ($replacedOntId && empty($rep['ont_id']) && (stripos($rep['item_name'], 'ont') !== false || stripos($rep['item_name'], 'modem') !== false)) {
                         $rep['ont_id'] = $replacedOntId;
+                        if (empty($rep['brand']) && $request->filled('old_ont_brand')) {
+                            $rep['brand'] = $request->input('old_ont_brand');
+                        }
+                        if (empty($rep['model']) && $request->filled('old_ont_model')) {
+                            $rep['model'] = $request->input('old_ont_model');
+                        }
                     }
                     \App\Services\CustomerMaterialService::processMaterialReplacement(
                         ticketType: 'pgk',

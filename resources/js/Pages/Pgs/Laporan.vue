@@ -1190,7 +1190,7 @@
                                     </span>
                                 </div>
 
-                                <div v-if="selectedTicket?.ont_replacement_status === 'prepared'" class="space-y-1.5 pt-1">
+                                <div v-if="selectedTicket?.ont_replacement_status === 'prepared'" class="space-y-2 pt-1">
                                     <div class="grid grid-cols-2 gap-2">
                                         <label class="p-2 rounded-xl border flex items-center gap-1.5 cursor-pointer" :class="reportForm.ont_replacement_action === 'installed' ? 'bg-white border-emerald-500 font-bold text-emerald-900 shadow-2xs' : 'border-gray-200 text-gray-600'">
                                             <input type="radio" v-model="reportForm.ont_replacement_action" value="installed" class="text-emerald-600">
@@ -1200,6 +1200,29 @@
                                             <input type="radio" v-model="reportForm.ont_replacement_action" value="cancelled" class="text-rose-600">
                                             <span>🔴 Retur Gudang (Tidak Jadi)</span>
                                         </label>
+                                    </div>
+
+                                    <!-- Verifikasi Fisik ONT Lama jika Berhasil Dipasang -->
+                                    <div v-if="reportForm.ont_replacement_action === 'installed'" class="p-2.5 bg-indigo-50/70 rounded-xl border border-indigo-200 text-xs space-y-2">
+                                        <div class="flex items-center justify-between">
+                                            <span class="font-bold text-indigo-950 flex items-center gap-1 text-[11px]">
+                                                <span>🏷️</span> Verifikasi Fisik ONT Lama (Ditarik)
+                                            </span>
+                                            <span class="text-[10px] text-indigo-700">Koreksi jika fisik lapangan berbeda</span>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <label class="block text-[10px] font-semibold text-gray-600 mb-0.5">Merek Fisik</label>
+                                                <input type="text" v-model="reportForm.old_ont_brand" placeholder="cth: NETVIBES / ZTE / HUAWEI" class="w-full text-xs rounded-lg border-gray-300 py-1 px-2 uppercase bg-white focus:ring-indigo-500" />
+                                            </div>
+                                            <div>
+                                                <label class="block text-[10px] font-semibold text-gray-600 mb-0.5">Tipe / Model Fisik</label>
+                                                <input type="text" v-model="reportForm.old_ont_model" placeholder="cth: NVB663nv9 / F660" class="w-full text-xs rounded-lg border-gray-300 py-1 px-2 uppercase bg-white focus:ring-indigo-500" />
+                                            </div>
+                                        </div>
+                                        <div v-if="reportForm.old_ont_serial_number" class="text-[10px] text-gray-500">
+                                            Nomor Seri (SN) Lama: <span class="font-mono font-bold text-gray-700">{{ reportForm.old_ont_serial_number }}</span>
+                                        </div>
                                     </div>
                                 </div>
                                 <div v-if="selectedTicket?.ont_replacement_status === 'rejected'" class="p-2 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-0.5">
@@ -2345,6 +2368,9 @@ const reportForm = useForm({
     new_wifi_password: '',
     ont_replacement_action: 'installed',
     ont_replacement_notes: '',
+    old_ont_brand: '',
+    old_ont_model: '',
+    old_ont_serial_number: '',
     materials: [],
 });
 
@@ -2550,6 +2576,9 @@ const saveDraft = () => {
             new_wifi_password: reportForm.new_wifi_password,
             ont_replacement_action: reportForm.ont_replacement_action,
             ont_replacement_notes: reportForm.ont_replacement_notes,
+            old_ont_brand: reportForm.old_ont_brand,
+            old_ont_model: reportForm.old_ont_model,
+            old_ont_serial_number: reportForm.old_ont_serial_number,
             started_at: startedAt.value,
             is_working: isWorking.value,
             materials: reportForm.materials.map(m => ({
@@ -2611,6 +2640,9 @@ const openReportModal = (ticket, ignoreDraft = false) => {
             reportForm.new_wifi_password = draft.new_wifi_password ?? (ticket.customer?.ont?.wifi_password || ticket.customer?.wifi_password || '');
             reportForm.ont_replacement_action = draft.ont_replacement_action || 'installed';
             reportForm.ont_replacement_notes = draft.ont_replacement_notes || '';
+            reportForm.old_ont_brand = draft.old_ont_brand ?? (ticket.old_ont?.brand || ticket.customer?.ont?.brand || '');
+            reportForm.old_ont_model = draft.old_ont_model ?? (ticket.old_ont?.model || ticket.customer?.ont?.model || '');
+            reportForm.old_ont_serial_number = draft.old_ont_serial_number ?? (ticket.old_ont?.serial_number || ticket.customer?.ont?.serial_number || '');
             activeReportTab.value = draft.active_tab || 'tindakan';
 
             if (Array.isArray(draft.materials) && draft.materials.length > 0) {
@@ -2661,6 +2693,9 @@ const openReportModal = (ticket, ignoreDraft = false) => {
         reportForm.new_wifi_password = ticket.customer?.ont?.wifi_password || ticket.customer?.wifi_password || '';
         reportForm.ont_replacement_action = ticket.ont_replacement_action || 'installed';
         reportForm.ont_replacement_notes = ticket.ont_replacement_notes || '';
+        reportForm.old_ont_brand = ticket.old_ont?.brand || ticket.customer?.ont?.brand || '';
+        reportForm.old_ont_model = ticket.old_ont?.model || ticket.customer?.ont?.model || '';
+        reportForm.old_ont_serial_number = ticket.old_ont?.serial_number || ticket.customer?.ont?.serial_number || '';
 
         initPreparedMaterials(ticket);
 

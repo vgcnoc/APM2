@@ -303,6 +303,18 @@ class CustomerMaterialService
 
             // Jika ONT lama teridentifikasi, pastikan material_id dan nama item akurat sesuai fisik ONT
             if ($oldOnt) {
+                if (!empty($replacementData['brand']) || !empty($replacementData['model'])) {
+                    $updates = [];
+                    if (!empty($replacementData['brand'])) {
+                        $updates['brand'] = trim($replacementData['brand']);
+                    }
+                    if (!empty($replacementData['model'])) {
+                        $updates['model'] = trim($replacementData['model']);
+                    }
+                    $oldOnt->update($updates);
+                }
+                $oldOnt->refresh();
+
                 $resolvedMat = MaterialService::resolveOntMaterial($oldOnt);
                 if ($resolvedMat) {
                     $materialId = $resolvedMat->id;
