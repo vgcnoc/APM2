@@ -1098,20 +1098,20 @@
 
                         <!-- Fallback jika kamera bermasalah -->
                         <div v-if="cameraError && !capturedPhoto" class="flex flex-col items-center justify-center p-6 text-center space-y-3">
-                            <div class="w-12 h-12 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center text-2xl">
-                                📷
+                            <div class="w-12 h-12 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center text-2xl border border-rose-500/30">
+                                🚫
                             </div>
-                            <div class="text-sm font-bold text-white">Kamera Langsung Tidak Tersedia</div>
+                            <div class="text-sm font-bold text-white">Kamera Wajib Diaktifkan</div>
                             <p class="text-xs text-slate-400 max-w-xs leading-relaxed">
-                                Kamera tidak dapat diakses langsung. Anda tetap dapat melakukan absensi dengan memilih foto atau menggunakan kamera bawaan ponsel.
+                                {{ cameraError || 'Akses kamera langsung tidak tersedia. Untuk menjaga keabsahan data, absensi tim khusus wajib mengambil foto selfie langsung melalui kamera perangkat.' }}
                             </p>
                             <button
                                 type="button"
-                                @click="fileInputRef?.click()"
+                                @click="startCamera"
                                 class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow"
                             >
-                                <span>📁</span>
-                                <span>Pilih / Ambil Foto</span>
+                                <span>🔄</span>
+                                <span>Izinkan & Muat Ulang Kamera</span>
                             </button>
                         </div>
 
@@ -1126,15 +1126,6 @@
                         </button>
                     </div>
 
-                    <!-- Hidden File Input & Canvas untuk capture/upload & watermark -->
-                    <input
-                        ref="fileInputRef"
-                        type="file"
-                        accept="image/*"
-                        capture="user"
-                        class="hidden"
-                        @change="handleFileUpload"
-                    />
                     <canvas ref="canvasRef" class="hidden"></canvas>
 
                     <!-- Lokasi GPS & Catatan -->
@@ -1151,17 +1142,7 @@
                     </div>
 
                     <!-- Tombol Aksi Kamera -->
-                    <div class="flex items-center justify-between gap-2.5 pt-2">
-                        <button
-                            type="button"
-                            @click="fileInputRef?.click()"
-                            class="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
-                            title="Pilih file foto dari galeri atau kamera"
-                        >
-                            <span>📁</span>
-                            <span>Upload Foto</span>
-                        </button>
-
+                    <div class="flex items-center justify-end gap-2.5 pt-2">
                         <div class="flex items-center gap-2">
                             <button
                                 type="button"
@@ -1865,7 +1846,6 @@ const isCameraModalOpen = ref(false);
 const actionType = ref('in'); // 'in' or 'out'
 const videoRef = ref(null);
 const canvasRef = ref(null);
-const fileInputRef = ref(null);
 const capturedPhoto = ref(null);
 const cameraError = ref(null);
 const cameraFacing = ref('user');
@@ -2052,69 +2032,6 @@ const takeSnapshot = () => {
     attendanceForm.longitude = userCoords.value.lng;
 
     stopCamera();
-};
-
-const handleFileUpload = (event) => {
-    if (actionType.value === 'in' && isEarlyClockInRestricted.value) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Kamera Masuk Ditolak',
-            text: `Absen masuk belum dibuka. Jam kerja ${props.currentTeam?.name || 'Tim'} (${props.clockInWindowInfo?.shift_start || '--:--'} WIB) baru dapat diabsen mulai pukul ${props.clockInWindowInfo?.earliest_full_label || '--:--'}.`,
-            confirmButtonColor: '#1e3a8a',
-        });
-        if (event.target) event.target.value = '';
-        return;
-    }
-    if (actionType.value === 'out' && isEarlyClockOutRestricted.value) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'Kamera Pulang Ditolak',
-            text: `Absen pulang belum dibuka. Jam kerja ${props.currentTeam?.name || 'Tim'} (${props.clockOutWindowInfo?.shift_end || '--:--'} WIB) belum selesai. Presensi pulang baru dibuka pukul ${props.clockOutWindowInfo?.earliest_full_label || '--:--'}.`,
-            confirmButtonColor: '#1e3a8a',
-        });
-        if (event.target) event.target.value = '';
-        return;
-    }
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-            const canvas = canvasRef.value;
-            if (!canvas) return;
-
-            let targetW = img.width;
-            let targetH = img.height;
-            const maxDim = 800;
-            if (targetW > maxDim || targetH > maxDim) {
-                if (targetW > targetH) {
-                    targetH = Math.round((targetH * maxDim) / targetW);
-                    targetW = maxDim;
-                } else {
-                    targetW = Math.round((targetW * maxDim) / targetH);
-                    targetH = maxDim;
-                }
-            }
-
-            canvas.width = targetW;
-            canvas.height = targetH;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, targetW, targetH);
-
-            drawWatermark(ctx, targetW, targetH);
-
-            capturedPhoto.value = canvas.toDataURL('image/jpeg', 0.88);
-            attendanceForm.photo = capturedPhoto.value;
-            attendanceForm.latitude = userCoords.value.lat;
-            attendanceForm.longitude = userCoords.value.lng;
-
-            stopCamera();
-        };
-        img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
 };
 
 const drawWatermark = (ctx, w, h) => {

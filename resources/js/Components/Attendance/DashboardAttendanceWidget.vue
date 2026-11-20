@@ -604,7 +604,7 @@
                         </div>
                         <p class="text-[11px] leading-relaxed">{{ cameraError }}</p>
                         <button
-                            v-if="can('attendance_btn_camera_hp')"
+                            v-if="can('attendance_btn_camera_hp') && !isSpecialTeam"
                             type="button"
                             @click="triggerNativeCamera"
                             class="mt-1 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1"
