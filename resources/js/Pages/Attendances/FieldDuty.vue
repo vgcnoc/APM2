@@ -1081,9 +1081,30 @@ const toggleSelectAll = () => {
 };
 
 // Date & Time Helpers
+const getTodayLocalDate = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 const formatDateOnly = (dateStr) => {
     if (!dateStr) return '-';
-    return String(dateStr).slice(0, 10);
+    const str = String(dateStr).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        return str;
+    }
+    try {
+        const d = new Date(str);
+        if (isNaN(d.getTime())) return str.slice(0, 10);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    } catch {
+        return str.slice(0, 10);
+    }
 };
 
 const formatSchedule = (item) => {
@@ -1118,7 +1139,7 @@ const exportCsv = () => {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `absen_tugas_luar_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `absen_tugas_luar_${getTodayLocalDate()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1134,7 +1155,7 @@ const windowPrint = () => {
 const isCreateModalOpen = ref(false);
 const createForm = useForm({
     employee_id: '',
-    date: new Date().toISOString().slice(0, 10),
+    date: getTodayLocalDate(),
     duty_type: 'reguler',
     destination_location: '',
     purpose: '',
@@ -1147,7 +1168,7 @@ const createForm = useForm({
 
 const openCreateDutyModal = () => {
     createForm.reset();
-    createForm.date = new Date().toISOString().slice(0, 10);
+    createForm.date = getTodayLocalDate();
     createForm.attendance_mode = 'replace_both';
     createForm.duty_allowance_amount = props.settings?.duty_allowance_enabled ? props.settings.duty_allowance_amount : 0;
     isCreateModalOpen.value = true;

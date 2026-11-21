@@ -1736,9 +1736,30 @@ const formatTimeDisplay = (timeStr) => {
     return timeStr.slice(0, 5);
 };
 
+const getTodayLocalDate = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 const formatDateOnly = (dateStr) => {
     if (!dateStr) return '-';
-    return String(dateStr).split('T')[0];
+    const str = String(dateStr).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        return str;
+    }
+    try {
+        const d = new Date(str);
+        if (isNaN(d.getTime())) return str.slice(0, 10);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    } catch {
+        return str.slice(0, 10);
+    }
 };
 
 const getInitials = (name) => {
@@ -2275,7 +2296,7 @@ const isAdminManualModalOpen = ref(false);
 const adminManualForm = useForm({
     special_team_id: props.currentTeam?.id,
     employee_id: props.currentEmployee?.id,
-    date: new Date().toISOString().slice(0, 10),
+    date: getTodayLocalDate(),
     clock_in: '08:30',
     clock_out: '18:00',
     status: 'present',
@@ -2285,7 +2306,7 @@ const adminManualForm = useForm({
 
 const openAdminManualModal = () => {
     adminManualForm.special_team_id = props.currentTeam?.id;
-    adminManualForm.date = new Date().toISOString().slice(0, 10);
+    adminManualForm.date = getTodayLocalDate();
     isAdminManualModalOpen.value = true;
 };
 

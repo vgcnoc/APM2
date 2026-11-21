@@ -22,7 +22,7 @@ class AttendanceLeave extends Model
     ];
 
     protected $casts = [
-        'date' => 'date',
+        'date' => 'date:Y-m-d',
         'penalty_amount' => 'float',
     ];
 

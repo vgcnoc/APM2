@@ -9,7 +9,7 @@ class FieldDuty extends Model
     protected $guarded = ['id'];
 
     protected $casts = [
-        'date' => 'date',
+        'date' => 'date:Y-m-d',
         'is_allowance_synced' => 'boolean',
         'is_regular_attendance_synced' => 'boolean',
     ];

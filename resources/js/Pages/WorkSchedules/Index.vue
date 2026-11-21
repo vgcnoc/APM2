@@ -2198,7 +2198,8 @@ const applyPeriodPreset = (preset) => {
         genStartDate.value = firstDay;
         genEndDate.value = lastDay;
     } else if (preset === 'remaining_month') {
-        const todayStr = new Date().toISOString().slice(0, 10);
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         if (todayStr >= firstDay && todayStr <= lastDay) {
             genStartDate.value = todayStr;
         } else {
