@@ -99,12 +99,6 @@ class CustomerAreaController extends Controller
             ->latest('due_date')
             ->first();
 
-        // Ambil riwayat tiket gangguan terkini
-        $recentTickets = Ticket::where('customer_id', $customer->id)
-            ->latest()
-            ->limit(5)
-            ->get();
-            
         // Load relasi paket, ONT, dan area pelanggan
         $customer->load(['package', 'ont', 'areaModel']);
 
@@ -118,7 +112,6 @@ class CustomerAreaController extends Controller
         return Inertia::render('CustomerArea/Dashboard', [
             'customer' => $customer,
             'latestInvoice' => $latestInvoice,
-            'recentTickets' => $recentTickets,
             'isReseller' => $isReseller,
             'isIsolated' => $isIsolated,
             'isolationData' => $isolationData,
@@ -162,34 +155,7 @@ class CustomerAreaController extends Controller
 
     public function tickets()
     {
-        $user = auth()->user();
-        $customer = $this->getCustomer();
-
-        // OPSI A: Jika user adalah Mitra Reseller murni (tanpa paket langganan internet rumah), alihkan ke portal reseller
-        $isReseller = ($user->role === 'reseller' || Reseller::where('user_id', $user->id)->exists());
-        if (!$this->isStaffUser($user) && $isReseller && (!$customer || !$customer->package_id)) {
-            return redirect()->route('client-area.dashboard');
-        }
-
-        if (!$customer) {
-            if ($this->isStaffUser($user)) {
-                $customer = Customer::with('package')->first();
-            }
-            if (!$customer) {
-                return Inertia::render('CustomerArea/NoCustomer', [
-                    'user' => $user
-                ]);
-            }
-        }
-
-        $tickets = Ticket::where('customer_id', $customer->id)
-            ->latest()
-            ->paginate(10);
-
-        return Inertia::render('CustomerArea/Tickets', [
-            'customer' => $customer,
-            'tickets' => $tickets
-        ]);
+        return redirect()->route('customer-area.dashboard');
     }
 
     /**
@@ -197,24 +163,6 @@ class CustomerAreaController extends Controller
      */
     public function storeTicket(Request $request)
     {
-        $customer = $this->getCustomer();
-        if (!$customer) {
-            return back()->with('error', 'Profil data pelanggan Anda belum terhubung. Silakan hubungi CS.');
-        }
-
-        $validated = $request->validate([
-            'category' => 'required|string|max:100',
-            'subject' => 'required|string|max:255',
-            'description' => 'required|string',
-            'priority' => 'nullable|in:low,medium,high,critical',
-        ]);
-
-        $validated['customer_id'] = $customer->id;
-        $validated['status'] = 'open';
-        $validated['priority'] = $validated['priority'] ?? 'medium';
-
-        Ticket::create($validated);
-
-        return redirect()->route('customer-area.tickets')->with('success', 'Laporan tiket gangguan berhasil dibuat. Tim kami akan segera menindaklanjuti.');
+        return redirect()->route('customer-area.dashboard');
     }
 }

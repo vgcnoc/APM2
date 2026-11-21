@@ -6,7 +6,6 @@ import CustomerIsolatedBanner from '@/Components/CustomerIsolatedBanner.vue';
 const props = defineProps({
     customer: Object,
     latestInvoice: Object,
-    recentTickets: Array,
     isIsolated: Boolean,
     isolationData: Object,
 });
@@ -101,13 +100,6 @@ const formatDate = (dateStr) => {
                     >
                         <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                         Lihat Tagihan
-                    </Link>
-                    <Link
-                        href="/my/tickets"
-                        class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-2 transition-all shadow-md shadow-indigo-600/30"
-                    >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-                        Lapor Gangguan
                     </Link>
                 </div>
             </div>
@@ -260,61 +252,6 @@ const formatDate = (dateStr) => {
                     <p class="text-xs text-slate-500">Tanggal Mulai Berlangganan</p>
                     <p class="text-xs font-semibold text-slate-700">{{ formatDate(customer?.activation_date) }}</p>
                 </div>
-            </div>
-        </div>
-
-        <!-- Tiket Bantuan & Gangguan Terakhir -->
-        <div class="bg-white rounded-3xl shadow-xs border border-slate-200/80 p-6">
-            <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-100 flex-wrap gap-3">
-                <div>
-                    <h3 class="font-bold text-slate-900 text-base">Riwayat Tiket Gangguan Terakhir</h3>
-                    <p class="text-xs text-slate-500 mt-0.5">Pantau status penanganan keluhan teknis internet Anda</p>
-                </div>
-                <div class="flex items-center gap-2">
-                    <Link href="/my/tickets" class="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold transition-colors">
-                        + Ajukan Tiket Baru
-                    </Link>
-                </div>
-            </div>
-            
-            <div v-if="recentTickets && recentTickets.length > 0" class="divide-y divide-slate-100">
-                <div v-for="ticket in recentTickets" :key="ticket.id" class="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/60 rounded-xl px-2 transition-colors">
-                    <div class="space-y-1">
-                        <div class="flex items-center gap-2">
-                            <span class="font-mono text-xs font-bold text-slate-900">{{ ticket.ticket_number }}</span>
-                            <span class="text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded font-medium">{{ ticket.category }}</span>
-                        </div>
-                        <p class="text-xs font-semibold text-slate-800">{{ ticket.subject || 'Keluhan Layanan' }}</p>
-                        <p class="text-xs text-slate-500 leading-relaxed">{{ (ticket.description || '').substring(0, 90) }}...</p>
-                    </div>
-                    <div class="shrink-0 flex items-center gap-3">
-                        <span
-                            v-if="ticket.status === 'open'"
-                            class="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-bold"
-                        >
-                            Menunggu Penanganan
-                        </span>
-                        <span
-                            v-else-if="ticket.status === 'in_progress'"
-                            class="px-2.5 py-1 bg-cyan-50 text-cyan-700 border border-cyan-200 rounded-full text-xs font-bold"
-                        >
-                            Sedang Dikerjakan
-                        </span>
-                        <span
-                            v-else
-                            class="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-bold"
-                        >
-                            Selesai Ditangani
-                        </span>
-                    </div>
-                </div>
-            </div>
-            <div v-else class="text-center py-10">
-                <div class="w-12 h-12 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-2">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                </div>
-                <p class="text-xs font-semibold text-slate-600">Tidak ada keluhan atau gangguan.</p>
-                <p class="text-[11px] text-slate-400 mt-0.5">Layanan internet Anda berjalan lancar.</p>
             </div>
         </div>
     </CustomerLayout>
