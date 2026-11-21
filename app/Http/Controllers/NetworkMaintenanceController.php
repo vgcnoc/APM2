@@ -541,7 +541,7 @@ class NetworkMaintenanceController extends Controller
     public function quickUpdate(Request $request, NetworkMaintenance $maintenance)
     {
         $validated = $request->validate([
-            'status' => 'required|string|in:scheduled,in_progress,completed,rescheduled,cancelled',
+            'status' => 'nullable|string|in:scheduled,in_progress,completed,rescheduled,cancelled',
             'action_taken' => 'nullable|string',
             'optical_power_before' => 'nullable|string|max:50',
             'optical_power_after' => 'nullable|string|max:50',
@@ -555,8 +555,19 @@ class NetworkMaintenanceController extends Controller
         ]);
 
         try {
+            $status = $validated['status'] ?? null;
+            if (!$status) {
+                if (!empty($validated['end_time'])) {
+                    $status = 'completed';
+                } elseif (!empty($validated['start_time'])) {
+                    $status = 'in_progress';
+                } else {
+                    $status = $maintenance->status ?: 'scheduled';
+                }
+            }
+
             $updateData = [
-                'status' => $validated['status'],
+                'status' => $status,
             ];
 
             if ($request->filled('action_taken')) {
@@ -574,14 +585,16 @@ class NetworkMaintenanceController extends Controller
 
             $now = Carbon::now();
 
-            if ($validated['status'] === 'in_progress') {
+            if ($status === 'in_progress') {
                 $updateData['start_time'] = $validated['start_time'] ?? ($maintenance->start_time ?: $now->format('H:i'));
-            } elseif ($validated['status'] === 'completed') {
+                $updateData['completed_by'] = null;
+                $updateData['completed_at'] = null;
+            } elseif ($status === 'completed') {
                 $updateData['start_time'] = $validated['start_time'] ?? ($maintenance->start_time ?: $now->format('H:i'));
-                $updateData['end_time'] = $validated['end_time'] ?? $now->format('H:i');
+                $updateData['end_time'] = $validated['end_time'] ?? ($maintenance->end_time ?: $now->format('H:i'));
                 $updateData['completed_by'] = auth()->id();
                 $updateData['completed_at'] = $now;
-            } elseif ($validated['status'] === 'scheduled') {
+            } elseif ($status === 'scheduled' || $status === 'rescheduled') {
                 $updateData['completed_by'] = null;
                 $updateData['completed_at'] = null;
             }

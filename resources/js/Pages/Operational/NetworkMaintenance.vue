@@ -121,7 +121,7 @@ function openQuickUpdateModal(item) {
         : (item.photo_after ? [item.photo_after] : []);
 
     updateForm.value = {
-        status: item.is_done ? 'completed' : (item.is_in_progress ? 'completed' : 'in_progress'),
+        status: item.is_done ? 'completed' : (item.is_in_progress ? 'in_progress' : (item.start_time ? 'in_progress' : (item.status || 'scheduled'))),
         start_time: item.start_time || '',
         end_time: item.end_time || '',
         optical_power_after: item.optical_power_after || '',
@@ -194,20 +194,15 @@ function onReplacedMaterialSelect(rep) {
     }
 }
 
-function selectUpdateStatus(newStatus) {
-    updateForm.value.status = newStatus;
+function setStartTimeNow() {
+    updateForm.value.start_time = getCurrentTimeStr();
+}
+
+function setEndTimeNow() {
     const nowStr = getCurrentTimeStr();
-    if (newStatus === 'in_progress') {
-        if (!updateForm.value.start_time) {
-            updateForm.value.start_time = nowStr;
-        }
-    } else if (newStatus === 'completed') {
-        if (!updateForm.value.end_time) {
-            updateForm.value.end_time = nowStr;
-        }
-        if (!updateForm.value.start_time) {
-            updateForm.value.start_time = nowStr;
-        }
+    updateForm.value.end_time = nowStr;
+    if (!updateForm.value.start_time) {
+        updateForm.value.start_time = nowStr;
     }
 }
 
@@ -256,6 +251,26 @@ async function submitUpdateMaintenance() {
     if (!activeMaintenanceItem.value) return;
     isSubmitting.value = true;
     try {
+        // Tentukan status secara otomatis & cerdas berdasarkan jam pengerjaan
+        let resolvedStatus = 'scheduled';
+        if (updateForm.value.end_time) {
+            resolvedStatus = 'completed';
+            if (!updateForm.value.start_time) {
+                updateForm.value.start_time = updateForm.value.end_time;
+            }
+        } else if (updateForm.value.start_time) {
+            resolvedStatus = 'in_progress';
+        } else if (updateForm.value.scheduled_date && activeMaintenanceItem.value.scheduled_date && updateForm.value.scheduled_date !== activeMaintenanceItem.value.scheduled_date) {
+            resolvedStatus = 'rescheduled';
+        } else if (activeMaintenanceItem.value.is_done) {
+            resolvedStatus = 'completed';
+        } else if (activeMaintenanceItem.value.is_in_progress) {
+            resolvedStatus = 'in_progress';
+        } else {
+            resolvedStatus = activeMaintenanceItem.value.status || 'scheduled';
+        }
+        updateForm.value.status = resolvedStatus;
+
         const payload = new FormData();
         payload.append('status', updateForm.value.status);
         if (updateForm.value.action_taken) payload.append('action_taken', updateForm.value.action_taken);
@@ -1239,68 +1254,16 @@ function getCategoryBadgeClass(category) {
                             </div>
                         </div>
                     
-                    <!-- 1. Pilihan Status -->
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                            Pilih Status Saat Ini:
-                        </label>
-                        <div class="grid grid-cols-2 gap-2 text-xs">
-                            <label 
-                                @click="selectUpdateStatus('in_progress')"
-                                class="p-2.5 rounded-xl border flex items-center gap-1.5 cursor-pointer transition-all"
-                                :class="updateForm.status === 'in_progress' ? 'bg-blue-50 border-blue-500 text-blue-900 font-bold shadow-xs' : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'"
-                            >
-                                <input type="radio" v-model="updateForm.status" value="in_progress" class="sr-only" />
-                                <span>🛠️ Sedang Dikerjakan</span>
-                            </label>
-                            <label 
-                                @click="selectUpdateStatus('completed')"
-                                class="p-2.5 rounded-xl border flex items-center gap-1.5 cursor-pointer transition-all"
-                                :class="updateForm.status === 'completed' ? 'bg-emerald-50 border-emerald-500 text-emerald-900 font-bold shadow-xs' : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'"
-                            >
-                                <input type="radio" v-model="updateForm.status" value="completed" class="sr-only" />
-                                <span>✅ Selesai Dikerjakan</span>
-                            </label>
-                            <label 
-                                @click="selectUpdateStatus('rescheduled')"
-                                class="p-2.5 rounded-xl border flex items-center gap-1.5 cursor-pointer transition-all"
-                                :class="updateForm.status === 'rescheduled' ? 'bg-purple-50 border-purple-500 text-purple-900 font-bold shadow-xs' : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'"
-                            >
-                                <input type="radio" v-model="updateForm.status" value="rescheduled" class="sr-only" />
-                                <span>🗓️ Reschedule</span>
-                            </label>
-                            <label 
-                                @click="selectUpdateStatus('scheduled')"
-                                class="p-2.5 rounded-xl border flex items-center gap-1.5 cursor-pointer transition-all"
-                                :class="updateForm.status === 'scheduled' ? 'bg-amber-50 border-amber-500 text-amber-900 font-bold shadow-xs' : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'"
-                            >
-                                <input type="radio" v-model="updateForm.status" value="scheduled" class="sr-only" />
-                                <span>⏳ Pending / Jadwal</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Jika Reschedule: Tanggal Baru -->
-                    <div v-if="updateForm.status === 'rescheduled'">
-                        <label class="block text-xs font-bold text-purple-700 dark:text-purple-300 mb-1">
-                            Pindahkan Tanggal Pelaksanaan ke:
-                        </label>
-                        <input
-                            type="date"
-                            v-model="updateForm.scheduled_date"
-                            class="w-full px-3 py-2 text-xs rounded-xl bg-purple-50/50 dark:bg-slate-800 border border-purple-300 text-slate-900 dark:text-white"
-                        />
-                    </div>
-
-                    <!-- 2. Jam Mulai Pengerjaan -->
+                    <!-- Jam Mulai Pengerjaan -->
                     <div>
                         <div class="flex items-center justify-between mb-1">
-                            <label class="text-xs font-bold text-slate-700 dark:text-slate-300">
-                                Jam Mulai Pengerjaan:
+                            <label class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                <span>⏱️</span>
+                                <span>Jam Mulai Pengerjaan:</span>
                             </label>
                             <button 
                                 type="button" 
-                                @click="updateForm.start_time = getCurrentTimeStr()" 
+                                @click="setStartTimeNow" 
                                 class="text-[10px] text-teal-600 dark:text-teal-400 hover:underline font-semibold flex items-center gap-0.5 cursor-pointer"
                             >
                                 ⏱️ Sekarang
@@ -1309,9 +1272,30 @@ function getCategoryBadgeClass(category) {
                         <input
                             type="time"
                             v-model="updateForm.start_time"
-                            class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                            class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-mono"
                         />
+                        <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1 italic">
+                            * Status otomatis menjadi <b>Sedang Dikerjakan</b> saat jam mulai terisi.
+                        </p>
                     </div>
+
+                    <!-- Opsi Pindahkan Jadwal / Reschedule (Opsional) -->
+                    <details class="text-xs group">
+                        <summary class="cursor-pointer text-[11px] text-purple-600 dark:text-purple-400 hover:underline font-semibold select-none flex items-center gap-1 list-none">
+                            <span>🗓️</span>
+                            <span>Pindahkan Tanggal Jadwal / Reschedule (Opsional)</span>
+                        </summary>
+                        <div class="pt-2 pl-3 border-l-2 border-purple-300 dark:border-purple-700 mt-1">
+                            <label class="block text-[10px] font-bold text-purple-700 dark:text-purple-300 mb-1">
+                                Tanggal Pelaksanaan Baru:
+                            </label>
+                            <input
+                                type="date"
+                                v-model="updateForm.scheduled_date"
+                                class="w-full px-2.5 py-1.5 text-xs rounded-xl bg-purple-50/50 dark:bg-slate-800 border border-purple-300 dark:border-purple-700 text-slate-900 dark:text-white"
+                            />
+                        </div>
+                    </details>
 
                     <!-- 3. Redaman Optik (OPM dBm) -->
                     <div>
@@ -1674,7 +1658,7 @@ function getCategoryBadgeClass(category) {
                             </label>
                             <button 
                                 type="button" 
-                                @click="updateForm.end_time = getCurrentTimeStr()" 
+                                @click="setEndTimeNow" 
                                 class="text-xs text-teal-700 dark:text-teal-300 hover:underline font-bold flex items-center gap-1 cursor-pointer bg-white dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-teal-200 dark:border-teal-700 shadow-2xs"
                             >
                                 ⏱️ Set Jam Sekarang
@@ -1683,8 +1667,11 @@ function getCategoryBadgeClass(category) {
                         <input
                             type="time"
                             v-model="updateForm.end_time"
-                            class="w-full px-3 py-2 text-sm font-black rounded-xl bg-white dark:bg-slate-800 border border-teal-300 dark:border-teal-700 text-teal-950 dark:text-white"
+                            class="w-full px-3 py-2 text-sm font-black rounded-xl bg-white dark:bg-slate-800 border border-teal-300 dark:border-teal-700 text-teal-950 dark:text-white font-mono"
                         />
+                        <p class="text-[10px] text-teal-700 dark:text-teal-400 mt-1 italic">
+                            * Isi jam selesai untuk menyelesaikan kegiatan (Status otomatis menjadi <b>Selesai Dikerjakan</b>).
+                        </p>
                     </div>
 
                     </div>
@@ -1707,7 +1694,7 @@ function getCategoryBadgeClass(category) {
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                             </svg>
-                            <span>{{ isSubmitting ? 'Menyimpan...' : 'Simpan Update 🚀' }}</span>
+                            <span>{{ isSubmitting ? 'Menyimpan...' : (updateForm.end_time ? 'Simpan & Selesai ✅' : (updateForm.start_time ? 'Simpan Progres Lapangan 🛠️' : 'Simpan Update 🚀')) }}</span>
                         </button>
                     </div>
 
