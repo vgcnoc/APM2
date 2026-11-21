@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import { 
+    ArrowLeftIcon,
     ArrowRightOnRectangleIcon, 
     BanknotesIcon, 
     BookOpenIcon,
@@ -25,6 +26,15 @@ const page = usePage();
 const { isDarkMode } = useTheme();
 const user = computed(() => page.props.auth?.user || {});
 const initials = computed(() => (user.value.name || 'Sales').trim().split(/\s+/).slice(0, 2).map(name => name[0]).join('').toUpperCase());
+const isAdminOrStaff = computed(() => {
+    const role = String(page.props.auth?.user?.role || '').toLowerCase();
+    const staffRoles = [
+        'admin', 'superadmin', 'super admin', 'super-admin', 
+        'noc', 'teknisi', 'cs', 'finance', 'manager', 'dispatcher', 'hrd', 'operator'
+    ];
+    const hasRole = page.props.auth?.user?.roles?.some(r => staffRoles.includes(String(r.name || '').toLowerCase()));
+    return staffRoles.includes(role) || Boolean(hasRole) || Boolean(page.props.auth?.user?.is_admin);
+});
 const icons = { 
     overview: ChartBarSquareIcon, 
     booking: PlusCircleIcon, 
@@ -57,6 +67,16 @@ const icons = {
             </div>
         </nav>
         <div class="sales-sidebar-footer">
+            <Link 
+                v-if="isAdminOrStaff" 
+                href="/" 
+                class="sales-admin-return"
+                title="Kembali ke Panel Utama Admin ISP"
+                @click="$emit('navigate')"
+            >
+                <ArrowLeftIcon class="w-4 h-4 shrink-0" />
+                <span>Panel Admin ISP</span>
+            </Link>
             <div class="sales-access-note"><ShieldCheckIcon /><p>Portal pribadi Anda<span>Data pelanggan dan jaringan sesuai akses akun.</span></p></div>
             <div class="sales-user"><span class="sales-avatar">{{ initials }}</span><div><strong>{{ user.name }}</strong><span>{{ page.props.is_employee ? 'Karyawan internal' : 'Sales & Afiliasi' }}</span></div></div>
             <Link href="/logout" method="post" as="button" class="sales-logout"><ArrowRightOnRectangleIcon /><span>Keluar dari akun</span></Link>

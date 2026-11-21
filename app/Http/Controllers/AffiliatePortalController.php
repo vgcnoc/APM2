@@ -452,6 +452,8 @@ class AffiliatePortalController extends Controller
         return Inertia::render('Affiliate/Dashboard', [
             'tab' => in_array($request->query('tab'), ['overview', 'customers', 'downlines', 'clawback', 'commissions', 'withdrawals', 'bank', 'guide'], true)
                 ? $request->query('tab') : 'overview',
+            'subtab' => in_array($request->query('subtab'), ['all', 'paid', 'unpaid', 'prorata', 'overdue'], true)
+                ? $request->query('subtab') : 'all',
             'is_employee' => $isEmployee,
             'pending_payroll_incentives' => $pendingPayrollIncentives,
             'payout_info' => $payoutInfo,

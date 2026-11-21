@@ -13,6 +13,15 @@ const page = usePage();
 const mobileMenu = ref(false);
 const currentSection = computed(() => props.section || affiliateSection(page.url, page.props.tab));
 const currentLabel = computed(() => affiliateSections.find(item => item.id === currentSection.value)?.label || 'Dashboard Sales');
+const isAdminOrStaff = computed(() => {
+    const role = String(page.props.auth?.user?.role || '').toLowerCase();
+    const staffRoles = [
+        'admin', 'superadmin', 'super admin', 'super-admin', 
+        'noc', 'teknisi', 'cs', 'finance', 'manager', 'dispatcher', 'hrd', 'operator'
+    ];
+    const hasRole = page.props.auth?.user?.roles?.some(r => staffRoles.includes(String(r.name || '').toLowerCase()));
+    return staffRoles.includes(role) || Boolean(hasRole) || Boolean(page.props.auth?.user?.is_admin);
+});
 watch(() => page.url, () => { mobileMenu.value = false; });
 let desktopMedia;
 const closeMenuOnDesktop = event => { if (event.matches) mobileMenu.value = false; };
@@ -34,6 +43,17 @@ onUnmounted(() => desktopMedia?.removeEventListener('change', closeMenuOnDesktop
                     <span class="breadcrumb-root">Portal Sales</span><ChevronRightIcon class="breadcrumb-chevron" /><strong>{{ currentLabel }}</strong>
                 </div>
                 <div class="sales-topbar-actions">
+                    <Link 
+                        v-if="isAdminOrStaff"
+                        href="/" 
+                        class="sales-admin-switch"
+                        title="Kembali ke Panel Utama Admin ISP"
+                    >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                        </svg>
+                        <span>Panel Admin ISP</span>
+                    </Link>
                     <PatternPicker />
                     <ThemeToggle />
                     <Link v-if="currentSection !== 'booking'" href="/affiliate/booking/create" class="sales-booking-button"><PlusIcon /><span>Booking Baru</span></Link>
@@ -99,6 +119,12 @@ html.dark .sales-brand svg > path { fill: #112437; stroke: #112437; }
 .breadcrumb-chevron { width: 12px; height: 12px; color: var(--sales-muted); }
 .sales-breadcrumb strong { font-weight: 600; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .sales-topbar-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.sales-admin-switch { display: inline-flex; align-items: center; gap: 6px; padding: 9px 13px; border-radius: 9px; font-size: 11px; font-weight: 600; color: var(--sales-accent); background: var(--sales-accent-soft); border: 1px solid #7caeee29; transition: all .18s ease; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.sales-admin-switch:hover { background: var(--sales-accent); color: #fff; }
+.sales-admin-switch svg { width: 14px; height: 14px; flex-shrink: 0; }
+.sales-admin-return { display: flex; align-items: center; gap: 8px; padding: 8px 12px; margin-bottom: 14px; border-radius: 9px; font-size: 11px; font-weight: 600; color: var(--sales-accent); background: var(--sales-accent-soft); border: 1px solid #7caeee29; transition: all .18s ease; text-decoration: none; cursor: pointer; }
+.sales-admin-return:hover { background: var(--sales-accent); color: #fff; }
+.sales-admin-return svg { width: 14px; height: 14px; flex-shrink: 0; }
 .sales-booking-button, .sales-primary-action { display: inline-flex; justify-content: center; align-items: center; gap: 7px; padding: 11px 15px; border-radius: 9px; background: #316da8; border: 1px solid #6195c040; color: #fff; font-size: 11px; font-weight: 600; transition: background .18s; }
 .sales-booking-button:hover, .sales-primary-action:hover { background: #3e7eb8; }
 .sales-booking-button svg, .sales-primary-action svg { width: 15px; height: 15px; }
@@ -134,6 +160,9 @@ html.dark .sales-mobile-dialog[role="dialog"], html.dark .sales-withdraw-dialog[
     .sales-breadcrumb { gap: 10px; font-size: 11px; }
     .breadcrumb-root, .breadcrumb-chevron { display: none; }
     .sales-topbar-actions { gap: 8px; }
+    .sales-admin-switch { padding: 9px 10px; }
+    .sales-admin-switch > span { display: none; }
+    .sales-admin-switch::after { content: 'Admin'; font-size: 10px; }
     .sales-booking-button { padding: 10px; }
     .sales-booking-button > span { display: none; }
     .sales-booking-button::after { content: 'Booking'; font-size: 10px; }

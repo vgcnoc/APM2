@@ -112,13 +112,12 @@
                             </p>
                         </div>
                     </div>
-                    <button
-                        type="button"
-                        @click="activeTab = 'customers'; customerSubTab = 'prorata'"
-                        class="px-4 py-2 bg-white hover:bg-purple-100/70 border border-purple-200 text-purple-800 text-xs font-extrabold rounded-xl transition shadow-2xs whitespace-nowrap cursor-pointer self-start sm:self-auto"
+                    <Link
+                        href="/affiliate/dashboard?tab=customers&subtab=prorata"
+                        class="px-4 py-2 bg-white hover:bg-purple-100/70 border border-purple-200 text-purple-800 text-xs font-extrabold rounded-xl transition shadow-2xs whitespace-nowrap cursor-pointer self-start sm:self-auto inline-flex items-center"
                     >
                         Lihat Data Prorata &rarr;
-                    </button>
+                    </Link>
                 </div>
 
                 <!-- Alert 2: Jadwal Tanggal Pencairan (Jika sebelum tanggal 15) -->
@@ -147,13 +146,13 @@
                             <h4 class="text-xs font-bold uppercase tracking-wider text-slate-800">Daftar Pelanggan Internet Binaan Anda</h4>
                             <p class="text-xs text-slate-500">Pelanggan yang Anda daftarkan langsung secara resmi.</p>
                         </div>
-                        <a
+                        <Link
                             href="/affiliate/booking/create"
                             class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
                         >
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                             <span>+ Booking Pelanggan Baru</span>
-                        </a>
+                        </Link>
                     </div>
 
                     <!-- Sub-tabs Pemisah: Semua Pelanggan | Sudah Bayar | Belum Bayar | Prorata | Menunggak -->
@@ -439,13 +438,13 @@
                             <p class="text-xs text-slate-400 mt-1">Bagikan link referral Anda atau daftarkan pelanggan langsung sekarang!</p>
                         </div>
                         <div>
-                            <a
+                            <Link
                                 href="/affiliate/booking/create"
                                 class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
                             >
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                                 <span>Input Booking Baru Sekarang</span>
-                            </a>
+                            </Link>
                         </div>
                     </div>
                 </div>
@@ -895,13 +894,12 @@
                                 Pelanggan wajib lunas terlebih dahulu sebelum pencairan dana dibuka.
                             </p>
                         </div>
-                        <button
-                            type="button"
-                            @click="customerSubTab = 'unpaid'; $inertia.visit('/affiliate/dashboard?tab=customers')"
-                            class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition-colors shrink-0"
+                        <Link
+                            href="/affiliate/dashboard?tab=customers&subtab=unpaid"
+                            class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition-colors shrink-0 inline-flex items-center"
                         >
                             Bantu Tagih Pelanggan &rarr;
-                        </button>
+                        </Link>
                     </div>
 
                     <div v-if="withdrawals.length > 0" class="overflow-x-auto">
@@ -1236,8 +1234,15 @@
                     </div>
                     <div class="flex justify-between">
                         <span class="text-slate-500">Tujuan Pencairan:</span>
-                        <span class="font-semibold text-slate-800">{{ profile.bank_name }} - {{ profile.bank_account_number }}</span>
+                        <span v-if="profile.bank_account_number" class="font-semibold text-slate-800">{{ profile.bank_name }} - {{ profile.bank_account_number }}</span>
+                        <span v-else class="font-semibold text-rose-600">Belum Diatur</span>
                     </div>
+                </div>
+
+                <!-- Alert jika rekening bank belum diisi -->
+                <div v-if="!profile?.bank_account_number" class="p-3 bg-amber-50 border border-amber-200 rounded-2xl mb-4 text-xs text-amber-900 flex items-center justify-between gap-2">
+                    <span>⚠️ Rekening pencairan belum diisi di profil.</span>
+                    <Link href="/affiliate/dashboard?tab=bank" @click="closeWithdrawModal" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-[11px] transition shrink-0">Atur Rekening</Link>
                 </div>
 
                 <!-- Alert jika ada pelanggan belum bayar -->
@@ -1307,7 +1312,7 @@
                         </button>
                         <button
                             type="submit"
-                            :disabled="withdrawForm.processing || profile.balance < settings.affiliate_min_withdraw || payout_info?.has_unpaid_customers || !payout_info?.is_payout_open"
+                            :disabled="withdrawForm.processing || profile.balance < settings.affiliate_min_withdraw || payout_info?.has_unpaid_customers || !payout_info?.is_payout_open || !profile?.bank_account_number"
                             class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm transition-colors disabled:opacity-50"
                         >
                             {{ withdrawForm.processing ? 'Memproses...' : 'Konfirmasi Penarikan' }}
@@ -1321,7 +1326,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Link, useForm } from '@inertiajs/vue3';
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/vue';
 import AffiliateLayout from '@/Layouts/AffiliateLayout.vue';
@@ -1347,6 +1352,10 @@ const props = defineProps({
     payout_info: Object,
     area_coverage: Array,
     tab: String,
+    subtab: {
+        type: String,
+        default: 'all',
+    },
 });
 
 const activeTab = computed(() => affiliateSection('/affiliate/dashboard', props.tab));
@@ -1364,7 +1373,13 @@ const sectionDescriptions = {
 
 const copyMessage = ref('');
 const showWithdrawModal = ref(false);
-const customerSubTab = ref('all'); // 'all', 'paid', 'unpaid', 'prorata', 'overdue'
+const customerSubTab = ref(props.subtab || 'all'); // 'all', 'paid', 'unpaid', 'prorata', 'overdue'
+
+watch(() => props.subtab, (newVal) => {
+    if (newVal) {
+        customerSubTab.value = newVal;
+    }
+});
 
 const paidCustomers = computed(() => (props.customers || []).filter(c => !c.has_unpaid_invoice && c.status === 'active'));
 const unpaidCustomersList = computed(() => (props.customers || []).filter(c => c.has_unpaid_invoice));
