@@ -121,13 +121,13 @@ const formatDate = (dateStr) => {
                         {{ customer?.package?.name || 'Paket Standar' }}
                     </h3>
                     <p class="text-xs text-indigo-600 font-semibold mt-1">
-                        Kecepatan: {{ customer?.package?.speed || '-' }} Mbps Unlimited
+                        Kecepatan: {{ customer?.package?.speed_mbps ? customer.package.speed_mbps + ' Mbps' : (customer?.package?.speed || 'Akses Penuh') }} Unlimited
                     </p>
                 </div>
                 <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
                     <span class="text-slate-500">Tarif Bulanan</span>
                     <span class="font-bold text-slate-900 font-mono">
-                        {{ formatRupiah(customer?.package?.price) }} / bln
+                        {{ formatRupiah(customer?.base_amount ?? customer?.package?.price) }} / bln
                     </span>
                 </div>
             </div>
@@ -169,7 +169,7 @@ const formatDate = (dateStr) => {
                     <div v-if="latestInvoice" class="mt-4">
                         <div class="flex flex-col sm:flex-row sm:items-baseline gap-2">
                             <p class="text-2xl sm:text-3xl font-black text-rose-600 font-mono tracking-tight">
-                                {{ formatRupiah(latestInvoice.amount) }}
+                                {{ formatRupiah(latestInvoice.remaining !== undefined && latestInvoice.remaining !== null ? latestInvoice.remaining : latestInvoice.amount) }}
                             </p>
                             <span class="text-xs text-slate-500 font-medium">
                                 Invoice: <strong class="text-slate-700 font-mono">{{ latestInvoice.invoice_number }}</strong>
@@ -230,11 +230,11 @@ const formatDate = (dateStr) => {
                 </div>
                 <div>
                     <p class="text-xs text-slate-500">Perangkat ONT / Router</p>
-                    <p class="text-sm font-bold text-slate-900">{{ customer?.ont?.model || 'Optical Network Terminal' }}</p>
+                    <p class="text-sm font-bold text-slate-900">{{ [customer?.ont?.brand, customer?.ont?.model].filter(Boolean).join(' ') || customer?.ont?.brand || customer?.ont?.model || 'Optical Network Terminal' }}</p>
                 </div>
                 <div>
                     <p class="text-xs text-slate-500">Serial Number (SN)</p>
-                    <p class="text-xs font-mono font-semibold text-slate-700">{{ customer?.ont?.sn || 'Terkonfigurasi Otomatis' }}</p>
+                    <p class="text-xs font-mono font-semibold text-slate-700">{{ customer?.ont?.serial_number || customer?.ont?.sn || 'Terkonfigurasi Otomatis' }}</p>
                 </div>
             </div>
 

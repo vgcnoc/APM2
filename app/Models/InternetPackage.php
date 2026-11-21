@@ -19,6 +19,8 @@ class InternetPackage extends Model
         'rate_limit', 'active_period', 'active_period_unit', 'fee_admin', 'fee_reseller', 'fee_partner'
     ];
 
+    protected $appends = ['speed'];
+
     protected function casts(): array
     {
         return [

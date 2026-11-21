@@ -36,7 +36,7 @@ const unpaidInvoices = computed(() => {
 });
 
 const totalUnpaidAmount = computed(() => {
-    return unpaidInvoices.value.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+    return unpaidInvoices.value.reduce((acc, curr) => acc + (Number(curr.remaining !== undefined && curr.remaining !== null ? curr.remaining : curr.amount) || 0), 0);
 });
 </script>
 
@@ -76,7 +76,7 @@ const totalUnpaidAmount = computed(() => {
                         {{ customer?.package?.name || 'Paket Standar' }}
                     </p>
                     <p class="text-[11px] text-indigo-600 font-semibold mt-1">
-                        {{ customer?.package?.speed || '-' }} Mbps Unlimited
+                        {{ customer?.package?.speed_mbps ? customer.package.speed_mbps + ' Mbps' : (customer?.package?.speed || 'Akses Penuh') }} Unlimited
                     </p>
                 </div>
                 <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
