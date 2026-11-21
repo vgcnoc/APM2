@@ -5489,13 +5489,23 @@ class CustomerController extends Controller
                 $nameLower = strtolower($matName);
                 $cleanName = trim(preg_replace('/\s*\(.*?\)\s*/', '', $nameLower));
                 $cleanName = trim(preg_replace('/^test\s+/i', '', $cleanName));
+                
+                // Prioritaskan material yang memiliki stok aktif di area target pelanggan
                 $material = \App\Models\Material::where('id', '>', 260)
                     ->where(function ($q) {
                         $q->where('is_active', true)->orWhereNull('is_active');
                     })
-                    ->where('name', 'like', "%{$cleanName}%")
-                    ->orderByRaw('CASE WHEN is_migration = 0 OR is_migration IS NULL THEN 0 ELSE 1 END')
+                    ->where(function ($q) use ($cleanName, $matName) {
+                        $q->where('name', 'like', "%{$matName}%")
+                          ->orWhere('name', 'like', "%{$cleanName}%");
+                    })
+                    ->orderByRaw("
+                        (SELECT COALESCE(ms.stock, 0) FROM material_stocks ms WHERE ms.material_id = materials.id AND ms.area_id = ?) DESC,
+                        CASE WHEN is_migration = 0 OR is_migration IS NULL THEN 0 ELSE 1 END,
+                        id ASC
+                    ", [$targetAreaId])
                     ->first();
+
                 if (!$material && (str_contains($cleanName, 'kabel') || str_contains($cleanName, 'frecon'))) {
                     $material = \App\Models\Material::where('id', '>', 260)
                         ->where(function ($q) {
@@ -5507,6 +5517,10 @@ class CustomerController extends Controller
                               ->orWhere('name', 'like', '%kabel%')
                               ->orWhere('name', 'like', '%frecon%');
                         })
+                        ->orderByRaw("
+                            (SELECT COALESCE(ms.stock, 0) FROM material_stocks ms WHERE ms.material_id = materials.id AND ms.area_id = ?) DESC,
+                            id ASC
+                        ", [$targetAreaId])
                         ->first();
                 }
             }

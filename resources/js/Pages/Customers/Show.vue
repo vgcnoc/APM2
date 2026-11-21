@@ -3067,8 +3067,8 @@
                                 <div v-for="(mItem, index) in installScheduleForm.material_items" :key="'mat-'+index" class="flex gap-2 items-center bg-slate-50 p-2 rounded-lg border border-slate-200">
                                     <select v-model="installScheduleForm.material_items[index].id" @change="updateScheduleMaterialDetails(index)" class="flex-1 bg-white border border-gray-300 rounded-lg px-2.5 py-2 text-xs text-slate-700 focus:ring-2 focus:ring-amber-500 min-w-0">
                                         <option value="">-- Pilih Material dari Surat Jalan --</option>
-                                        <option v-if="mItem.id && !availableMaterialItems.some(i => String(i.id) === String(mItem.id))" :value="mItem.id">
-                                            {{ mItem.name }} — Alokasi Saat Ini ({{ mItem.qty }} {{ mItem.unit || 'pcs' }})
+                                        <option v-if="mItem.id && !availableMaterialItems.some(i => String(i.id) === String(mItem.id))" :value="mItem.id" disabled class="text-red-500 bg-red-50 font-medium">
+                                            ⚠️ {{ mItem.name }} — Alokasi Sebelumnya (Stok Gudang Kosong / 0)
                                         </option>
                                         <option v-for="item in availableMaterialItems" :key="item.id" :value="item.id">
                                             {{ item.name }} {{ item.trx_number && item.trx_number !== 'STOK-UTAMA' ? '(SJ: ' + item.trx_number + ')' : '(Stok Gudang)' }} - Stok: {{ item.area_stock }} {{ item.unit }}
@@ -5680,6 +5680,16 @@ function getSelectedOntDetails(val) {
     return (props.availableOnts || []).find(ont => ont.id === val || String(ont.id) === String(val)) || props.customer?.ont;
 }
 
+const getStrictAreaStock = (material, targetAreaId) => {
+    if (!material) return 0;
+    if (targetAreaId) {
+        if (!material.stocks || !Array.isArray(material.stocks)) return 0;
+        const stockObj = material.stocks.find(s => String(s.area_id) === String(targetAreaId));
+        return stockObj ? Math.max(0, parseFloat(stockObj.stock) || 0) : 0;
+    }
+    return Math.max(0, parseFloat(material.stock) || 0);
+};
+
 const availableMaterialItems = computed(() => {
     let items = [];
     const trxs = props.materialTransactions || [];
@@ -5696,20 +5706,15 @@ const availableMaterialItems = computed(() => {
                     const isRegistered = item.is_registered_to_ont === 1 || item.is_registered_to_ont === true;
                     
                     if (!name.includes('ont') && !name.includes('modem') && !category.includes('ont') && !category.includes('modem') && !isRegistered) {
+                        const actualAreaStock = getStrictAreaStock(item.material, areaId);
+                        // KETAT: Jika stok aktual di area ini <= 0, jangan tampilkan sama sekali!
+                        if (actualAreaStock <= 0) return;
+
                         let remainingInOrder = typeof item.remaining_quantity !== 'undefined'
                             ? parseFloat(item.remaining_quantity)
                             : parseFloat(item.quantity);
 
-                        let areaStock = null;
-                        if (item.material?.stocks && areaId) {
-                            const stockObj = item.material.stocks.find(s => s.area_id == areaId);
-                            if (stockObj) areaStock = parseFloat(stockObj.stock) || 0;
-                        }
-
-                        let availableQty = remainingInOrder;
-                        if (areaStock !== null && areaStock < availableQty) {
-                            availableQty = areaStock;
-                        }
+                        let availableQty = Math.min(remainingInOrder, actualAreaStock);
 
                         if (availableQty > 0) {
                             handledMaterialIds.add(item.material_id);
@@ -5734,23 +5739,11 @@ const availableMaterialItems = computed(() => {
             const name = (mat.name || '').toLowerCase();
             const category = (mat.category || '').toLowerCase();
             if (!name.includes('ont') && !name.includes('modem') && !category.includes('ont') && !category.includes('modem')) {
-                let areaStock = 0;
-                let hasAreaStock = false;
-                if (mat.stocks && areaId) {
-                    const stockObj = mat.stocks.find(s => s.area_id == areaId);
-                    if (stockObj) {
-                        hasAreaStock = true;
-                        areaStock = parseFloat(stockObj.stock) || 0;
-                    }
-                }
-                if (areaId) {
-                    if (!hasAreaStock || areaStock <= 0) return;
-                } else {
-                    areaStock = parseFloat(mat.stock) || 0;
-                    if (areaStock <= 0) return;
-                }
+                const areaStock = getStrictAreaStock(mat, areaId);
+                // KETAT: Jika stok aktual di area ini <= 0, jangan tampilkan!
+                if (areaStock <= 0) return;
 
-                if (!handledMaterialIds.has(mat.id) && areaStock > 0) {
+                if (!handledMaterialIds.has(mat.id)) {
                     items.push({
                         id: 'mat-' + mat.id,
                         material_id: mat.id,
