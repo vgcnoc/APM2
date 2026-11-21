@@ -79,8 +79,24 @@ const latestCustomers = computed(() => (props.customers || []).slice(0, 5));
             <section class="sales-section-card sales-share-card">
                 <div class="share-card-icon"><ShareIcon /></div><p class="sales-eyebrow">TUMBUH BERSAMA</p><h2>Perluas jaringan Anda.</h2><p>Ajak pelanggan baru atau undang rekan menjadi bagian dari tim afiliasi Anda.</p>
                 <div class="sales-share-rewards"><span>Booking <strong>{{ currency(settings.affiliate_commission_booking) }}</strong></span><span>Bulanan <strong>{{ currency(settings.affiliate_commission_monthly) }}/pelanggan</strong></span></div>
-                <div class="sales-share-actions"><a :href="customerShareUrl" target="_blank" rel="noopener noreferrer">Bagikan kode ke WhatsApp <ArrowUpRightIcon /></a><button type="button" @click="$emit('copy', profile.referral_link_affiliate, 'Link pendaftaran mitra berhasil disalin.')">Salin link ajak rekan <ClipboardDocumentIcon /></button><a :href="affiliateShareUrl" target="_blank" rel="noopener noreferrer">Undang rekan via WhatsApp <ArrowUpRightIcon /></a></div>
-                <Link href="/affiliate/dashboard?tab=downlines" class="sales-team-link">Lihat afiliasi &amp; downline <ArrowRightIcon /></Link>
+                <div class="sales-share-actions">
+                    <a :href="customerShareUrl" target="_blank" rel="noopener noreferrer">
+                        <span>Bagikan kode ke WhatsApp</span>
+                        <ArrowUpRightIcon class="w-3.5 h-3.5 shrink-0" />
+                    </a>
+                    <button type="button" @click="$emit('copy', profile.referral_link_affiliate, 'Link pendaftaran mitra berhasil disalin.')">
+                        <span>Salin link ajak rekan</span>
+                        <ClipboardDocumentIcon class="w-3.5 h-3.5 shrink-0" />
+                    </button>
+                    <a :href="affiliateShareUrl" target="_blank" rel="noopener noreferrer">
+                        <span>Undang rekan via WhatsApp</span>
+                        <ArrowUpRightIcon class="w-3.5 h-3.5 shrink-0" />
+                    </a>
+                </div>
+                <Link href="/affiliate/dashboard?tab=downlines" class="sales-team-link">
+                    <span>Lihat afiliasi &amp; downline</span>
+                    <ArrowRightIcon class="w-3.5 h-3.5 shrink-0" />
+                </Link>
             </section>
         </div>
     </div>
@@ -165,5 +181,12 @@ html.dark .state-pending { color: #dbc393; }
 .sales-share-rewards { display: grid; gap: 7px; padding: 15px 0; color: var(--sales-muted); font-size: 9px; }
 .sales-share-rewards strong { color: var(--sales-text); font-weight: 550; margin-left: 5px; }
 .sales-share-actions { display: grid; gap: 7px; margin-top: 4px; }
-.sales-share-actions :is(a, button) { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 12px; border: 1px solid var(--sales-line); border-radius: 8px; color: var(--sales-text); font-size: 10px; text-align: left; }
+.sales-share-actions :is(a, button) { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 12px; border: 1px solid var(--sales-line); border-radius: 8px; color: var(--sales-text); font-size: 10px; text-align: left; background: transparent; cursor: pointer; transition: background .18s, border-color .18s; }
+.sales-share-actions :is(a, button):hover { background: var(--sales-subtle); border-color: var(--sales-accent); }
+.sales-share-actions svg { width: 14px; height: 14px; flex-shrink: 0; color: var(--sales-muted); transition: transform .18s, color .18s; }
+.sales-share-actions :is(a, button):hover svg { color: var(--sales-accent); }
+.sales-team-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; font-size: 10px; font-weight: 550; color: var(--sales-accent); transition: color .18s; }
+.sales-team-link:hover { color: #4a8cd6; }
+.sales-team-link svg { width: 13px; height: 13px; flex-shrink: 0; transition: transform .18s; }
+.sales-team-link:hover svg { transform: translateX(2px); }
 </style>
