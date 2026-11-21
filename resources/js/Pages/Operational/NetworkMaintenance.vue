@@ -329,6 +329,7 @@ async function submitUpdateMaintenance() {
 // MODAL: BUAT JADWAL PEMELIHARAAN BARU
 // ══════════════════════════════════════════════════════════════════
 const showCreateModal = ref(false);
+const isCreateModalMaximized = ref(false);
 const createPhotoBeforeFile = ref(null);
 const showAllAreaTechs = ref(false);
 
@@ -347,6 +348,68 @@ const createForm = ref({
     technician_ids: [],
     materials: [],
 });
+
+function isGenericTitle(str) {
+    if (!str) return true;
+    const generics = [
+        'Pengecekan & Kebersihan Box ODP',
+        'Pengecekan Kabinet & Splitter ODC',
+        'Pemeliharaan Jalur Utama (Backbone FO)',
+        'Perapihan Jalur & Kabel Kendur',
+        'Pemeliharaan Berkala & Rutin',
+    ];
+    return generics.includes(str) || str.startsWith('Pengecekan & Pemeliharaan ODP') || str.startsWith('Pengecekan Kabinet ODC');
+}
+
+function onCategoryChange() {
+    if (createForm.value.category === 'pengecekan_odp') {
+        createForm.value.asset_type = 'odp';
+        if (!createForm.value.title || isGenericTitle(createForm.value.title)) {
+            createForm.value.title = 'Pengecekan & Kebersihan Box ODP';
+        }
+    } else if (createForm.value.category === 'pengecekan_odc') {
+        createForm.value.asset_type = 'odc';
+        if (!createForm.value.title || isGenericTitle(createForm.value.title)) {
+            createForm.value.title = 'Pengecekan Kabinet & Splitter ODC';
+        }
+    } else if (createForm.value.category === 'pengecekan_jalur_utama') {
+        createForm.value.asset_type = 'manual';
+        if (!createForm.value.title || isGenericTitle(createForm.value.title)) {
+            createForm.value.title = 'Pemeliharaan Jalur Utama (Backbone FO)';
+        }
+    } else if (createForm.value.category === 'perapihan_jalur') {
+        createForm.value.asset_type = 'manual';
+        if (!createForm.value.title || isGenericTitle(createForm.value.title)) {
+            createForm.value.title = 'Perapihan Jalur & Kabel Kendur';
+        }
+    } else if (createForm.value.category === 'pemeliharaan_rutin') {
+        if (!createForm.value.title || isGenericTitle(createForm.value.title)) {
+            createForm.value.title = 'Pemeliharaan Berkala & Rutin';
+        }
+    }
+}
+
+function onOdpChange() {
+    if (createForm.value.odp_id) {
+        const found = (props.availableOdps || []).find(o => o.id == createForm.value.odp_id);
+        if (found) {
+            if (!createForm.value.title || isGenericTitle(createForm.value.title)) {
+                createForm.value.title = `Pengecekan & Pemeliharaan ODP ${found.name}`;
+            }
+        }
+    }
+}
+
+function onOdcChange() {
+    if (createForm.value.odc_id) {
+        const found = (props.availableOdcs || []).find(c => c.id == createForm.value.odc_id);
+        if (found) {
+            if (!createForm.value.title || isGenericTitle(createForm.value.title)) {
+                createForm.value.title = `Pengecekan Kabinet ODC ${found.name}`;
+            }
+        }
+    }
+}
 
 const filteredOdps = computed(() => {
     if (!createForm.value.area_id) return props.availableOdps;
@@ -370,7 +433,7 @@ const filteredTechnicians = computed(() => {
 // Daftar Material Persiapan Gudang (Bekal Petugas)
 const availableMaterialItems = computed(() => {
     let items = [];
-    const areaId = selectedAreaId.value;
+    const areaId = createForm.value?.area_id || filterArea.value || '';
     const handledMaterialIds = new Set();
 
     // 1. Ambil dari Order Toko / Restock Area jika ada
@@ -548,9 +611,10 @@ function openCreateModal() {
     createPhotoBeforeFile.value = null;
     photoBeforeCompressionInfo.value = null;
     showAllAreaTechs.value = false;
+    isCreateModalMaximized.value = false;
     createForm.value = {
         category: 'perapihan_jalur',
-        title: '',
+        title: 'Perapihan Jalur & Kabel Kendur',
         area_id: filterArea.value || props.areas?.[0]?.id || '',
         asset_type: 'manual',
         odp_id: '',
@@ -1711,7 +1775,10 @@ function getCategoryBadgeClass(category) {
             class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto"
             @click.self="showCreateModal = false"
         >
-            <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 my-auto animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+            <div 
+                class="bg-white dark:bg-slate-900 rounded-3xl w-full flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 my-auto animate-in fade-in zoom-in-95 duration-200 overflow-hidden transition-all"
+                :class="isCreateModalMaximized ? 'max-w-5xl h-[95vh]' : 'max-w-2xl max-h-[92vh]'"
+            >
                 
                 <!-- Fixed Header (Pinned at Top) -->
                 <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
@@ -1720,16 +1787,33 @@ function getCategoryBadgeClass(category) {
                             🔧
                         </div>
                         <div>
-                            <h3 class="text-sm font-bold text-slate-900 dark:text-white">Jadwal Pemeliharaan & Jalur Baru</h3>
+                            <h3 class="text-sm font-bold text-slate-900 dark:text-white !text-slate-900 dark:!text-white">Jadwal Pemeliharaan & Jalur Baru</h3>
                             <p class="text-[11px] text-slate-400">Mandiri tanpa harus lewat tiket PGS/PGK/PGJ</p>
                         </div>
                     </div>
-                    <button 
-                        @click="showCreateModal = false"
-                        class="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                    >
-                        ✕
-                    </button>
+                    <div class="flex items-center gap-1">
+                        <button 
+                            type="button"
+                            @click="isCreateModalMaximized = !isCreateModalMaximized"
+                            class="p-2 rounded-xl text-slate-400 hover:text-teal-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                            :title="isCreateModalMaximized ? 'Perkecil Ukuran Form' : 'Perbesar Ukuran Form'"
+                        >
+                            <svg v-if="!isCreateModalMaximized" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                            </svg>
+                            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9L4 4m0 0v4m0-4h4m6 5l5-5m0 0v4m0-4h-4M9 15l-5 5m0 0v-4m0 4h4m6-5l5 5m0 0v-4m0 4h-4" />
+                            </svg>
+                        </button>
+                        <button 
+                            type="button"
+                            @click="showCreateModal = false"
+                            class="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                            title="Tutup Form"
+                        >
+                            ✕
+                        </button>
+                    </div>
                 </div>
 
                 <form @submit.prevent="submitCreateMaintenance" class="flex flex-col min-h-0 flex-1 overflow-hidden">
@@ -1742,6 +1826,7 @@ function getCategoryBadgeClass(category) {
                         </label>
                         <select
                             v-model="createForm.category"
+                            @change="onCategoryChange"
                             class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
                         >
                             <option value="perapihan_jalur">🧹 Perapihan Jalur & Kabel Kendur</option>
@@ -1773,6 +1858,7 @@ function getCategoryBadgeClass(category) {
                         </label>
                         <select
                             v-model="createForm.area_id"
+                            @change="createForm.odp_id = ''; createForm.odc_id = '';"
                             class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
                         >
                             <option value="">Pilih Wilayah</option>
@@ -1828,6 +1914,7 @@ function getCategoryBadgeClass(category) {
                         <div v-if="createForm.asset_type === 'odp'">
                             <select
                                 v-model="createForm.odp_id"
+                                @change="onOdpChange"
                                 class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
                             >
                                 <option value="">Pilih Box ODP Target</option>
@@ -1841,6 +1928,7 @@ function getCategoryBadgeClass(category) {
                         <div v-if="createForm.asset_type === 'odc'">
                             <select
                                 v-model="createForm.odc_id"
+                                @change="onOdcChange"
                                 class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
                             >
                                 <option value="">Pilih Kabinet ODC Target</option>

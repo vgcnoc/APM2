@@ -450,7 +450,7 @@ class NetworkMaintenanceController extends Controller
                             'material_transaction_item_id' => $matItem['material_transaction_item_id'] ?? null,
                             'trx_number' => $matItem['trx_number'] ?? null,
                             'quantity_prepared' => $qty,
-                            'quantity_used' => $qty,
+                            'quantity_used' => 0,
                             'quantity_returned' => 0,
                             'unit' => $itemUnit,
                             'notes' => $matItem['notes'] ?? null,
