@@ -161,7 +161,7 @@ class CustomerController extends Controller
                 'sales:id,name'
             ])
             ->search($request->search)
-            ->when($request->status, function ($q, $status) {
+            ->when($request->status, function ($q, $status) use ($request) {
                 if ($status === 'pending') {
                     $q->whereIn('status', ['booking', 'survey', 'installing']);
                 } elseif ($status === 'disabled') {
@@ -1422,7 +1422,7 @@ class CustomerController extends Controller
                 $q->whereRaw('DATE(COALESCE(registration_date, created_at)) = ?', [$date]);
             })
             ->when($request->area || $request->area_id, fn($q) => $this->applyAreaFilter($q, $request->area_id ?: $request->area))
-            ->when($request->status, function ($q, $status) {
+            ->when($request->status, function ($q, $status) use ($request) {
                 $q->where('status', $status);
             })
             ->search($request->search);
