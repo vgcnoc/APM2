@@ -47,13 +47,14 @@
                 @click="filterState.tab = ''; applyFilter()" 
                 :class="[
                     'px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 whitespace-nowrap flex-1 flex items-center justify-center gap-2 cursor-pointer', 
-                    filterState.tab === '' 
-                        ? 'bg-white text-slate-900 shadow-xs ring-1 ring-slate-200' 
+                    (filterState.tab === '' || filterState.tab === 'dalam_proses') 
+                        ? 'bg-white text-blue-700 shadow-xs ring-1 ring-blue-200' 
                         : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                 ]"
             >
-                <span>Semua Status</span>
-                <span v-if="stats?.semua !== undefined" :class="['px-2 py-0.5 rounded-full text-[10px] font-bold', filterState.tab === '' ? 'bg-slate-100 text-slate-800 border border-slate-200' : 'bg-slate-200/70 text-slate-600']">{{ stats.semua }}</span>
+                <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+                <span>Dalam Proses</span>
+                <span v-if="stats?.dalam_proses !== undefined" :class="['px-2 py-0.5 rounded-full text-[10px] font-bold', (filterState.tab === '' || filterState.tab === 'dalam_proses') ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-slate-200/70 text-slate-600']">{{ stats.dalam_proses }}</span>
             </button>
             <button 
                 type="button"
@@ -124,6 +125,20 @@
                 <span class="w-2 h-2 rounded-full" :class="filterState.tab === 'reseller' ? 'bg-amber-500 animate-pulse' : 'bg-amber-400'"></span>
                 <span>🎟️ Khusus Reseller Voucher</span>
                 <span v-if="stats?.reseller !== undefined" :class="['px-2 py-0.5 rounded-full text-[10px] font-bold', filterState.tab === 'reseller' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-amber-100/80 text-amber-800']">{{ stats.reseller }}</span>
+            </button>
+            <button 
+                type="button"
+                @click="filterState.tab = 'semua'; applyFilter()" 
+                :class="[
+                    'px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-2 cursor-pointer', 
+                    filterState.tab === 'semua' 
+                        ? 'bg-white text-slate-900 shadow-xs ring-1 ring-slate-300' 
+                        : 'text-slate-500 hover:text-slate-900 hover:bg-white/60'
+                ]"
+                title="Tampilkan semua riwayat termasuk yang sudah selesai"
+            >
+                <span>Semua Riwayat</span>
+                <span v-if="stats?.semua !== undefined" :class="['px-2 py-0.5 rounded-full text-[10px] font-bold', filterState.tab === 'semua' ? 'bg-slate-200 text-slate-900' : 'bg-slate-200/60 text-slate-500']">{{ stats.semua }}</span>
             </button>
         </div>
 

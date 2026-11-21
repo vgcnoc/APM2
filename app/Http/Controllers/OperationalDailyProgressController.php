@@ -173,7 +173,23 @@ class OperationalDailyProgressController extends Controller
             $cbpList,
             $maintenanceList,
             $summary,
-            $customNote
+            $customNote,
+            true
+        );
+
+        $waTextPending = $this->buildWhatsAppTemplate(
+            $areaLabel,
+            $indonesianDayDate,
+            $technicianStatus,
+            $gangguanList,
+            $pgjList,
+            $pemasanganList,
+            $surveyList,
+            $cbpList,
+            $maintenanceList,
+            $summary,
+            $customNote,
+            false
         );
 
         $waTextPgj = $this->buildPgjWhatsAppTemplate(
@@ -182,7 +198,18 @@ class OperationalDailyProgressController extends Controller
             $technicianStatus,
             $pgjList,
             $summary,
-            $customNote
+            $customNote,
+            true
+        );
+
+        $waTextPgjPending = $this->buildPgjWhatsAppTemplate(
+            $areaLabel,
+            $indonesianDayDate,
+            $technicianStatus,
+            $pgjList,
+            $summary,
+            $customNote,
+            false
         );
 
         $waTextGangguan = $this->buildGangguanWhatsAppTemplate(
@@ -191,7 +218,18 @@ class OperationalDailyProgressController extends Controller
             $technicianStatus,
             $gangguanList,
             $summary,
-            $customNote
+            $customNote,
+            true
+        );
+
+        $waTextGangguanPending = $this->buildGangguanWhatsAppTemplate(
+            $areaLabel,
+            $indonesianDayDate,
+            $technicianStatus,
+            $gangguanList,
+            $summary,
+            $customNote,
+            false
         );
 
         $waTextPemasangan = $this->buildPemasanganWhatsAppTemplate(
@@ -200,7 +238,18 @@ class OperationalDailyProgressController extends Controller
             $technicianStatus,
             $pemasanganList,
             $summary,
-            $customNote
+            $customNote,
+            true
+        );
+
+        $waTextPemasanganPending = $this->buildPemasanganWhatsAppTemplate(
+            $areaLabel,
+            $indonesianDayDate,
+            $technicianStatus,
+            $pemasanganList,
+            $summary,
+            $customNote,
+            false
         );
 
         // Cek Status Gateway WA
@@ -306,9 +355,13 @@ class OperationalDailyProgressController extends Controller
             'availableOdcs' => $availableOdcs,
             'summary' => $summary,
             'waText' => $waText,
+            'waTextPending' => $waTextPending,
             'waTextPgj' => $waTextPgj,
+            'waTextPgjPending' => $waTextPgjPending,
             'waTextGangguan' => $waTextGangguan,
+            'waTextGangguanPending' => $waTextGangguanPending,
             'waTextPemasangan' => $waTextPemasangan,
+            'waTextPemasanganPending' => $waTextPemasanganPending,
             'waGatewayStatus' => $waGatewayStatus,
             'canViewAllAreas' => $isGlobal,
             'isAreaScoped' => !$isGlobal,
@@ -1635,8 +1688,18 @@ class OperationalDailyProgressController extends Controller
         array $cbpList,
         array $maintenanceList,
         array $summary,
-        string $customNote
+        string $customNote,
+        bool $includeCompleted = true
     ): string {
+        if (!$includeCompleted) {
+            $gangguanList = array_values(array_filter($gangguanList, fn($item) => empty($item['is_done'])));
+            $pgjList = array_values(array_filter($pgjList, fn($item) => empty($item['is_done'])));
+            $pemasanganList = array_values(array_filter($pemasanganList, fn($item) => empty($item['is_done'])));
+            $surveyList = array_values(array_filter($surveyList, fn($item) => empty($item['is_done'])));
+            $cbpList = array_values(array_filter($cbpList, fn($item) => empty($item['is_done'])));
+            $maintenanceList = array_values(array_filter($maintenanceList, fn($item) => empty($item['is_done'])));
+        }
+
         $lines = [];
 
         // Header
@@ -1903,8 +1966,13 @@ class OperationalDailyProgressController extends Controller
         array $technicianStatus,
         array $pgjList,
         array $summary,
-        string $customNote
+        string $customNote,
+        bool $includeCompleted = true
     ): string {
+        if (!$includeCompleted) {
+            $pgjList = array_values(array_filter($pgjList, fn($item) => empty($item['is_done'])));
+        }
+
         $lines = [];
 
         $lines[] = "⚡ *PROGRESS GANGGUAN JALUR (PGJ)*";
@@ -1993,8 +2061,13 @@ class OperationalDailyProgressController extends Controller
         array $technicianStatus,
         array $gangguanList,
         array $summary,
-        string $customNote
+        string $customNote,
+        bool $includeCompleted = true
     ): string {
+        if (!$includeCompleted) {
+            $gangguanList = array_values(array_filter($gangguanList, fn($item) => empty($item['is_done'])));
+        }
+
         $lines = [];
 
         $lines[] = "🆘 *PROGRESS GANGGUAN PELANGGAN (PGS/PGK)*";
@@ -2061,8 +2134,13 @@ class OperationalDailyProgressController extends Controller
         array $technicianStatus,
         array $pemasanganList,
         array $summary,
-        string $customNote
+        string $customNote,
+        bool $includeCompleted = true
     ): string {
+        if (!$includeCompleted) {
+            $pemasanganList = array_values(array_filter($pemasanganList, fn($item) => empty($item['is_done'])));
+        }
+
         $lines = [];
 
         $lines[] = "🛜 *PROGRESS PEMASANGAN BARU (PSB)*";

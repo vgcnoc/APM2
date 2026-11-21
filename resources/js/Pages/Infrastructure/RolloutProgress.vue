@@ -219,6 +219,83 @@
                         </div>
                     </div>
 
+                    <!-- Status Filter Tabs: Sembunyikan Selesai secara default -->
+                    <div class="flex items-center justify-between gap-2 p-1.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-xs shadow-2xs flex-wrap">
+                        <div class="flex items-center gap-1">
+                            <button
+                                type="button"
+                                @click="rolloutStatusFilter = 'active'"
+                                class="px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                                :class="rolloutStatusFilter === 'active'
+                                    ? 'bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800 font-black shadow-xs'
+                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'"
+                            >
+                                <span>⚡</span>
+                                <span>Belum Selesai (Aktif)</span>
+                                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-bold" :class="rolloutStatusFilter === 'active' ? 'bg-cyan-200 dark:bg-cyan-900 text-cyan-900 dark:text-cyan-200' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'">
+                                    {{ rolloutActiveCount }}
+                                </span>
+                            </button>
+
+                            <button
+                                type="button"
+                                @click="rolloutStatusFilter = 'all'"
+                                class="px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                                :class="rolloutStatusFilter === 'all'
+                                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs font-black'
+                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'"
+                            >
+                                <span>🌐</span>
+                                <span>Semua ({{ (filterOnlyMyRollout ? myRolloutList.length : rolloutList.length) }})</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                @click="rolloutStatusFilter = 'completed'"
+                                class="px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                                :class="rolloutStatusFilter === 'completed'
+                                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 font-black shadow-xs'
+                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'"
+                            >
+                                <span>✅</span>
+                                <span>Selesai ({{ rolloutDoneCount }})</span>
+                            </button>
+                        </div>
+
+                        <!-- Indicator badge when completed items are hidden -->
+                        <div v-if="rolloutStatusFilter === 'active' && rolloutDoneCount > 0" class="flex items-center gap-2 pr-2">
+                            <span class="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                                ✓ {{ rolloutDoneCount }} Selesai Disembunyikan
+                            </span>
+                            <button
+                                type="button"
+                                @click="rolloutStatusFilter = 'all'"
+                                class="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                            >
+                                Tampilkan Semua
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Completed all banner in active filter -->
+                    <div v-if="filteredRolloutList.length === 0 && rolloutStatusFilter === 'active' && rolloutDoneCount > 0" class="bg-white dark:bg-slate-900 rounded-3xl p-8 text-center border border-slate-200/80 dark:border-slate-800 space-y-2">
+                        <div class="w-12 h-12 mx-auto rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-2xl mb-1">
+                            🎉
+                        </div>
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">Semua Work Order Rollout Telah Selesai!</h3>
+                        <p class="text-xs text-slate-400">Seluruh {{ rolloutDoneCount }} work order rollout pembangunan ODC & ODP pada filter ini telah selesai.</p>
+                        <div class="pt-2">
+                            <button
+                                type="button"
+                                @click="rolloutStatusFilter = 'completed'"
+                                class="px-3.5 py-1.5 text-xs font-bold rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition-all cursor-pointer inline-flex items-center gap-1.5"
+                            >
+                                <span>👁️</span>
+                                <span>Tampilkan {{ rolloutDoneCount }} Rollout yang Sudah Selesai</span>
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- Empty State -->
                     <div v-if="filteredRolloutList.length === 0" class="bg-white dark:bg-slate-900 rounded-3xl p-10 text-center border border-slate-200/80 dark:border-slate-800">
                         <div class="w-16 h-16 mx-auto rounded-2xl bg-cyan-50 dark:bg-cyan-950/50 text-cyan-600 dark:text-cyan-400 flex items-center justify-center text-3xl mb-3">
@@ -804,11 +881,27 @@ const myRolloutList = computed(() => {
     });
 });
 
+// Filter Status Rollout (Default: 'active' agar progress yang selesai tidak selalu ditampilkan)
+const rolloutStatusFilter = ref('active'); // 'active' | 'all' | 'completed'
+
+const rolloutDoneCount = computed(() => {
+    const list = filterOnlyMyRollout.value ? myRolloutList.value : (props.rolloutList || []);
+    return list.filter(item => item.status === 'completed').length;
+});
+
+const rolloutActiveCount = computed(() => {
+    const list = filterOnlyMyRollout.value ? myRolloutList.value : (props.rolloutList || []);
+    return list.filter(item => item.status !== 'completed').length;
+});
+
 const filteredRolloutList = computed(() => {
-    if (filterOnlyMyRollout.value) {
-        return myRolloutList.value;
+    let list = filterOnlyMyRollout.value ? myRolloutList.value : (props.rolloutList || []);
+    if (rolloutStatusFilter.value === 'active') {
+        return list.filter(item => item.status !== 'completed');
+    } else if (rolloutStatusFilter.value === 'completed') {
+        return list.filter(item => item.status === 'completed');
     }
-    return props.rolloutList || [];
+    return list;
 });
 
 // Dynamic WhatsApp message text calculation

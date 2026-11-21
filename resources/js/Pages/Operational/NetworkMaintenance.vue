@@ -967,6 +967,7 @@ function getCategoryBadgeClass(category) {
                         class="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
                     >
                         <option value="all">Status: Semua</option>
+                        <option value="active">⚡ Belum Selesai (Aktif)</option>
                         <option value="scheduled">⏳ Pending / Jadwal</option>
                         <option value="in_progress">🛠️ Sedang Dikerjakan</option>
                         <option value="completed">✅ Selesai Dikerjakan</option>

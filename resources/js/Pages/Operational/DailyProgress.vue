@@ -323,6 +323,64 @@
                         </button>
                     </div>
 
+                    <!-- SUB BAR: FILTER STATUS PROGRESS (SEMBUNYIKAN SELESAI / AKTIF / SEMUA) -->
+                    <div v-if="activeTab !== 'teknisi'" class="flex items-center justify-between gap-2 p-1.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-xs shadow-2xs flex-wrap">
+                        <div class="flex items-center gap-1">
+                            <button
+                                type="button"
+                                @click="progressFilter = 'pending'"
+                                class="px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                                :class="progressFilter === 'pending'
+                                    ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800 font-black shadow-xs'
+                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'"
+                            >
+                                <span>⏳</span>
+                                <span>Belum Selesai (Aktif)</span>
+                                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-bold" :class="progressFilter === 'pending' ? 'bg-rose-200 dark:bg-rose-900 text-rose-900 dark:text-rose-200' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'">
+                                    {{ currentTabPendingCount }}
+                                </span>
+                            </button>
+
+                            <button
+                                type="button"
+                                @click="progressFilter = 'all'"
+                                class="px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                                :class="progressFilter === 'all'
+                                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs font-black'
+                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'"
+                            >
+                                <span>🌐</span>
+                                <span>Semua ({{ currentTabTotalCount }})</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                @click="progressFilter = 'done'"
+                                class="px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                                :class="progressFilter === 'done'
+                                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 font-black shadow-xs'
+                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'"
+                            >
+                                <span>✅</span>
+                                <span>Selesai ({{ currentTabDoneCount }})</span>
+                            </button>
+                        </div>
+
+                        <!-- Indicator badge when completed items are hidden -->
+                        <div v-if="progressFilter === 'pending' && currentTabDoneCount > 0" class="flex items-center gap-2 pr-2">
+                            <span class="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                                ✓ {{ currentTabDoneCount }} Selesai Disembunyikan
+                            </span>
+                            <button
+                                type="button"
+                                @click="progressFilter = 'all'"
+                                class="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                            >
+                                Tampilkan Semua
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- TAB 1: GANGGUAN (PGS / PGK) -->
                     <div v-if="activeTab === 'gangguan'" class="space-y-3">
                         <div v-if="gangguanList.length === 0" class="bg-white dark:bg-slate-900 rounded-3xl p-10 text-center border border-slate-200/80 dark:border-slate-800">
@@ -333,8 +391,30 @@
                             <p class="text-xs text-slate-400 mt-1">Tidak ada komplain atau tiket gangguan yang tercatat untuk tanggal dan wilayah yang dipilih.</p>
                         </div>
 
+                        <div v-else-if="displayedGangguanList.length === 0 && progressFilter === 'pending'" class="bg-white dark:bg-slate-900 rounded-3xl p-8 text-center border border-slate-200/80 dark:border-slate-800 space-y-2">
+                            <div class="w-12 h-12 mx-auto rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-2xl mb-1">
+                                🎉
+                            </div>
+                            <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">Semua Gangguan PGS/PGK Telah Selesai Ditangani!</h3>
+                            <p class="text-xs text-slate-400">Seluruh {{ summary.gangguan_done || 0 }} tiket gangguan telah rampung ditangani teknisi. Tidak ada kendala pending.</p>
+                            <div class="pt-2">
+                                <button
+                                    type="button"
+                                    @click="progressFilter = 'done'"
+                                    class="px-3.5 py-1.5 text-xs font-bold rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition-all cursor-pointer inline-flex items-center gap-1.5"
+                                >
+                                    <span>👁️</span>
+                                    <span>Tampilkan {{ summary.gangguan_done || 0 }} Gangguan yang Sudah Selesai</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div v-else-if="displayedGangguanList.length === 0 && progressFilter === 'done'" class="bg-white dark:bg-slate-900 rounded-3xl p-8 text-center border border-slate-200/80 dark:border-slate-800">
+                            <p class="text-xs text-slate-400">Belum ada tugas gangguan yang selesai pada tanggal ini.</p>
+                        </div>
+
                         <div 
-                            v-for="(item, idx) in gangguanList" 
+                            v-for="(item, idx) in displayedGangguanList" 
                             :key="'gangguan-' + idx"
                             class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 hover:shadow-md transition-all space-y-2.5"
                         >
@@ -447,8 +527,30 @@
                             <p class="text-xs text-slate-400 mt-1">Seluruh segmen kabel backbone, feeder, ODC, ODP, dan distribusi terpantau stabil normal tanpa tiket gangguan.</p>
                         </div>
 
+                        <div v-else-if="displayedPgjList.length === 0 && progressFilter === 'pending'" class="bg-white dark:bg-slate-900 rounded-3xl p-8 text-center border border-slate-200/80 dark:border-slate-800 space-y-2">
+                            <div class="w-12 h-12 mx-auto rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-2xl mb-1">
+                                🎉
+                            </div>
+                            <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">Semua Gangguan Jalur (PGJ) Telah Selesai!</h3>
+                            <p class="text-xs text-slate-400">Seluruh {{ summary.pgj_done || 0 }} penanganan gangguan jalur telah rampung. Seluruh segmen jalur normal.</p>
+                            <div class="pt-2">
+                                <button
+                                    type="button"
+                                    @click="progressFilter = 'done'"
+                                    class="px-3.5 py-1.5 text-xs font-bold rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition-all cursor-pointer inline-flex items-center gap-1.5"
+                                >
+                                    <span>👁️</span>
+                                    <span>Tampilkan {{ summary.pgj_done || 0 }} Gangguan Jalur yang Selesai</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div v-else-if="displayedPgjList.length === 0 && progressFilter === 'done'" class="bg-white dark:bg-slate-900 rounded-3xl p-8 text-center border border-slate-200/80 dark:border-slate-800">
+                            <p class="text-xs text-slate-400">Belum ada penanganan gangguan jalur yang selesai pada tanggal ini.</p>
+                        </div>
+
                         <div 
-                            v-for="(item, idx) in pgjList" 
+                            v-for="(item, idx) in displayedPgjList" 
                             :key="'pgj-' + (item.id || idx)"
                             class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-amber-200/80 dark:border-amber-900/40 hover:shadow-md transition-all space-y-2.5 relative overflow-hidden"
                         >
@@ -572,8 +674,30 @@
                             <p class="text-xs text-slate-400 mt-1">Tidak ada jadwal atau instalasi pemasangan baru pada tanggal ini.</p>
                         </div>
 
+                        <div v-else-if="displayedPemasanganList.length === 0 && progressFilter === 'pending'" class="bg-white dark:bg-slate-900 rounded-3xl p-8 text-center border border-slate-200/80 dark:border-slate-800 space-y-2">
+                            <div class="w-12 h-12 mx-auto rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-2xl mb-1">
+                                🎉
+                            </div>
+                            <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">Seluruh Pemasangan Baru Telah Selesai!</h3>
+                            <p class="text-xs text-slate-400">Semua {{ summary.pemasangan_done || 0 }} pemasangan baru hari ini telah selesai dipasang.</p>
+                            <div class="pt-2">
+                                <button
+                                    type="button"
+                                    @click="progressFilter = 'done'"
+                                    class="px-3.5 py-1.5 text-xs font-bold rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition-all cursor-pointer inline-flex items-center gap-1.5"
+                                >
+                                    <span>👁️</span>
+                                    <span>Tampilkan {{ summary.pemasangan_done || 0 }} Pemasangan yang Sudah Selesai</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div v-else-if="displayedPemasanganList.length === 0 && progressFilter === 'done'" class="bg-white dark:bg-slate-900 rounded-3xl p-8 text-center border border-slate-200/80 dark:border-slate-800">
+                            <p class="text-xs text-slate-400">Belum ada pemasangan baru yang selesai pada tanggal ini.</p>
+                        </div>
+
                         <div 
-                            v-for="(item, idx) in pemasanganList" 
+                            v-for="(item, idx) in displayedPemasanganList" 
                             :key="'pasang-' + idx"
                             class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 hover:shadow-md transition-all space-y-2.5"
                         >
@@ -655,8 +779,30 @@
                             <p class="text-xs text-slate-400 mt-1">Belum ada aktivitas survey calon pelanggan baru pada tanggal ini.</p>
                         </div>
 
+                        <div v-else-if="displayedSurveyList.length === 0 && progressFilter === 'pending'" class="bg-white dark:bg-slate-900 rounded-3xl p-8 text-center border border-slate-200/80 dark:border-slate-800 space-y-2">
+                            <div class="w-12 h-12 mx-auto rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-2xl mb-1">
+                                🎉
+                            </div>
+                            <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">Seluruh Survey PSB Telah Selesai!</h3>
+                            <p class="text-xs text-slate-400">Semua {{ summary.survey_feasible || 0 }} survey calon pelanggan baru telah selesai dilaksanakan.</p>
+                            <div class="pt-2">
+                                <button
+                                    type="button"
+                                    @click="progressFilter = 'done'"
+                                    class="px-3.5 py-1.5 text-xs font-bold rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition-all cursor-pointer inline-flex items-center gap-1.5"
+                                >
+                                    <span>👁️</span>
+                                    <span>Tampilkan {{ summary.survey_feasible || 0 }} Survey yang Selesai</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div v-else-if="displayedSurveyList.length === 0 && progressFilter === 'done'" class="bg-white dark:bg-slate-900 rounded-3xl p-8 text-center border border-slate-200/80 dark:border-slate-800">
+                            <p class="text-xs text-slate-400">Belum ada survey yang selesai pada tanggal ini.</p>
+                        </div>
+
                         <div 
-                            v-for="(item, idx) in surveyList" 
+                            v-for="(item, idx) in displayedSurveyList" 
                             :key="'survey-' + idx"
                             class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 hover:shadow-md transition-all space-y-2.5"
                         >
@@ -725,8 +871,30 @@
                             <p class="text-xs text-slate-400 mt-1">Tidak ada jadwal atau permintaan pencabutan perangkat (CBP) pada tanggal ini.</p>
                         </div>
 
+                        <div v-else-if="displayedCbpList.length === 0 && progressFilter === 'pending'" class="bg-white dark:bg-slate-900 rounded-3xl p-8 text-center border border-slate-200/80 dark:border-slate-800 space-y-2">
+                            <div class="w-12 h-12 mx-auto rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-2xl mb-1">
+                                🎉
+                            </div>
+                            <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">Seluruh Pencabutan (CBP) Telah Selesai!</h3>
+                            <p class="text-xs text-slate-400">Semua {{ summary.cbp_done || 0 }} penugasan CBP telah selesai dilaksanakan teknisi.</p>
+                            <div class="pt-2">
+                                <button
+                                    type="button"
+                                    @click="progressFilter = 'done'"
+                                    class="px-3.5 py-1.5 text-xs font-bold rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition-all cursor-pointer inline-flex items-center gap-1.5"
+                                >
+                                    <span>👁️</span>
+                                    <span>Tampilkan {{ summary.cbp_done || 0 }} CBP yang Sudah Selesai</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div v-else-if="displayedCbpList.length === 0 && progressFilter === 'done'" class="bg-white dark:bg-slate-900 rounded-3xl p-8 text-center border border-slate-200/80 dark:border-slate-800">
+                            <p class="text-xs text-slate-400">Belum ada CBP yang selesai pada tanggal ini.</p>
+                        </div>
+
                         <div 
-                            v-for="(item, idx) in cbpList" 
+                            v-for="(item, idx) in displayedCbpList" 
                             :key="'cbp-' + idx"
                             class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 hover:shadow-md transition-all space-y-2.5"
                         >
@@ -821,8 +989,30 @@
                             </div>
                         </div>
 
+                        <div v-else-if="displayedMaintenanceList.length === 0 && progressFilter === 'pending'" class="bg-white dark:bg-slate-900 rounded-3xl p-8 text-center border border-slate-200/80 dark:border-slate-800 space-y-2">
+                            <div class="w-12 h-12 mx-auto rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-2xl mb-1">
+                                🎉
+                            </div>
+                            <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">Seluruh Tugas Pemeliharaan Jalur Telah Selesai!</h3>
+                            <p class="text-xs text-slate-400">Semua {{ summary.maintenance_done || 0 }} kegiatan perapihan jalur telah selesai dikerjakan.</p>
+                            <div class="pt-2">
+                                <button
+                                    type="button"
+                                    @click="progressFilter = 'done'"
+                                    class="px-3.5 py-1.5 text-xs font-bold rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition-all cursor-pointer inline-flex items-center gap-1.5"
+                                >
+                                    <span>👁️</span>
+                                    <span>Tampilkan {{ summary.maintenance_done || 0 }} Kegiatan Jalur yang Selesai</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div v-else-if="displayedMaintenanceList.length === 0 && progressFilter === 'done'" class="bg-white dark:bg-slate-900 rounded-3xl p-8 text-center border border-slate-200/80 dark:border-slate-800">
+                            <p class="text-xs text-slate-400">Belum ada tugas pemeliharaan jalur yang selesai pada tanggal ini.</p>
+                        </div>
+
                         <div 
-                            v-for="(item, idx) in filteredMaintenanceList" 
+                            v-for="(item, idx) in displayedMaintenanceList" 
                             :key="'maintenance-' + idx"
                             class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 hover:shadow-md transition-all space-y-2.5"
                         >
@@ -1221,6 +1411,23 @@
                                     <span v-if="summary.pemasangan > 0" class="px-1 py-0.2 rounded-md text-[9px]" :class="waMode === 'pemasangan' ? 'bg-white/30 text-white' : 'bg-blue-100 text-blue-800'">{{ summary.pemasangan }}</span>
                                 </button>
                             </div>
+                        </div>
+
+                        <!-- Toggle Sertakan Yang Sudah Selesai di Pesan WA -->
+                        <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
+                            <label class="flex items-center gap-2 cursor-pointer select-none">
+                                <input 
+                                    type="checkbox" 
+                                    v-model="includeCompletedInWa" 
+                                    class="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                />
+                                <span class="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                    Sertakan Progress Selesai di Pesan WA
+                                </span>
+                            </label>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="includeCompletedInWa ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'">
+                                {{ includeCompletedInWa ? 'Semua Progress' : 'Hanya Belum Selesai' }}
+                            </span>
                         </div>
 
                         <!-- Editable Note Field -->
@@ -2367,9 +2574,13 @@ const props = defineProps({
     availableOdcs: { type: Array, default: () => [] },
     summary: { type: Object, default: () => ({}) },
     waText: { type: String, default: '' },
+    waTextPending: { type: String, default: '' },
     waTextPgj: { type: String, default: '' },
+    waTextPgjPending: { type: String, default: '' },
     waTextGangguan: { type: String, default: '' },
+    waTextGangguanPending: { type: String, default: '' },
     waTextPemasangan: { type: String, default: '' },
+    waTextPemasanganPending: { type: String, default: '' },
     waGatewayStatus: { type: Boolean, default: false },
     canViewAllAreas: { type: Boolean, default: true },
     isAreaScoped: { type: Boolean, default: false },
@@ -2480,15 +2691,119 @@ const tabs = computed(() => [
 
 // Dynamic WhatsApp message text calculation
 const waMode = ref('all'); // 'all' | 'pgj' | 'gangguan' | 'pemasangan'
+const includeCompletedInWa = ref(false); // Default pesan WA: hanya progress yang belum selesai
+
+// Filter Status Progress (Pending / Aktif vs Semua vs Selesai)
+// DEFAULT: 'pending' (progress yang sudah selesai JANGAN selalu ditampilkan!)
+const progressFilter = ref('pending'); // 'pending' | 'all' | 'done'
+
+const displayedGangguanList = computed(() => {
+    if (progressFilter.value === 'pending') {
+        return (props.gangguanList || []).filter(item => !item.is_done);
+    } else if (progressFilter.value === 'done') {
+        return (props.gangguanList || []).filter(item => item.is_done);
+    }
+    return props.gangguanList || [];
+});
+
+const displayedPgjList = computed(() => {
+    if (progressFilter.value === 'pending') {
+        return (props.pgjList || []).filter(item => !item.is_done);
+    } else if (progressFilter.value === 'done') {
+        return (props.pgjList || []).filter(item => item.is_done);
+    }
+    return props.pgjList || [];
+});
+
+const displayedPemasanganList = computed(() => {
+    if (progressFilter.value === 'pending') {
+        return (props.pemasanganList || []).filter(item => !item.is_done);
+    } else if (progressFilter.value === 'done') {
+        return (props.pemasanganList || []).filter(item => item.is_done);
+    }
+    return props.pemasanganList || [];
+});
+
+const displayedSurveyList = computed(() => {
+    if (progressFilter.value === 'pending') {
+        return (props.surveyList || []).filter(item => !item.is_done);
+    } else if (progressFilter.value === 'done') {
+        return (props.surveyList || []).filter(item => item.is_done);
+    }
+    return props.surveyList || [];
+});
+
+const displayedCbpList = computed(() => {
+    if (progressFilter.value === 'pending') {
+        return (props.cbpList || []).filter(item => !item.is_done);
+    } else if (progressFilter.value === 'done') {
+        return (props.cbpList || []).filter(item => item.is_done);
+    }
+    return props.cbpList || [];
+});
+
+const displayedMaintenanceList = computed(() => {
+    const list = filteredMaintenanceList.value || [];
+    if (progressFilter.value === 'pending') {
+        return list.filter(item => !item.is_done);
+    } else if (progressFilter.value === 'done') {
+        return list.filter(item => item.is_done);
+    }
+    return list;
+});
+
+const currentTabDoneCount = computed(() => {
+    if (activeTab.value === 'gangguan') return props.summary?.gangguan_done || 0;
+    if (activeTab.value === 'pgj') return props.summary?.pgj_done || 0;
+    if (activeTab.value === 'pemasangan') return props.summary?.pemasangan_done || 0;
+    if (activeTab.value === 'survey') return props.summary?.survey_feasible || 0;
+    if (activeTab.value === 'cbp') return props.summary?.cbp_done || 0;
+    if (activeTab.value === 'maintenance') return props.summary?.maintenance_done || 0;
+    return 0;
+});
+
+const currentTabPendingCount = computed(() => {
+    if (activeTab.value === 'gangguan') return props.summary?.gangguan_pending || 0;
+    if (activeTab.value === 'pgj') return props.summary?.pgj_pending || 0;
+    if (activeTab.value === 'pemasangan') return props.summary?.pemasangan_pending || 0;
+    if (activeTab.value === 'survey') return props.summary?.survey_pending || 0;
+    if (activeTab.value === 'cbp') return props.summary?.cbp_pending || 0;
+    if (activeTab.value === 'maintenance') return props.summary?.maintenance_pending || 0;
+    return 0;
+});
+
+const currentTabTotalCount = computed(() => {
+    if (activeTab.value === 'gangguan') return props.summary?.gangguan || 0;
+    if (activeTab.value === 'pgj') return props.summary?.pgj || 0;
+    if (activeTab.value === 'pemasangan') return props.summary?.pemasangan || 0;
+    if (activeTab.value === 'survey') return props.summary?.survey || 0;
+    if (activeTab.value === 'cbp') return props.summary?.cbp || 0;
+    if (activeTab.value === 'maintenance') return props.summary?.maintenance || 0;
+    return 0;
+});
 
 const activeWaText = computed(() => {
-    let baseText = props.waText || '';
-    if (waMode.value === 'pgj') {
-        baseText = props.waTextPgj || '';
-    } else if (waMode.value === 'gangguan') {
-        baseText = props.waTextGangguan || '';
-    } else if (waMode.value === 'pemasangan') {
-        baseText = props.waTextPemasangan || '';
+    let baseText = '';
+    if (includeCompletedInWa.value) {
+        if (waMode.value === 'pgj') {
+            baseText = props.waTextPgj || '';
+        } else if (waMode.value === 'gangguan') {
+            baseText = props.waTextGangguan || '';
+        } else if (waMode.value === 'pemasangan') {
+            baseText = props.waTextPemasangan || '';
+        } else {
+            baseText = props.waText || '';
+        }
+    } else {
+        if (waMode.value === 'pgj') {
+            baseText = props.waTextPgjPending || props.waTextPgj || '';
+        } else if (waMode.value === 'gangguan') {
+            baseText = props.waTextGangguanPending || props.waTextGangguan || '';
+        } else if (waMode.value === 'pemasangan') {
+            baseText = props.waTextPemasanganPending || props.waTextPemasangan || '';
+        } else {
+            baseText = props.waTextPending || props.waText || '';
+        }
     }
     
     if (!baseText) return '';

@@ -91,7 +91,11 @@ class NetworkMaintenanceController extends Controller
 
         // Filter Status
         if ($status && $status !== 'all') {
-            $query->where('status', $status);
+            if ($status === 'active' || $status === 'pending_active') {
+                $query->whereIn('status', ['scheduled', 'in_progress', 'rescheduled']);
+            } else {
+                $query->where('status', $status);
+            }
         }
 
         // Filter Kategori

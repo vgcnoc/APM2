@@ -1888,6 +1888,11 @@ class CustomerController extends Controller
         }
 
         $stats = [
+            'dalam_proses' => (clone $filteredBaseQuery)->notPureReseller()
+                ->where('status', 'installing')
+                ->where(function($q) {
+                    $q->where('is_audited', false)->orWhereNull('is_audited');
+                })->count(),
             'semua' => (clone $filteredBaseQuery)->notPureReseller()->count(),
             'jadwal_pasang' => (clone $filteredBaseQuery)->notPureReseller()
                 ->where('status', 'installing')
@@ -1921,6 +1926,8 @@ class CustomerController extends Controller
         
         if ($currentTab === 'reseller') {
             $customerQuery->where('is_reseller', true);
+        } elseif ($currentTab === 'semua' || $currentTab === 'all') {
+            $customerQuery->notPureReseller();
         } else {
             $customerQuery->notPureReseller();
             if ($currentTab) {
@@ -1941,6 +1948,20 @@ class CustomerController extends Controller
                         $q->where('status', 'installing')->where('is_audited', true)
                           ->orWhere('status', 'active');
                     });
+                } elseif ($currentTab === 'dalam_proses') {
+                    $customerQuery->where('status', 'installing')
+                        ->where(function($q) {
+                            $q->where('is_audited', false)->orWhereNull('is_audited');
+                        });
+                }
+            } else {
+                // DEFAULT: jangan selalu tampilkan progress yang sudah selesai!
+                // Tampilkan hanya pelanggan yang masih dalam proses instalasi aktif
+                if (!$request->filled('search')) {
+                    $customerQuery->where('status', 'installing')
+                        ->where(function($q) {
+                            $q->where('is_audited', false)->orWhereNull('is_audited');
+                        });
                 }
             }
         }
