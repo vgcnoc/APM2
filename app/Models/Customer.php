@@ -134,6 +134,32 @@ class Customer extends Model
         return $value;
     }
 
+    /**
+     * Mutator untuk memastikan latitude valid desimal atau null jika kosong/tidak valid
+     */
+    public function setLatitudeAttribute($value): void
+    {
+        if ($value === null || $value === '') {
+            $this->attributes['latitude'] = null;
+            return;
+        }
+        $clean = is_string($value) ? trim(str_replace(',', '.', $value)) : $value;
+        $this->attributes['latitude'] = (is_numeric($clean) && $clean !== '') ? (string) $clean : null;
+    }
+
+    /**
+     * Mutator untuk memastikan longitude valid desimal atau null jika kosong/tidak valid
+     */
+    public function setLongitudeAttribute($value): void
+    {
+        if ($value === null || $value === '') {
+            $this->attributes['longitude'] = null;
+            return;
+        }
+        $clean = is_string($value) ? trim(str_replace(',', '.', $value)) : $value;
+        $this->attributes['longitude'] = (is_numeric($clean) && $clean !== '') ? (string) $clean : null;
+    }
+
     // ── Relationships ──────────────────────────────────────────
 
     public function company(): BelongsTo

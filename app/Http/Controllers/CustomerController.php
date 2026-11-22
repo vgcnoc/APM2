@@ -4942,6 +4942,24 @@ class CustomerController extends Controller
             $validated['sales_id'] = !empty($validated['sales_id']) ? $validated['sales_id'] : null;
         }
 
+        $validated['package_id'] = !empty($validated['package_id']) ? $validated['package_id'] : null;
+        $validated['area_id'] = !empty($validated['area_id']) ? $validated['area_id'] : null;
+
+        // Sanitasi koordinat latitude & longitude
+        $latInput = trim((string) ($validated['latitude'] ?? ''));
+        $lngInput = trim((string) ($validated['longitude'] ?? ''));
+        if (str_contains($latInput, ',') && empty($lngInput)) {
+            $parts = explode(',', $latInput);
+            if (count($parts) >= 2) {
+                $latInput = trim($parts[0]);
+                $lngInput = trim($parts[1]);
+            }
+        }
+        $latInput = str_replace(',', '.', $latInput);
+        $lngInput = str_replace(',', '.', $lngInput);
+        $validated['latitude'] = (is_numeric($latInput) && $latInput !== '') ? $latInput : null;
+        $validated['longitude'] = (is_numeric($lngInput) && $lngInput !== '') ? $lngInput : null;
+
         if (!empty($validated['area_id'])) {
             $area = \App\Models\Area::find($validated['area_id']);
             if ($area) {
