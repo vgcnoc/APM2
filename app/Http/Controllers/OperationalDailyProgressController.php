@@ -488,9 +488,11 @@ class OperationalDailyProgressController extends Controller
             $techniciansStr = !empty($techNames) ? implode(', ', array_unique($techNames)) : 'Belum Ditugaskan';
 
             // Evaluasi Status Cerdas & Auto
-            $isDone = in_array($pgs->status, ['completed', 'resolved', 'closed'])
+            $isDone = in_array($pgs->status, ['completed', 'resolved', 'closed', 'resolved_by_admin'])
                 || !empty($pgs->resolved_at)
                 || (!empty($pgs->action_taken) && !empty($pgs->end_time));
+
+            $resolvedDateStr = $pgs->resolved_at ? Carbon::parse($pgs->resolved_at)->toDateString() : null;
 
             $isInProgress = in_array($pgs->status, ['in_progress', 'working'])
                 || (!empty($pgs->start_time) && empty($pgs->end_time) && !$isDone);
@@ -500,6 +502,31 @@ class OperationalDailyProgressController extends Controller
             $schedDateStr = $pgs->scheduled_date ? Carbon::parse($pgs->scheduled_date)->toDateString() : null;
             if ($schedDateStr && $schedDateStr !== $date && $schedDateStr > $date) {
                 $isRescheduled = true;
+            }
+
+            // ATURAN INTEGRITAS: Pekerjaan yang sudah selesai sebelum tanggal ini JANGAN ditampilkan lagi, KECUALI reschedule
+            if ($isDone && $resolvedDateStr && $resolvedDateStr < $date && !$isRescheduled) {
+                continue;
+            }
+
+            // Jika tiket belum selesai tapi pelanggan sudah memiliki tiket PGS lain yang sudah diselesaikan pada/setelahnya:
+            if (!$isDone && $pgs->customer_id) {
+                $hasLaterDone = PgsTicket::where('customer_id', $pgs->customer_id)
+                    ->where('id', '!=', $pgs->id)
+                    ->whereIn('status', ['completed', 'resolved', 'closed'])
+                    ->where(function ($hq) use ($pgs) {
+                        $hq->where('created_at', '>=', $pgs->created_at)
+                           ->orWhereNotNull('resolved_at');
+                    })->exists();
+                if ($hasLaterDone) {
+                    continue;
+                }
+            }
+
+            // Jika tiket tanpa jadwal dibuat sebelum tanggal ini dan tidak sedang aktif dikerjakan:
+            $createdDateStr = $pgs->created_at ? Carbon::parse($pgs->created_at)->toDateString() : null;
+            if (empty($pgs->scheduled_date) && $createdDateStr && $createdDateStr < $date && !$isInProgress && !$isRescheduled) {
+                continue;
             }
 
             if ($isDone) {
@@ -584,9 +611,11 @@ class OperationalDailyProgressController extends Controller
             $techniciansStr = !empty($techNames) ? implode(', ', array_unique($techNames)) : 'Belum Ditugaskan';
 
             // Evaluasi Status Cerdas & Auto
-            $isDone = in_array($pgk->status, ['completed', 'resolved', 'closed'])
+            $isDone = in_array($pgk->status, ['completed', 'resolved', 'closed', 'resolved_by_admin'])
                 || !empty($pgk->resolved_at)
                 || (!empty($pgk->action_taken) && !empty($pgk->end_time));
+
+            $resolvedDateStr = $pgk->resolved_at ? Carbon::parse($pgk->resolved_at)->toDateString() : null;
 
             $isInProgress = in_array($pgk->status, ['in_progress', 'working'])
                 || (!empty($pgk->start_time) && empty($pgk->end_time) && !$isDone);
@@ -596,6 +625,31 @@ class OperationalDailyProgressController extends Controller
             $schedDateStr = $pgk->scheduled_date ? Carbon::parse($pgk->scheduled_date)->toDateString() : null;
             if ($schedDateStr && $schedDateStr !== $date && $schedDateStr > $date) {
                 $isRescheduled = true;
+            }
+
+            // ATURAN INTEGRITAS: Pekerjaan yang sudah selesai sebelum tanggal ini JANGAN ditampilkan lagi, KECUALI reschedule
+            if ($isDone && $resolvedDateStr && $resolvedDateStr < $date && !$isRescheduled) {
+                continue;
+            }
+
+            // Jika tiket belum selesai tapi pelanggan sudah memiliki tiket PGK lain yang sudah diselesaikan pada/setelahnya (seperti kasus Diaz Murey):
+            if (!$isDone && $pgk->customer_id) {
+                $hasLaterDone = PgkTicket::where('customer_id', $pgk->customer_id)
+                    ->where('id', '!=', $pgk->id)
+                    ->whereIn('status', ['completed', 'resolved', 'closed', 'resolved_by_admin'])
+                    ->where(function ($hq) use ($pgk) {
+                        $hq->where('created_at', '>=', $pgk->created_at)
+                           ->orWhereNotNull('resolved_at');
+                    })->exists();
+                if ($hasLaterDone) {
+                    continue;
+                }
+            }
+
+            // Jika tiket tanpa jadwal dibuat sebelum tanggal ini dan tidak sedang aktif dikerjakan:
+            $createdDateStr = $pgk->created_at ? Carbon::parse($pgk->created_at)->toDateString() : null;
+            if (empty($pgk->scheduled_date) && $createdDateStr && $createdDateStr < $date && !$isInProgress && !$isRescheduled) {
+                continue;
             }
 
             if ($isDone) {
@@ -693,13 +747,25 @@ class OperationalDailyProgressController extends Controller
             }
             $techniciansStr = !empty($techNames) ? implode(', ', array_unique($techNames)) : 'Belum Ditugaskan';
 
-            $isDone = in_array($pgj->status, ['completed', 'resolved', 'closed']) || !empty($pgj->resolved_at);
+            $isDone = in_array($pgj->status, ['completed', 'resolved', 'closed', 'resolved_by_admin']) || !empty($pgj->resolved_at);
+            $resolvedDateStr = $pgj->resolved_at ? Carbon::parse($pgj->resolved_at)->toDateString() : null;
             $isInProgress = in_array($pgj->status, ['in_progress', 'working']) || (!empty($pgj->start_time) && empty($pgj->end_time) && !$isDone);
 
             $isRescheduled = ($pgj->status === 'rescheduled');
             $schedDateStr = $pgj->scheduled_date ? Carbon::parse($pgj->scheduled_date)->toDateString() : null;
             if ($schedDateStr && $schedDateStr !== $date && $schedDateStr > $date) {
                 $isRescheduled = true;
+            }
+
+            // ATURAN INTEGRITAS: Pekerjaan yang sudah selesai sebelum tanggal ini JANGAN ditampilkan lagi, KECUALI reschedule
+            if ($isDone && $resolvedDateStr && $resolvedDateStr < $date && !$isRescheduled) {
+                continue;
+            }
+
+            // Jika tiket tanpa jadwal dibuat sebelum tanggal ini dan tidak sedang aktif dikerjakan:
+            $createdDateStr = $pgj->created_at ? Carbon::parse($pgj->created_at)->toDateString() : null;
+            if (empty($pgj->scheduled_date) && $createdDateStr && $createdDateStr < $date && !$isInProgress && !$isRescheduled) {
+                continue;
             }
 
             if ($isDone) {
@@ -815,6 +881,19 @@ class OperationalDailyProgressController extends Controller
             $isInProgress = !$isDone && ($isAnyWorking || $cust->status === 'installing');
 
             $isRescheduled = $schedules->contains(fn($s) => $s->status === 'rescheduled');
+
+            // ATURAN INTEGRITAS: Jika pemasangan/pelanggan sudah selesai aktif sebelum tanggal filter $date, JANGAN TAMPILKAN LAGI, KECUALI reschedule!
+            $activationDateStr = !empty($cust->activation_date) ? Carbon::parse($cust->activation_date)->toDateString() : null;
+            if ($isDone && !$isRescheduled) {
+                if ($activationDateStr && $activationDateStr < $date) {
+                    continue;
+                }
+                $schedDone = $schedules->first(fn($s) => !empty($s->completed_at) || !empty($s->scheduled_date));
+                $schedDateStr = $schedDone?->completed_at ? Carbon::parse($schedDone->completed_at)->toDateString() : null;
+                if ($schedDateStr && $schedDateStr < $date) {
+                    continue;
+                }
+            }
 
             if ($isDone) {
                 $statusLabel = '✅ Selesai';
@@ -950,6 +1029,12 @@ class OperationalDailyProgressController extends Controller
 
             $feasibility = $srv->feasibility;
             $isDone = in_array($feasibility, ['feasible', 'not_feasible', 'conditional']);
+            $surveyDateStr = $srv->survey_date ? Carbon::parse($srv->survey_date)->toDateString() : null;
+
+            // ATURAN INTEGRITAS: Jika survey sudah selesai sebelum tanggal filter $date, JANGAN TAMPILKAN LAGI!
+            if ($isDone && $surveyDateStr && $surveyDateStr < $date) {
+                continue;
+            }
 
             if ($feasibility === 'feasible') {
                 $statusLabel = '✅ Layak (Feasible)';
@@ -1005,6 +1090,15 @@ class OperationalDailyProgressController extends Controller
 
             $isDone = $schedules->contains(fn($s) => in_array($s->status, ['done', 'completed']));
             $isRescheduled = $schedules->contains(fn($s) => $s->status === 'rescheduled');
+
+            // ATURAN INTEGRITAS: Jika jadwal survey sudah selesai sebelum tanggal filter $date, JANGAN TAMPILKAN LAGI, KECUALI reschedule!
+            if ($isDone && !$isRescheduled) {
+                $schedDone = $schedules->first(fn($s) => !empty($s->completed_at) || !empty($s->scheduled_date));
+                $schedDateStr = $schedDone?->completed_at ? Carbon::parse($schedDone->completed_at)->toDateString() : null;
+                if ($schedDateStr && $schedDateStr < $date) {
+                    continue;
+                }
+            }
 
             if ($isDone) {
                 $statusLabel = '✅ Selesai Survey';
@@ -1104,9 +1198,32 @@ class OperationalDailyProgressController extends Controller
             $techniciansStr = !empty($techNames) ? implode(', ', array_unique($techNames)) : 'Belum Ditugaskan';
 
             $isDone = ($cbp->status === 'completed') || !empty($cbp->completed_at);
+            $completedDateStr = $cbp->completed_at ? Carbon::parse($cbp->completed_at)->toDateString() : null;
             $isInProgress = ($cbp->status === 'in_progress');
             $isRescheduled = ($cbp->status === 'rescheduled') || (!empty($cbp->reschedule_count) && $cbp->reschedule_count > 0 && !empty($cbp->rescheduled_at) && Carbon::parse($cbp->rescheduled_at)->isSameDay($date));
             $isAssigned = ($cbp->status === 'assigned');
+
+            // ATURAN INTEGRITAS: Jika tiket CBP sudah selesai sebelum tanggal filter $date, JANGAN TAMPILKAN LAGI, KECUALI reschedule!
+            if ($isDone && $completedDateStr && $completedDateStr < $date && !$isRescheduled) {
+                continue;
+            }
+
+            // Jika belum selesai, tapi pelanggan sudah memiliki tiket CBP lain yang SUDAH SELESAI (seperti kasus Maulana Farijal Mustopa):
+            if (!$isDone && $cbp->customer_id) {
+                $hasCompletedOther = CbpRequest::where('customer_id', $cbp->customer_id)
+                    ->where('id', '!=', $cbp->id)
+                    ->where('status', 'completed')
+                    ->exists();
+                if ($hasCompletedOther) {
+                    continue; // Pelanggan sudah selesai dicabut sebelumnya, jangan ditampilkan lagi!
+                }
+            }
+
+            // Jika tiket tanpa jadwal dibuat sebelum tanggal filter $date (bukan dibuat hari ini) dan tidak sedang aktif dikerjakan:
+            $createdDateStr = $cbp->created_at ? Carbon::parse($cbp->created_at)->toDateString() : null;
+            if (empty($cbp->scheduled_date) && $createdDateStr && $createdDateStr < $date && !$isInProgress && !$isRescheduled) {
+                continue;
+            }
 
             if ($isDone) {
                 $statusLabel = '✅ Selesai Cabut';
@@ -1207,12 +1324,24 @@ class OperationalDailyProgressController extends Controller
             $techniciansStr = !empty($techNames) ? implode(', ', array_unique($techNames)) : 'Tim Maintenance Jalur';
 
             $isDone = ($m->status === 'completed') || !empty($m->completed_at);
+            $resolvedDateStr = $m->resolved_at ? Carbon::parse($m->resolved_at)->toDateString() : ($m->completed_at ? Carbon::parse($m->completed_at)->toDateString() : null);
             $isInProgress = ($m->status === 'in_progress') || (!empty($m->start_time) && empty($m->end_time) && !$isDone);
 
             $isRescheduled = ($m->status === 'rescheduled');
             $schedDateStr = $m->scheduled_date ? Carbon::parse($m->scheduled_date)->toDateString() : null;
             if ($schedDateStr && $schedDateStr !== $date && $schedDateStr > $date) {
                 $isRescheduled = true;
+            }
+
+            // ATURAN INTEGRITAS: Pekerjaan yang sudah selesai sebelum tanggal ini JANGAN ditampilkan lagi, KECUALI reschedule
+            if ($isDone && $resolvedDateStr && $resolvedDateStr < $date && !$isRescheduled) {
+                continue;
+            }
+
+            // Jika tiket tanpa jadwal dibuat sebelum tanggal ini dan tidak sedang aktif dikerjakan:
+            $createdDateStr = $m->created_at ? Carbon::parse($m->created_at)->toDateString() : null;
+            if (empty($m->scheduled_date) && $createdDateStr && $createdDateStr < $date && !$isInProgress && !$isRescheduled) {
+                continue;
             }
 
             if ($isDone) {

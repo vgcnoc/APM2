@@ -931,6 +931,18 @@ class CbpRequestController extends Controller
             'completed_at' => $validated['completed_at'] ?? $cbp->completed_at,
         ]);
 
+        // Tutup otomatis jika ada tiket CBP lain milik pelanggan yang sama yang masih pending/assigned
+        if ($cbp->customer_id) {
+            CbpRequest::where('customer_id', $cbp->customer_id)
+                ->where('id', '!=', $cbp->id)
+                ->whereIn('status', ['pending', 'assigned'])
+                ->update([
+                    'status' => 'completed',
+                    'completed_at' => $cbp->completed_at ?? now(),
+                    'notes' => \Illuminate\Support\Facades\DB::raw("CONCAT(COALESCE(notes, ''), ' [Selesai bersamaan dengan penarikan tiket {$cbp->cbp_number}]')"),
+                ]);
+        }
+
         $itemSummary = !empty($returnItems) ? ' Material dicabut: ' . count($returnItems) . ' item.' : '';
         \App\Models\AuditLog::createLog(
             'Laporan CBP Selesai',

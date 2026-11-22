@@ -771,6 +771,20 @@ class PgkController extends Controller
             'resolved_at' => now(),
         ]);
 
+        // Tutup otomatis jika ada tiket PGK gantung milik pelanggan yang sama
+        if ($pgk->customer_id) {
+            PgkTicket::where('customer_id', $pgk->customer_id)
+                ->where('id', '!=', $pgk->id)
+                ->whereIn('status', ['admin_handling', 'reported', 'open', 'scheduled'])
+                ->whereNull('resolved_at')
+                ->update([
+                    'status' => 'resolved_by_admin',
+                    'resolved_at' => now(),
+                    'resolved_by' => auth()->id(),
+                    'resolution_notes' => "Selesai bersamaan dengan penanganan tiket {$pgk->ticket_number}",
+                ]);
+        }
+
         AuditLog::createLog(
             'PGK Selesai oleh Admin',
             $pgk,
@@ -1592,6 +1606,21 @@ class PgkController extends Controller
             'resolved_by' => auth()->id(),
             'resolved_at' => now(),
         ]);
+
+        // Tutup otomatis jika ada tiket PGK gantung milik pelanggan yang sama
+        if ($pgk->customer_id) {
+            PgkTicket::where('customer_id', $pgk->customer_id)
+                ->where('id', '!=', $pgk->id)
+                ->whereIn('status', ['admin_handling', 'reported', 'open', 'scheduled'])
+                ->whereNull('resolved_at')
+                ->update([
+                    'status' => 'completed',
+                    'resolved_at' => now(),
+                    'resolved_by' => auth()->id(),
+                    'action_taken' => $validated['action_taken'],
+                    'resolution_notes' => "Selesai bersamaan dengan penanganan tiket {$pgk->ticket_number}",
+                ]);
+        }
 
         AuditLog::createLog(
             'Laporan Penanganan PGK Selesai',
