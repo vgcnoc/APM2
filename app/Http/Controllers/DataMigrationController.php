@@ -38,6 +38,9 @@ class DataMigrationController extends Controller
 
         // Recent migration logs
         $logs = AuditLog::where('action', 'like', 'Data Migration%')
+            ->whereHas('user', function ($q) {
+                $q->forCurrentCompany();
+            })
             ->latest()
             ->limit(20)
             ->get();
@@ -46,7 +49,7 @@ class DataMigrationController extends Controller
         $references = [
             'areas' => Area::select('id', 'name')->orderBy('name')->get(),
             'packages' => InternetPackage::select('id', 'name')->where('is_active', true)->orderBy('name')->get(),
-            'sales' => User::select('id', 'name', 'email', 'role', 'phone')
+            'sales' => User::forCurrentCompany()->select('id', 'name', 'email', 'role', 'phone')
                 ->where('is_active', true)
                 ->whereNotIn('role', ['customer'])
                 ->with(['employee:id,email,phone,name,position'])
@@ -57,7 +60,7 @@ class DataMigrationController extends Controller
                     $u->display_name = "{$u->name} ({$pos})";
                     return $u;
                 }),
-            'technicians' => User::forAssignment()->select('id', 'name', 'email', 'role')->whereIn('role', ['admin', 'teknisi', 'noc', 'maintenance'])->orderBy('name')->get(),
+            'technicians' => User::forCurrentCompany()->forAssignment()->select('id', 'name', 'email', 'role')->whereIn('role', ['admin', 'teknisi', 'noc', 'maintenance'])->orderBy('name')->get(),
             'olts' => Olt::select('id', 'name', 'ip_address')->orderBy('name')->get(),
             'odcs' => Odc::select('id', 'name', 'olt_id', 'pon_port', 'splitter_ratio')->orderBy('name')->get(),
             'odps' => Odp::select('id', 'name', 'odc_id', 'area_id', 'total_ports', 'used_ports')->orderBy('name')->get(),

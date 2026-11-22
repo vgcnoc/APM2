@@ -1500,9 +1500,14 @@ class DataMigrationService
                 $areasNormalizedCache[$norm] = $aId;
             }
         }
-        $packagesCache = InternetPackage::pluck('id', 'name')->mapWithKeys(fn($id, $name) => [strtolower($name) => $id])->toArray();
-        $usersCache = User::pluck('id', 'email')->mapWithKeys(fn($id, $email) => [strtolower($email) => $id])->toArray();
-        $userNamesCache = User::pluck('id', 'name')->mapWithKeys(fn($id, $name) => [strtolower($name) => $id])->toArray();
+        $packagesCache = InternetPackage::pluck('id', 'name')->mapWithKeys(fn($id, $name) => [strtolower(trim($name)) => $id])->toArray();
+        $holdingPackagesCache = InternetPackage::withoutGlobalScopes()
+            ->where('company_id', 1)
+            ->pluck('id', 'name')
+            ->mapWithKeys(fn($id, $name) => [strtolower(trim($name)) => $id])
+            ->toArray();
+        $usersCache = User::forCurrentCompany()->pluck('id', 'email')->mapWithKeys(fn($id, $email) => [strtolower($email) => $id])->toArray();
+        $userNamesCache = User::forCurrentCompany()->pluck('id', 'name')->mapWithKeys(fn($id, $name) => [strtolower($name) => $id])->toArray();
         $customersCache = Customer::pluck('id', 'customer_code')->toArray();
         $odpsCollection = Odp::with('area')->get();
         $odpsCache = $odpsCollection->keyBy(fn($o) => strtolower(trim($o->name)));
@@ -1520,7 +1525,7 @@ class DataMigrationService
                 $odpsStrippedNormCache[$strippedNorm] = $odp;
             }
         }
-        $allUsersList = User::all();
+        $allUsersList = User::forCurrentCompany()->get();
         $allEmployeesList = Employee::all();
         $invoicesCache = Invoice::pluck('id', 'invoice_number')->toArray();
         $employeesCache = Employee::pluck('id', 'email')->mapWithKeys(fn($id, $email) => [strtolower($email) => $id])->toArray();
@@ -1528,7 +1533,7 @@ class DataMigrationService
 
         // Phone caches for users and employees
         $userPhonesCache = [];
-        foreach (User::whereNotNull('phone')->get(['id', 'phone']) as $u) {
+        foreach (User::forCurrentCompany()->whereNotNull('phone')->get(['id', 'phone']) as $u) {
             $digits = preg_replace('/[^0-9]/', '', (string)$u->phone);
             if ($digits !== '') {
                 $userPhonesCache[$digits] = $u->id;
@@ -1573,7 +1578,7 @@ class DataMigrationService
                         $areasCache, $packagesCache, $usersCache, $userNamesCache, $customersCache,
                         $options, $areasNormalizedCache, $userPhonesCache, $affiliateCodesCache, $employeesIakCache,
                         $odpsCache, $odpsNormalizedCache, $odpsStrippedNormCache, $allUsersList, $allEmployeesList,
-                        $rowInfos
+                        $rowInfos, $holdingPackagesCache
                     );
                     break;
                 case 'network':
@@ -1656,6 +1661,7 @@ class DataMigrationService
         $runtimeAreasCache = [];
         $runtimeSalesCache = [];
         $runtimeOdpsCache = [];
+        $runtimePackagesCache = [];
 
         Customer::$isMigrating = true;
         DB::beginTransaction();
@@ -1670,7 +1676,7 @@ class DataMigrationService
 
                 switch ($category) {
                     case 'customers':
-                        $res = $this->importCustomerItem($data, $duplicateMode, $autoCreateArea, $options, $affectedOdpIds, $runtimeAreasCache, $runtimeSalesCache, $runtimeOdpsCache);
+                        $res = $this->importCustomerItem($data, $duplicateMode, $autoCreateArea, $options, $affectedOdpIds, $runtimeAreasCache, $runtimeSalesCache, $runtimeOdpsCache, $runtimePackagesCache);
                         break;
                     case 'network':
                         $res = $this->importNetworkItem($data, $duplicateMode, $autoCreateArea);
@@ -1825,7 +1831,8 @@ class DataMigrationService
         $odpsStrippedNormCache = [],
         $allUsersList = [],
         $allEmployeesList = [],
-        &$infos = []
+        &$infos = [],
+        $holdingPackagesCache = []
     ) {
         $name = trim((string)($row['nama_lengkap'] ?? $row['nama'] ?? ''));
         $rawPhone = trim((string)($row['nomor_wa'] ?? $row['phone'] ?? $row['no_wa'] ?? ''));
@@ -1879,12 +1886,17 @@ class DataMigrationService
         }
 
         // Package check
-        $packageName = $row['nama_paket'] ?? $row['paket'] ?? '';
+        $packageName = trim((string)($row['nama_paket'] ?? $row['paket'] ?? ''));
         $packageId = null;
         if (!empty($packageName)) {
-            $packageId = $packagesCache[strtolower($packageName)] ?? null;
-            if (!$packageId) {
-                $warnings[] = "Paket '{$packageName}' tidak ditemukan di master paket. Pelanggan diimpor tanpa kaitan paket.";
+            $pkgLower = strtolower($packageName);
+            if (isset($packagesCache[$pkgLower])) {
+                $packageId = $packagesCache[$pkgLower];
+            } elseif (isset($holdingPackagesCache[$pkgLower])) {
+                $packageId = $holdingPackagesCache[$pkgLower];
+                $infos[] = "Paket '{$packageName}' akan otomatis disalin dari master template Pusat ke mitra ini.";
+            } else {
+                $infos[] = "Paket '{$packageName}' belum ada di master data; sistem akan otomatis membuatnya untuk mitra ini.";
             }
         }
 
@@ -1946,10 +1958,13 @@ class DataMigrationService
         $baseAmount = (float) ($row['tarif_bulanan'] ?? $row['base_amount'] ?? 0);
         if ($serviceStatus === 'gratis' || $serviceStatus === 'free_home') {
             $baseAmount = 0;
-        } elseif ($packageId && ($package = InternetPackage::find($packageId))) {
-            // Tarif master adalah sumber nominal tagihan pelanggan migrasi.
-            // Nilai workbook lama sering sudah termasuk PPN.
-            $baseAmount = (float) $package->current_price;
+        } elseif ($packageId) {
+            $package = InternetPackage::find($packageId) ?: InternetPackage::withoutGlobalScopes()->find($packageId);
+            if ($package) {
+                // Tarif master adalah sumber nominal tagihan pelanggan migrasi.
+                // Nilai workbook lama sering sudah termasuk PPN.
+                $baseAmount = (float) ($package->current_price ?? $package->price ?? 0);
+            }
         }
         if ($serviceStatus === 'free_home') {
             $packageId = null;
@@ -2098,6 +2113,7 @@ class DataMigrationService
             'area_id' => $areaId,
             'address' => $address,
             'package_id' => $packageId,
+            'package_name' => $packageName ?: null,
             'base_amount' => $baseAmount,
             'installation_fee' => (float) ($row['biaya_pasang'] ?? 0),
             'service_status' => $serviceStatus,
@@ -2461,9 +2477,12 @@ class DataMigrationService
         array &$affectedOdpIds = [],
         array &$runtimeAreasCache = [],
         array &$runtimeSalesCache = [],
-        array &$runtimeOdpsCache = []
+        array &$runtimeOdpsCache = [],
+        array &$runtimePackagesCache = []
     ): string
     {
+        $activeCompanyId = (int) (session('active_company_id') ?: (auth()->user()?->company_id ?: 1));
+
         // 1. Resolve area flexibly
         $areaId = $data['area_id'] ?? null;
         if (!$areaId && !empty($data['area'])) {
@@ -2502,9 +2521,10 @@ class DataMigrationService
                         $salesId = null;
                     } else {
                         $salesEmail = $slug . '@isp.local';
-                        $salesUser = User::where('email', $salesEmail)->first();
+                        $salesUser = User::forCurrentCompany()->where('email', $salesEmail)->first();
                         if (!$salesUser) {
                             $salesUser = User::create([
+                                'company_id' => $activeCompanyId,
                                 'name' => ucwords(strtolower($rawSales)),
                                 'email' => $salesEmail,
                                 'password' => bcrypt('password123'),
@@ -2539,6 +2559,59 @@ class DataMigrationService
             }
         }
 
+        // Auto-clone from Pusat or auto-create package if missing
+        $packageId = $data['package_id'] ?? null;
+        $packageName = trim((string)($data['package_name'] ?? ''));
+
+        if (!empty($packageName) && ($data['service_status'] ?? '') !== 'free_home') {
+            $pkgLower = strtolower($packageName);
+            if (isset($runtimePackagesCache[$pkgLower])) {
+                $packageId = $runtimePackagesCache[$pkgLower];
+            } else {
+                // 1. Check if package already exists in current company
+                $currentPkg = InternetPackage::whereRaw('LOWER(TRIM(name)) = ?', [$pkgLower])->first();
+                if ($currentPkg) {
+                    $packageId = $currentPkg->id;
+                } else {
+                    // 2. Check template in Pusat (company_id = 1)
+                    $templatePkg = InternetPackage::withoutGlobalScopes()
+                        ->where('company_id', 1)
+                        ->whereRaw('LOWER(TRIM(name)) = ?', [$pkgLower])
+                        ->first();
+
+                    if ($templatePkg && $activeCompanyId !== 1) {
+                        $clonedPkg = $templatePkg->replicate();
+                        $clonedPkg->company_id = $activeCompanyId;
+                        $clonedPkg->save();
+                        $packageId = $clonedPkg->id;
+                    } else {
+                        // 3. Auto-create new package for current company
+                        $speed = 20;
+                        if (preg_match('/(\d+)\s*(mbps|mb|m)/i', $packageName, $matches)) {
+                            $speed = (int) $matches[1];
+                        }
+                        $price = !empty($data['base_amount']) && (float)$data['base_amount'] > 0
+                            ? (float)$data['base_amount']
+                            : 150000;
+
+                        $newPkg = InternetPackage::create([
+                            'company_id' => $activeCompanyId,
+                            'name' => $packageName,
+                            'code' => strtoupper(Str::slug($packageName, '_')),
+                            'type' => 'broadband',
+                            'speed_mbps' => $speed,
+                            'price' => $price,
+                            'is_active' => true,
+                        ]);
+                        $packageId = $newPkg->id;
+                    }
+                }
+                if ($packageId) {
+                    $runtimePackagesCache[$pkgLower] = $packageId;
+                }
+            }
+        }
+
         $customerCode = $data['customer_code'];
         $existing = null;
         if ($customerCode) {
@@ -2559,7 +2632,7 @@ class DataMigrationService
                 'area' => $data['area'],
                 'area_id' => $areaId ?: $existing->area_id,
                 'address' => $data['address'],
-                'package_id' => $data['package_id'] ?: $existing->package_id,
+                'package_id' => $packageId ?: ($data['package_id'] ?: $existing->package_id),
                 'base_amount' => $data['base_amount'],
                 'installation_fee' => $data['installation_fee'],
                 'service_status' => $data['service_status'],
@@ -2585,7 +2658,7 @@ class DataMigrationService
                 'area' => $data['area'],
                 'area_id' => $areaId,
                 'address' => $data['address'],
-                'package_id' => $data['package_id'],
+                'package_id' => $packageId ?: ($data['package_id'] ?? null),
                 'base_amount' => $data['base_amount'],
                 'installation_fee' => $data['installation_fee'],
                 'service_status' => $data['service_status'],
@@ -3757,12 +3830,14 @@ class DataMigrationService
 
         // Auto Create or Sync User Account
         if (!empty($data['create_user'])) {
-            $user = User::whereRaw('LOWER(email) = ?', [$email])->first();
+            $activeCompanyId = (int) (session('active_company_id') ?: (auth()->user()?->company_id ?: 1));
+            $user = User::forCurrentCompany()->whereRaw('LOWER(email) = ?', [$email])->first();
             $initialPassword = !empty($data['initial_password']) ? $data['initial_password'] : 'password123';
             $mappedRole = !empty($data['position']) ? \App\Http\Controllers\EmployeeController::mapPositionToRole($data['position']) : 'cs';
 
             if (!$user) {
                 $user = User::create([
+                    'company_id' => $activeCompanyId,
                     'name' => $data['name'],
                     'email' => $data['email'],
                     'role' => $mappedRole,

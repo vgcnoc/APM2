@@ -53,6 +53,12 @@
                                 <span class="!text-slate-400 ml-1">orang</span>
                             </div>
                         </div>
+
+                        <!-- Info Tips Mitra Baru -->
+                        <div v-if="(references?.packages?.length || 0) === 0" class="mt-3 flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-500/15 border border-indigo-400/25 text-indigo-100 text-xs">
+                            <span class="font-bold text-amber-300 shrink-0">💡 Info Mitra:</span>
+                            <span>Master data mitra Anda saat ini masih kosong (0 layanan). Anda tetap dapat langsung melakukan migrasi pelanggan; sistem akan otomatis menduplikasi template paket dari Pusat atau membuatkannya untuk mitra ini secara otomatis!</span>
+                        </div>
                     </div>
                 </div>
 
