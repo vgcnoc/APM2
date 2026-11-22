@@ -15,17 +15,18 @@ class NasController extends Controller
 {
     public function index(Request $request)
     {
-        $nas = Nas::when($request->search, fn ($q, $s) => $q->where(fn ($q) => $q
-            ->where('nasname', 'like', "%{$s}%")->orWhere('shortname', 'like', "%{$s}%")
-            ->orWhere('vpn_ip', 'like', "%{$s}%")->orWhere('description', 'like', "%{$s}%")))
+        $nas = Nas::forCurrentCompany()
+            ->when($request->search, fn ($q, $s) => $q->where(fn ($q) => $q
+                ->where('nasname', 'like', "%{$s}%")->orWhere('shortname', 'like', "%{$s}%")
+                ->orWhere('vpn_ip', 'like', "%{$s}%")->orWhere('description', 'like', "%{$s}%")))
             ->orderByDesc('id')->paginate(15)->withQueryString();
-        $ports = Router::whereIn('nas_id', $nas->pluck('id'))->pluck('api_port', 'nas_id');
+        $ports = Router::withoutGlobalScopes()->whereIn('nas_id', $nas->pluck('id'))->pluck('api_port', 'nas_id');
         $nas->getCollection()->each(fn ($n) => $n->setAttribute('api_port', (int) (($ports[$n->id] ?? null) ?: 8728)));
 
         $stats = [
-            'total_nas' => Nas::count(),
-            'vpn_nas' => Nas::whereNotNull('vpn_ip')->count(),
-            'direct_nas' => Nas::whereNull('vpn_ip')->count(),
+            'total_nas' => Nas::forCurrentCompany()->count(),
+            'vpn_nas' => Nas::forCurrentCompany()->whereNotNull('vpn_ip')->count(),
+            'direct_nas' => Nas::forCurrentCompany()->whereNull('vpn_ip')->count(),
             'radius_enabled' => (bool) config('radius.enabled'),
         ];
 
@@ -48,6 +49,13 @@ class NasController extends Controller
         ]);
     }
 
+    private function authorizeNas(Nas $nas): void
+    {
+        if (!Nas::forCurrentCompany()->where('nas.id', $nas->id)->exists()) {
+            abort(403, 'Anda tidak memiliki hak akses ke router / NAS ini.');
+        }
+    }
+
     private function validated(Request $request): array
     {
         return $request->validate([
@@ -68,12 +76,26 @@ class NasController extends Controller
     {
         $nas = $manager->create($this->validated($request), $request->boolean('use_vpn', (bool) config('radius.vpn.enabled')));
         $state = app(NasConfigurationService::class)->afterMutation();
+
+        // Buat rekaman Router di tabel routers agar sinkron dengan Data Router
+        $companyId = $nas->company_id ?: 1;
+        Router::withoutGlobalScopes()->firstOrCreate(
+            ['nas_id' => $nas->id],
+            [
+                'company_id' => $companyId,
+                'name' => $nas->shortname ?: $nas->nasname,
+                'api_port' => 8728,
+                'winbox_port' => 8291,
+            ]
+        );
+
         return redirect()->route('radius.nas.index')->with('created_nas_id', $nas->id)
             ->with($state['success'] ? 'success' : 'error', 'NAS tersimpan dengan IP '.$nas->nasname.'. '.$state['message']);
     }
 
     public function update(Request $request, Nas $nas, NasManagementService $manager)
     {
+        $this->authorizeNas($nas);
         $manager->update($nas, $this->validated($request));
         $state = app(NasConfigurationService::class)->afterMutation();
         return redirect()->route('radius.nas.index')->with($state['success'] ? 'success' : 'error', 'NAS diperbarui. '.$state['message']);
@@ -81,7 +103,8 @@ class NasController extends Controller
 
     public function destroy(Nas $nas, NasManagementService $manager)
     {
-        if (Router::where('nas_id', $nas->id)->exists()) {
+        $this->authorizeNas($nas);
+        if (Router::withoutGlobalScopes()->where('nas_id', $nas->id)->exists()) {
             return back()->with('error', 'NAS masih terhubung ke Data Router. Hapus melalui menu Data Router agar relasi jaringan tidak rusak.');
         }
         $manager->delete($nas);
@@ -91,6 +114,7 @@ class NasController extends Controller
 
     public function regenerate(Nas $nas, NasManagementService $manager)
     {
+        $this->authorizeNas($nas);
         $manager->regenerate($nas);
         $state = app(NasConfigurationService::class)->afterMutation();
         return redirect()->route('radius.nas.index')->with($state['success'] ? 'success' : 'error', 'Password VPN & API berhasil digenerate ulang. Paste script baru pada router. '.$state['message']);
@@ -104,10 +128,11 @@ class NasController extends Controller
 
     public function ping(Request $request, Nas $nas, RouterConnectionService $connection)
     {
+        $this->authorizeNas($nas);
         $refresh = $request->boolean('refresh');
         return response()->json($connection->probe(
             $nas,
-            (int) (Router::where('nas_id', $nas->id)->value('api_port') ?: 8728),
+            (int) (Router::withoutGlobalScopes()->where('nas_id', $nas->id)->value('api_port') ?: 8728),
             $refresh
         ));
     }

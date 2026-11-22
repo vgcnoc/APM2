@@ -47,7 +47,7 @@ class RouterController extends Controller
 
         $routers = $query->latest('id')->paginate(10)->withQueryString();
         
-        $users = User::select('id', 'name', 'role')->orderBy('name')->get();
+        $users = User::forCurrentCompany()->select('id', 'name', 'role')->orderBy('name')->get();
         $areas = Area::select('id', 'name')->withCount(['customers', 'odps'])->orderBy('name')->get();
 
         $stats = [
@@ -102,7 +102,13 @@ class RouterController extends Controller
         }
         unset($validated['new_area_name']);
 
+        $activeCompanyId = session('active_company_id');
+        if (!$activeCompanyId || $activeCompanyId === 'all') {
+            $activeCompanyId = auth()->check() && auth()->user()->company_id ? auth()->user()->company_id : 1;
+        }
+
         $nas = app(NasManagementService::class)->create([
+            'company_id' => (int) $activeCompanyId,
             'nasname' => $validated['nasname'] ?? null,
             'shortname' => Str::substr($validated['name'], 0, 32),
             'type' => 'mikrotik',
@@ -110,7 +116,7 @@ class RouterController extends Controller
         ], (bool) config('radius.vpn.enabled'));
         unset($validated['nasname']);
         try {
-            Router::create([...$validated, 'nas_id' => $nas->id]);
+            Router::create([...$validated, 'company_id' => (int) $activeCompanyId, 'nas_id' => $nas->id]);
         } catch (\Throwable $e) {
             app(NasManagementService::class)->delete($nas);
             throw $e;

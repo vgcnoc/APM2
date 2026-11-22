@@ -20,6 +20,16 @@ class NasManagementService
             return (new Nas)->getConnection()->transaction(function () use ($attributes, $useVpn) {
                 unset($attributes['use_vpn']);
                 $nas = new Nas($attributes);
+                if (empty($nas->company_id)) {
+                    $switchCompanyId = session('active_company_id');
+                    if ($switchCompanyId && $switchCompanyId !== 'all') {
+                        $nas->company_id = (int) $switchCompanyId;
+                    } elseif (\Illuminate\Support\Facades\Auth::check() && \Illuminate\Support\Facades\Auth::user()->company_id) {
+                        $nas->company_id = (int) \Illuminate\Support\Facades\Auth::user()->company_id;
+                    } else {
+                        $nas->company_id = 1;
+                    }
+                }
                 if ($useVpn) {
                     if (!config('radius.vpn.enabled')) throw ValidationException::withMessages(['nasname' => 'VPN server belum diaktifkan. Masukkan IP sumber router yang spesifik.']);
                     $this->vpn->prepareAccount($nas);

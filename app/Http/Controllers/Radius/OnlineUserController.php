@@ -21,7 +21,12 @@ class OnlineUserController extends Controller
     public function index(Request $request): Response
     {
         $search = trim($request->input('search', ''));
+        $nases = Nas::forCurrentCompany()->select('id', 'nasname', 'shortname', 'vpn_ip')->get();
+        $nasMap = $nases->keyBy(fn ($n) => \App\Support\NasAddress::ip($n->vpn_ip) ?: \App\Support\NasAddress::ip($n->nasname));
+        $allowedNasIps = $nases->flatMap(fn ($n) => $n->accountingAddresses())->filter()->values()->all();
+
         $query = RadAcct::online()->fresh();
+        $query->whereIn('nasipaddress', $allowedNasIps);
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
@@ -36,20 +41,19 @@ class OnlineUserController extends Controller
             $query->where('nasipaddress', $request->nas_ip);
         }
 
+        $baseStats = RadAcct::online()->fresh()->whereIn('nasipaddress', $allowedNasIps);
+
         $stats = [
-            'total_online' => RadAcct::online()->fresh()->count(),
-            'total_download' => (int) RadAcct::online()->fresh()->sum('acctoutputoctets'),
-            'total_upload' => (int) RadAcct::online()->fresh()->sum('acctinputoctets'),
-            'active_routers' => RadAcct::online()->fresh()->distinct('nasipaddress')->count('nasipaddress'),
+            'total_online' => (clone $baseStats)->count(),
+            'total_download' => (int) (clone $baseStats)->sum('acctoutputoctets'),
+            'total_upload' => (int) (clone $baseStats)->sum('acctinputoctets'),
+            'active_routers' => (clone $baseStats)->distinct('nasipaddress')->count('nasipaddress'),
         ];
 
         $onlineUsers = $query
             ->orderByDesc('acctstarttime')
             ->paginate(20)
             ->withQueryString();
-
-        $nases = Nas::select('id', 'nasname', 'shortname', 'vpn_ip')->get();
-        $nasMap = $nases->keyBy(fn ($n) => \App\Support\NasAddress::ip($n->vpn_ip) ?: \App\Support\NasAddress::ip($n->nasname));
 
         $usernames = $onlineUsers->pluck('username')->unique()->filter()->values()->all();
 
