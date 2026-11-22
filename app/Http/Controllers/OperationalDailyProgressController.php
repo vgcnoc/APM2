@@ -509,15 +509,15 @@ class OperationalDailyProgressController extends Controller
                 continue;
             }
 
-            // Jika tiket belum selesai tapi pelanggan sudah memiliki tiket PGS lain yang sudah diselesaikan pada/setelahnya:
+            // Jika tiket belum selesai tapi pelanggan sudah memiliki tiket PGS lain yang dibuat & diselesaikan pada/setelahnya (duplikat yang sudah tertangani):
             if (!$isDone && $pgs->customer_id) {
                 $hasLaterDone = PgsTicket::where('customer_id', $pgs->customer_id)
                     ->where('id', '!=', $pgs->id)
-                    ->whereIn('status', ['completed', 'resolved', 'closed'])
-                    ->where(function ($hq) use ($pgs) {
-                        $hq->where('created_at', '>=', $pgs->created_at)
-                           ->orWhereNotNull('resolved_at');
-                    })->exists();
+                    ->whereIn('status', ['completed', 'resolved', 'closed', 'resolved_by_admin'])
+                    ->where('created_at', '>=', $pgs->created_at)
+                    ->whereNotNull('resolved_at')
+                    ->where('resolved_at', '>=', $pgs->created_at)
+                    ->exists();
                 if ($hasLaterDone) {
                     continue;
                 }
@@ -632,15 +632,15 @@ class OperationalDailyProgressController extends Controller
                 continue;
             }
 
-            // Jika tiket belum selesai tapi pelanggan sudah memiliki tiket PGK lain yang sudah diselesaikan pada/setelahnya (seperti kasus Diaz Murey):
+            // Jika tiket belum selesai tapi pelanggan sudah memiliki tiket PGK lain yang dibuat & diselesaikan pada/setelahnya (duplikat yang sudah tertangani):
             if (!$isDone && $pgk->customer_id) {
                 $hasLaterDone = PgkTicket::where('customer_id', $pgk->customer_id)
                     ->where('id', '!=', $pgk->id)
                     ->whereIn('status', ['completed', 'resolved', 'closed', 'resolved_by_admin'])
-                    ->where(function ($hq) use ($pgk) {
-                        $hq->where('created_at', '>=', $pgk->created_at)
-                           ->orWhereNotNull('resolved_at');
-                    })->exists();
+                    ->where('created_at', '>=', $pgk->created_at)
+                    ->whereNotNull('resolved_at')
+                    ->where('resolved_at', '>=', $pgk->created_at)
+                    ->exists();
                 if ($hasLaterDone) {
                     continue;
                 }
@@ -1208,11 +1208,14 @@ class OperationalDailyProgressController extends Controller
                 continue;
             }
 
-            // Jika belum selesai, tapi pelanggan sudah memiliki tiket CBP lain yang SUDAH SELESAI (seperti kasus Maulana Farijal Mustopa):
+            // Jika belum selesai, tapi pelanggan sudah memiliki tiket CBP lain yang SUDAH SELESAI dibuat dan diselesaikan pada/setelahnya (duplikat):
             if (!$isDone && $cbp->customer_id) {
                 $hasCompletedOther = CbpRequest::where('customer_id', $cbp->customer_id)
                     ->where('id', '!=', $cbp->id)
                     ->where('status', 'completed')
+                    ->where('created_at', '>=', $cbp->created_at)
+                    ->whereNotNull('completed_at')
+                    ->where('completed_at', '>=', $cbp->created_at)
                     ->exists();
                 if ($hasCompletedOther) {
                     continue; // Pelanggan sudah selesai dicabut sebelumnya, jangan ditampilkan lagi!
