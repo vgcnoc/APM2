@@ -364,14 +364,14 @@ class AffiliateService
     }
 
     /**
-     * Otomatis Potong (Clawback) Fee Booking dan Fee Survey jika pelanggan berhenti di bawah batas minimal kontrak (default: 4 bulan).
+     * Otomatis Potong (Clawback) Fee Booking, Fee Survey, dan Komisi Pasif jika pelanggan berhenti di bawah batas minimal kontrak (default: 4 bulan).
      * Khusus karyawan: Otomatis masuk ke Deductions (Potongan Slip Gaji Payroll).
      * Mitra Luar: Otomatis dipotong dari Saldo Dompet Afiliasi.
      */
     public static function handleEarlyTerminationPenalty(Customer $customer, ?string $cancelDate = null): ?array
     {
         $hasBookingOrSurveyComm = AffiliateCommission::where('customer_id', $customer->id)
-            ->whereIn('type', ['booking', 'survey'])
+            ->whereIn('type', ['booking', 'survey', 'monthly_direct'])
             ->exists();
 
         // Pelanggan yang belum pernah aktif (tidak memiliki activation_date) dan belum pernah dibentuk komisinya tidak dikenakan pinalti
@@ -415,10 +415,11 @@ class AffiliateService
 
         $bookingPenalty = null;
         $surveyPenalty = null;
+        $monthlyPenalty = null;
 
         DB::transaction(function () use (
             $customer, $settings, $minContractMonths, $durationStr, $codeLabel,
-            &$bookingPenalty, &$surveyPenalty
+            &$bookingPenalty, &$surveyPenalty, &$monthlyPenalty
         ) {
             // ── A. POTONGAN FEE BOOKING (SALES / PEMBUAT BOOKING) ──
             if ($customer->sales_id) {
@@ -539,15 +540,16 @@ class AffiliateService
                     $alreadyDeductedSurvey = \App\Models\Deduction::where('reference_id', 'clawback_survey_cust_' . $customer->id)->exists();
 
                     if (!$alreadyClawedBackSurvey && !$alreadyDeductedSurvey) {
-                        // Cari nominal Fee Survey
-                        $surveyPenaltyAmount = (float) (\App\Models\MasterFee::where('type', 'Fee Survey')->where('is_active', true)->value('nominal') ?? 0);
+                        // Cari nominal Fee Survey (default dari MasterFee)
+                        $surveyPenaltyAmount = (float) (\App\Models\MasterFee::where('type', 'Fee Survey')->where('is_active', true)->value('nominal') ?? 15000);
 
                         $recordedIncentive = \App\Models\Incentive::where('user_id', $surveyor->id)
-                            ->where(function($q) use ($customer) {
-                                $q->where('description', 'like', "%Fee Survey%{$customer->name}%")
-                                  ->orWhere('description', 'like', "%{$customer->name}%");
-                            })
                             ->where('type', 'auto')
+                            ->where('description', 'like', '%Fee Survey%')
+                            ->where(function($q) use ($customer) {
+                                $q->where('description', 'like', "%{$customer->name}%")
+                                  ->orWhere('description', 'like', "%{$customer->customer_code}%");
+                            })
                             ->first();
 
                         if ($recordedIncentive && (float)$recordedIncentive->amount > 0) {
@@ -616,9 +618,107 @@ class AffiliateService
                     }
                 }
             }
+
+            // ── C. POTONGAN KOMISI PASIF BULANAN (SALES / AFILIASI) ──
+            if ($customer->sales_id) {
+                $user = User::find($customer->sales_id);
+                if ($user) {
+                    $isEmployee = self::isInternalEmployee($user);
+
+                    $alreadyClawedBackMonthly = AffiliateCommission::where('affiliate_id', $customer->sales_id)
+                        ->where('customer_id', $customer->id)
+                        ->where('type', 'clawback_monthly')
+                        ->exists();
+
+                    $alreadyDeductedMonthly = $isEmployee
+                        ? \App\Models\Deduction::where('reference_id', 'clawback_monthly_cust_' . $customer->id)->exists()
+                        : false;
+
+                    if (!$alreadyClawedBackMonthly && !$alreadyDeductedMonthly) {
+                        // Total komisi pasif bulanan yang telah terbentuk untuk pelanggan ini
+                        $monthlyComms = AffiliateCommission::where('affiliate_id', $customer->sales_id)
+                            ->where('customer_id', $customer->id)
+                            ->where('type', 'monthly_direct')
+                            ->whereIn('status', ['approved', 'paid', 'payroll'])
+                            ->get();
+
+                        $monthlyPenaltyAmount = (float) $monthlyComms->sum('amount');
+
+                        if ($isEmployee && $monthlyPenaltyAmount <= 0) {
+                            $monthlyIncentives = \App\Models\Incentive::where('user_id', $user->id)
+                                ->where('type', 'auto')
+                                ->where('description', 'like', '%Komisi Pasif Bulanan%')
+                                ->where(function($q) use ($customer) {
+                                    $q->where('description', 'like', "%{$customer->name}%")
+                                      ->orWhere('description', 'like', "%{$customer->customer_code}%");
+                                })
+                                ->get();
+                            $monthlyPenaltyAmount = (float) $monthlyIncentives->sum('amount');
+                        }
+
+                        if ($monthlyPenaltyAmount > 0) {
+                            if ($isEmployee) {
+                                \App\Models\Deduction::create([
+                                    'user_id' => $user->id,
+                                    'amount' => $monthlyPenaltyAmount,
+                                    'type' => 'auto',
+                                    'description' => "Pinalti Stop Dini < {$minContractMonths} Bln: Pemotongan Komisi Pasif Bulanan {$customer->name}{$codeLabel} - Masa aktif: {$durationStr}",
+                                    'reference_id' => 'clawback_monthly_cust_' . $customer->id,
+                                    'deduction_date' => now(),
+                                    'status' => 'pending',
+                                ]);
+
+                                $monthlyComm = AffiliateCommission::create([
+                                    'affiliate_id' => $user->id,
+                                    'customer_id' => $customer->id,
+                                    'source_user_id' => $user->id,
+                                    'type' => 'clawback_monthly',
+                                    'tier_level' => 0,
+                                    'amount' => -$monthlyPenaltyAmount,
+                                    'description' => "Pinalti Stop Dini < {$minContractMonths} Bln: Pemotongan Komisi Pasif Bulanan [Dipotong dari Slip Gaji Payroll] {$customer->name}{$codeLabel} - Masa aktif: {$durationStr}",
+                                    'status' => 'payroll',
+                                    'paid_at' => null,
+                                ]);
+
+                                $monthlyPenalty = [
+                                    'target' => 'payroll',
+                                    'amount' => $monthlyPenaltyAmount,
+                                    'name' => $user->name,
+                                    'is_employee' => true,
+                                    'commission' => $monthlyComm,
+                                ];
+                            } else {
+                                $affiliate = self::ensureAffiliateProfile($user);
+                                $monthlyComm = AffiliateCommission::create([
+                                    'affiliate_id' => $affiliate->user_id,
+                                    'customer_id' => $customer->id,
+                                    'source_user_id' => $affiliate->user_id,
+                                    'type' => 'clawback_monthly',
+                                    'tier_level' => 0,
+                                    'amount' => -$monthlyPenaltyAmount,
+                                    'description' => "Pinalti Otomatis: Pemotongan Komisi Pasif Bulanan pelanggan {$customer->name} ({$customer->customer_code}) berhenti sebelum {$minContractMonths} bulan (Masa aktif: {$durationStr})",
+                                    'status' => 'approved',
+                                    'paid_at' => now(),
+                                ]);
+
+                                $affiliate->decrement('balance', $monthlyPenaltyAmount);
+                                $affiliate->decrement('total_earned', $monthlyPenaltyAmount);
+
+                                $monthlyPenalty = [
+                                    'target' => 'wallet',
+                                    'amount' => $monthlyPenaltyAmount,
+                                    'name' => $affiliate->user?->name ?? 'Sales',
+                                    'is_employee' => false,
+                                    'commission' => $monthlyComm,
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
         });
 
-        if (!$bookingPenalty && !$surveyPenalty) {
+        if (!$bookingPenalty && !$surveyPenalty && !$monthlyPenalty) {
             return null;
         }
 
@@ -626,11 +726,12 @@ class AffiliateService
             'penalty_applied' => true,
             'booking_penalty' => $bookingPenalty,
             'survey_penalty' => $surveyPenalty,
+            'monthly_penalty' => $monthlyPenalty,
             'duration' => $durationStr,
-            'amount' => ($bookingPenalty['amount'] ?? 0) + ($surveyPenalty['amount'] ?? 0),
-            'is_employee' => ($bookingPenalty['is_employee'] ?? false) || ($surveyPenalty['is_employee'] ?? false),
-            'affiliate_name' => $bookingPenalty['name'] ?? ($surveyPenalty['name'] ?? ''),
-            'commission' => $bookingPenalty['commission'] ?? ($surveyPenalty['commission'] ?? null),
+            'amount' => ($bookingPenalty['amount'] ?? 0) + ($surveyPenalty['amount'] ?? 0) + ($monthlyPenalty['amount'] ?? 0),
+            'is_employee' => ($bookingPenalty['is_employee'] ?? false) || ($surveyPenalty['is_employee'] ?? false) || ($monthlyPenalty['is_employee'] ?? false),
+            'affiliate_name' => $bookingPenalty['name'] ?? ($surveyPenalty['name'] ?? ($monthlyPenalty['name'] ?? '')),
+            'commission' => $bookingPenalty['commission'] ?? ($surveyPenalty['commission'] ?? ($monthlyPenalty['commission'] ?? null)),
         ];
     }
 

@@ -331,6 +331,14 @@ class Customer extends Model
         return $this->hasOne(AffiliateCommission::class, 'customer_id')->where('type', 'clawback_survey');
     }
 
+    /**
+     * Catatan komisi pinalti / clawback komisi pasif bulanan jika berhenti < 4 bulan
+     */
+    public function clawbackMonthlyCommission(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(AffiliateCommission::class, 'customer_id')->where('type', 'clawback_monthly');
+    }
+
     public function pgkTickets(): HasMany
     {
         return $this->hasMany(PgkTicket::class);

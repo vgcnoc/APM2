@@ -36,13 +36,13 @@ class AffiliatePortalController extends Controller
 
         $commissionTotals = AffiliateCommission::where('affiliate_id', $user->id)
             ->whereIn('status', ['pending', 'approved', 'paid', 'payroll'])
-            ->selectRaw("COALESCE(SUM(CASE WHEN type IN ('clawback_booking', 'clawback_survey') THEN -ABS(amount) ELSE amount END), 0) AS total")
+            ->selectRaw("COALESCE(SUM(CASE WHEN type IN ('clawback_booking', 'clawback_survey', 'clawback_monthly') THEN -ABS(amount) ELSE amount END), 0) AS total")
             ->selectRaw("COALESCE(SUM(CASE WHEN type = 'booking' THEN amount ELSE 0 END), 0) AS booking")
             ->selectRaw("COALESCE(SUM(CASE WHEN type IN ('monthly_direct', 'upline_tier_1', 'upline_tier_2') THEN amount ELSE 0 END), 0) AS recurring")
             ->first();
         $customerCommissions = AffiliateCommission::where('affiliate_id', $user->id)
             ->whereIn('status', ['pending', 'approved', 'paid', 'payroll'])
-            ->selectRaw("customer_id, SUM(CASE WHEN type IN ('clawback_booking', 'clawback_survey') THEN -ABS(amount) ELSE amount END) AS total")
+            ->selectRaw("customer_id, SUM(CASE WHEN type IN ('clawback_booking', 'clawback_survey', 'clawback_monthly') THEN -ABS(amount) ELSE amount END) AS total")
             ->groupBy('customer_id')->pluck('total', 'customer_id');
 
         $settings = AffiliateService::getSettings();
@@ -357,7 +357,7 @@ class AffiliatePortalController extends Controller
 
         // ── Data Pelanggan Berhenti < 4 Bulan (Clawback) ──
         $clawbackCommissions = AffiliateCommission::where('affiliate_id', $user->id)
-            ->whereIn('type', ['clawback_booking', 'clawback_survey'])
+            ->whereIn('type', ['clawback_booking', 'clawback_survey', 'clawback_monthly'])
             ->with(['customer.package'])
             ->latest('id')
             ->get();
@@ -389,6 +389,7 @@ class AffiliatePortalController extends Controller
                 $relatedComms = $commByCust->get($cust->id, collect());
                 $bookingClawback = $relatedComms->firstWhere('type', 'clawback_booking');
                 $surveyClawback = $relatedComms->firstWhere('type', 'clawback_survey');
+                $monthlyClawback = $relatedComms->firstWhere('type', 'clawback_monthly');
 
                 $clawbackAmount = 0;
                 if ($bookingClawback) {
@@ -398,6 +399,9 @@ class AffiliatePortalController extends Controller
                 }
                 if ($surveyClawback) {
                     $clawbackAmount += abs((float) $surveyClawback->amount);
+                }
+                if ($monthlyClawback) {
+                    $clawbackAmount += abs((float) $monthlyClawback->amount);
                 }
 
                 $clawbackList->push([

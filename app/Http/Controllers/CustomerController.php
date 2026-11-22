@@ -2245,6 +2245,7 @@ class CustomerController extends Controller
                 'sales:id,name',
                 'clawbackCommission',
                 'clawbackSurveyCommission.affiliate:id,name',
+                'clawbackMonthlyCommission.affiliate:id,name',
                 'invoices' => function($q) {
                     $q->whereIn('status', ['unpaid', 'partial'])
                       ->where('invoice_number', 'not like', 'INV-MIG-%')
@@ -2363,6 +2364,16 @@ class CustomerController extends Controller
                     : "saldo dompet {$sp['name']}";
                 $penaltyNotes[] = "[Pinalti Stop Dini < 4 Bln]: Fee survey {$formattedAmount} otomatis dipotong pada {$targetStr} (Masa aktif: {$clawback['duration']})";
                 $penaltyMessages[] = "Fee survey {$formattedAmount} otomatis dipotong dari {$targetStr}";
+            }
+
+            if (!empty($clawback['monthly_penalty'])) {
+                $mp = $clawback['monthly_penalty'];
+                $formattedAmount = 'Rp ' . number_format($mp['amount'], 0, ',', '.');
+                $targetStr = $mp['is_employee'] 
+                    ? "Slip Gaji / Payroll Karyawan {$mp['name']}" 
+                    : "saldo dompet {$mp['name']}";
+                $penaltyNotes[] = "[Pinalti Stop Dini < 4 Bln]: Komisi pasif {$formattedAmount} otomatis dipotong pada {$targetStr} (Masa aktif: {$clawback['duration']})";
+                $penaltyMessages[] = "Komisi pasif {$formattedAmount} otomatis dipotong dari {$targetStr}";
             }
 
             if (!empty($penaltyNotes)) {

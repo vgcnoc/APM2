@@ -127,7 +127,7 @@ class CleanOrphanedIncentives extends Command
             }
 
             if (!$matched) {
-                $cleanName = trim(preg_replace('/^(Pinalti Stop Dini[^:]*:\s*(Pemotongan Fee (Booking|Survey|Pasang|Aktivasi)\s*)?)/i', '', $ded->description));
+                $cleanName = trim(preg_replace('/^(Pinalti Stop Dini[^:]*:\s*(Pemotongan (Fee )?(Booking|Survey|Pasang|Aktivasi|Komisi Pasif Bulanan)\s*)?)/i', '', $ded->description));
                 $cleanName = preg_replace('/\s*\(CUS-[^)]+\).*/i', '', $cleanName);
                 $cleanName = strtolower(trim($cleanName));
                 if (!empty($cleanName) && in_array($cleanName, $custNames)) {

@@ -694,7 +694,7 @@
                                     Penarikan Kembali Komisi (Pelanggan Berhenti Sebelum Masa Aktif 4 Bulan)
                                 </h3>
                                 <p class="text-xs text-rose-800 leading-relaxed">
-                                    Setiap pelanggan baru memiliki batas komitmen berlangganan minimal <strong>4 bulan</strong>. Apabila pelanggan yang Anda daftarkan berhenti berlangganan (status <em>terminated</em> atau <em>dibatalkan</em>) sebelum genap 4 bulan, maka komisi booking (Rp 35.000) dan fee survey (Rp 15.000) yang sebelumnya telah dialokasikan <strong>ditarik kembali seutuhnya oleh perusahaan</strong>.
+                                    Setiap pelanggan baru memiliki batas komitmen berlangganan minimal <strong>4 bulan</strong>. Apabila pelanggan yang Anda daftarkan berhenti berlangganan (status <em>terminated</em> atau <em>dibatalkan</em>) sebelum genap 4 bulan, maka komisi booking (Rp 35.000), fee survey (Rp 15.000), dan komisi pasif bulanan yang sebelumnya telah dialokasikan <strong>ditarik kembali seutuhnya oleh perusahaan</strong>.
                                 </p>
                             </div>
                         </div>
@@ -813,7 +813,7 @@
                                                 'bg-emerald-100 text-emerald-800': c.type === 'monthly_direct',
                                                 'bg-purple-100 text-purple-800': c.type === 'upline_tier_1',
                                                 'bg-amber-100 text-amber-800': c.type === 'upline_tier_2',
-                                                'bg-rose-100 text-rose-800 border border-rose-200': c.type === 'clawback_booking' || c.type === 'clawback_survey',
+                                                'bg-rose-100 text-rose-800 border border-rose-200': c.type === 'clawback_booking' || c.type === 'clawback_survey' || c.type === 'clawback_monthly',
                                             }"
                                         >
                                             <template v-if="c.type === 'booking'">🎯 Booking Baru</template>
@@ -822,23 +822,24 @@
                                             <template v-else-if="c.type === 'upline_tier_2'">🌟 Upline Tier 2</template>
                                             <template v-else-if="c.type === 'clawback_booking'">✂️ Potong Booking (&lt; 4 Bln)</template>
                                             <template v-else-if="c.type === 'clawback_survey'">✂️ Potong Survey (&lt; 4 Bln)</template>
+                                            <template v-else-if="c.type === 'clawback_monthly'">✂️ Potong Pasif (&lt; 4 Bln)</template>
                                             <template v-else>{{ c.type }}</template>
                                         </span>
                                     </td>
                                     <td class="px-4 py-3 text-slate-700 font-medium">{{ c.description }}</td>
-                                    <td class="px-4 py-3 text-right font-bold whitespace-nowrap" :class="c.amount < 0 || c.type === 'clawback_booking' || c.type === 'clawback_survey' ? 'text-rose-600' : 'text-emerald-600'">
-                                        {{ (c.amount < 0 || c.type === 'clawback_booking' || c.type === 'clawback_survey') ? '-' : '+' }}{{ formatRupiah(Math.abs(c.amount)) }}
+                                    <td class="px-4 py-3 text-right font-bold whitespace-nowrap" :class="c.amount < 0 || c.type === 'clawback_booking' || c.type === 'clawback_survey' || c.type === 'clawback_monthly' ? 'text-rose-600' : 'text-emerald-600'">
+                                        {{ (c.amount < 0 || c.type === 'clawback_booking' || c.type === 'clawback_survey' || c.type === 'clawback_monthly') ? '-' : '+' }}{{ formatRupiah(Math.abs(c.amount)) }}
                                     </td>
                                     <td class="px-4 py-3 text-center">
                                         <span 
                                             class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border"
                                             :class="{
-                                                'bg-rose-50 text-rose-700 border-rose-200': c.type === 'clawback_booking' || c.type === 'clawback_survey',
-                                                'bg-purple-50 text-purple-700 border-purple-200': c.status === 'payroll' && c.type !== 'clawback_booking' && c.type !== 'clawback_survey',
-                                                'bg-emerald-50 text-emerald-700 border-emerald-200': c.status === 'approved' && c.type !== 'clawback_booking' && c.type !== 'clawback_survey'
+                                                'bg-rose-50 text-rose-700 border-rose-200': c.type === 'clawback_booking' || c.type === 'clawback_survey' || c.type === 'clawback_monthly',
+                                                'bg-purple-50 text-purple-700 border-purple-200': c.status === 'payroll' && c.type !== 'clawback_booking' && c.type !== 'clawback_survey' && c.type !== 'clawback_monthly',
+                                                'bg-emerald-50 text-emerald-700 border-emerald-200': c.status === 'approved' && c.type !== 'clawback_booking' && c.type !== 'clawback_survey' && c.type !== 'clawback_monthly'
                                             }"
                                         >
-                                            {{ (c.type === 'clawback_booking' || c.type === 'clawback_survey') ? (c.status === 'payroll' ? 'Potong Gaji' : 'Dipotong') : (c.status === 'payroll' ? 'Slip Gaji' : c.status) }}
+                                            {{ (c.type === 'clawback_booking' || c.type === 'clawback_survey' || c.type === 'clawback_monthly') ? (c.status === 'payroll' ? 'Potong Gaji' : 'Dipotong') : (c.status === 'payroll' ? 'Slip Gaji' : c.status) }}
                                         </span>
                                     </td>
                                 </tr>

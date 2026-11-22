@@ -2089,6 +2089,17 @@
                                 <div v-else class="text-[10px] text-slate-500 italic">
                                     (Pelanggan tidak memiliki riwayat teknisi survey, tidak ada fee survey yang dipotong).
                                 </div>
+
+                                <!-- Pemotongan Komisi Pasif Bulanan Otomatis -->
+                                <div v-if="customerActiveTenure.hasSales" class="p-2.5 rounded-lg bg-white/90 border border-amber-200 text-[11px] space-y-1">
+                                    <div class="font-bold flex items-center justify-between text-rose-800">
+                                        <span class="flex items-center gap-1">✂️ Pemotongan Komisi Pasif Bulanan Otomatis:</span>
+                                        <span class="bg-rose-100 text-rose-700 px-1.5 py-0.2 rounded text-[10px] uppercase font-black">AUTO-POTONG</span>
+                                    </div>
+                                    <p class="text-slate-600">
+                                        Komisi pasif bulanan yang pernah diterima oleh Sales/Afiliator <strong class="text-slate-900">{{ customerActiveTenure.salesName }}</strong> akan <strong>otomatis dipotong</strong> (dari slip gaji payroll jika karyawan, atau saldo dompet jika mitra).
+                                    </p>
+                                </div>
                             </div>
 
                             <div>
