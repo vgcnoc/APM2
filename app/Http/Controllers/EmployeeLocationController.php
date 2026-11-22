@@ -170,8 +170,9 @@ class EmployeeLocationController extends Controller
         $onlineThreshold = now()->subMinutes(5);
         $idleThreshold = now()->subMinutes(30);
 
-        // Ambil semua karyawan aktif (bukan customer)
-        $employees = User::where('is_active', true)
+        // Ambil semua karyawan aktif (bukan customer) sesuai company yang aktif
+        $employees = User::forCurrentCompany()
+            ->where('is_active', true)
             ->whereNotIn('role', ['customer'])
             ->with(['employee:id,email,phone,name,position,photo'])
             ->get();

@@ -29,7 +29,7 @@ class UserController extends Controller
         $areaId = $request->query('area_id');
         $type = $request->query('type'); // 'all', 'staff', 'customer'
 
-        $users = User::query()
+        $users = User::forCurrentCompany()
             ->with(['area', 'roles'])
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
@@ -68,18 +68,22 @@ class UserController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        $baseStats = User::forCurrentCompany()
+            ->where('name', '!=', '-')
+            ->where('email', 'not like', '@%');
+
         $stats = [
-            'total' => User::where('name', '!=', '-')->where('email', 'not like', '@%')->count(),
-            'active' => User::where('name', '!=', '-')->where('email', 'not like', '@%')->where('is_active', true)->count(),
-            'inactive' => User::where('name', '!=', '-')->where('email', 'not like', '@%')->where('is_active', false)->count(),
-            'on_duty' => User::where('name', '!=', '-')->where('email', 'not like', '@%')->where('is_on_duty', true)->count(),
-            'teknisi' => User::where('name', '!=', '-')
+            'total' => (clone $baseStats)->count(),
+            'active' => (clone $baseStats)->where('is_active', true)->count(),
+            'inactive' => (clone $baseStats)->where('is_active', false)->count(),
+            'on_duty' => (clone $baseStats)->where('is_on_duty', true)->count(),
+            'teknisi' => (clone $baseStats)
                 ->where(function ($q) {
                     $q->where('role', 'like', '%teknisi%')
                       ->orWhere('role', 'like', '%maintenance%')
                       ->orWhere('role', 'like', '%infrastruktur%');
                 })->count(),
-            'admin' => User::where('name', '!=', '-')
+            'admin' => (clone $baseStats)
                 ->where(function ($q) {
                     $q->where('role', 'like', '%admin%')
                       ->orWhere('role', 'like', '%manager%');
@@ -136,6 +140,17 @@ class UserController extends Controller
         $validated['accessible_areas'] = $request->input('accessible_areas', []);
         $validated['job_position'] = ucwords($validated['role']);
 
+        if (empty($validated['company_id'])) {
+            $switchCompanyId = session('active_company_id');
+            if ($switchCompanyId && $switchCompanyId !== 'all') {
+                $validated['company_id'] = (int) $switchCompanyId;
+            } elseif (auth()->check() && auth()->user()->company_id) {
+                $validated['company_id'] = (int) auth()->user()->company_id;
+            } else {
+                $validated['company_id'] = 1;
+            }
+        }
+
         $user = User::create($validated);
         
         // Assign Spatie role & clear cache
@@ -156,7 +171,7 @@ class UserController extends Controller
      */
     public function update(Request $request, $id): RedirectResponse
     {
-        $user = $id instanceof User ? $id : User::findOrFail($id);
+        $user = $id instanceof User ? $id : User::forCurrentCompany()->findOrFail($id);
 
         $validated = $request->validate([
             'name' => 'required|string|min:2|max:255',
@@ -216,7 +231,7 @@ class UserController extends Controller
      */
     public function toggleActive($id): RedirectResponse
     {
-        $user = $id instanceof User ? $id : User::findOrFail($id);
+        $user = $id instanceof User ? $id : User::forCurrentCompany()->findOrFail($id);
 
         // Prevent deactivating own account
         if (auth()->id() === $user->id) {
@@ -242,7 +257,7 @@ class UserController extends Controller
      */
     public function toggleUserDuty($id): RedirectResponse
     {
-        $user = $id instanceof User ? $id : User::findOrFail($id);
+        $user = $id instanceof User ? $id : User::forCurrentCompany()->findOrFail($id);
         $user->is_on_duty = !$user->is_on_duty;
         $user->save();
 
@@ -255,7 +270,7 @@ class UserController extends Controller
      */
     public function destroy($id): RedirectResponse
     {
-        $user = $id instanceof User ? $id : User::findOrFail($id);
+        $user = $id instanceof User ? $id : User::forCurrentCompany()->findOrFail($id);
 
         // 1. Cegah menghapus user sendiri
         if (auth()->id() === $user->id) {

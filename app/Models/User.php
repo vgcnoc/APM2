@@ -390,6 +390,15 @@ class User extends Authenticatable
                         ->where(function ($s) {
                             $s->where('employees.status', '!=', 'resigned')->orWhereNull('employees.status');
                         })
+                        ->where(function ($cq) {
+                            $cq->whereColumn('employees.company_id', 'users.company_id')
+                               ->orWhere(function ($cq2) {
+                                   $cq2->whereNull('employees.company_id')
+                                       ->where(function ($cq3) {
+                                           $cq3->where('users.company_id', 1)->orWhereNull('users.company_id');
+                                       });
+                               });
+                        })
                         ->where(function ($m) {
                             $m->whereColumn('employees.email', 'users.email')
                               ->orWhere(function ($m2) {
@@ -421,27 +430,59 @@ class User extends Authenticatable
     }
 
     /**
-     * Alias resmi penugasan: hanya personil yang terdaftar di data karyawan aktif
-     * serta otomatis terisolasi berdasarkan company / mitra yang sedang aktif.
+     * Scope isolasi daftar user berdasarkan perusahaan/mitra yang sedang aktif.
      */
-    public function scopeForAssignment($query)
+    public function scopeForCurrentCompany($query)
     {
-        $q = $this->scopeActiveEmployeeOnly($query);
+        if (app()->has('forced_company_id')) {
+            $forcedId = (int) app('forced_company_id');
+            if ($forcedId > 0) {
+                if ($forcedId === 1) {
+                    return $query->where(function ($q) {
+                        $q->where('users.company_id', 1)->orWhereNull('users.company_id');
+                    });
+                }
+                return $query->where('users.company_id', $forcedId);
+            }
+        }
 
         if (\Illuminate\Support\Facades\Auth::check()) {
             $user = \Illuminate\Support\Facades\Auth::user();
             if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
                 $switchCompanyId = session('active_company_id');
                 if ($switchCompanyId && $switchCompanyId !== 'all') {
-                    $q->where('users.company_id', (int) $switchCompanyId);
+                    $cId = (int) $switchCompanyId;
+                    if ($cId === 1) {
+                        return $query->where(function ($q) {
+                            $q->where('users.company_id', 1)->orWhereNull('users.company_id');
+                        });
+                    }
+                    return $query->where('users.company_id', $cId);
                 }
-            } else {
-                $companyId = (int) ($user->company_id ?: 1);
-                $q->where('users.company_id', $companyId);
+                return $query->where(function ($q) {
+                    $q->where('users.company_id', 1)->orWhereNull('users.company_id');
+                });
             }
+
+            $companyId = (int) ($user->company_id ?: 1);
+            if ($companyId === 1) {
+                return $query->where(function ($q) {
+                    $q->where('users.company_id', 1)->orWhereNull('users.company_id');
+                });
+            }
+            return $query->where('users.company_id', $companyId);
         }
 
-        return $q;
+        return $query;
+    }
+
+    /**
+     * Alias resmi penugasan: hanya personil yang terdaftar di data karyawan aktif
+     * serta otomatis terisolasi berdasarkan company / mitra yang sedang aktif.
+     */
+    public function scopeForAssignment($query)
+    {
+        return $this->scopeForCurrentCompany($this->scopeActiveEmployeeOnly($query));
     }
 
     public function customer(): \Illuminate\Database\Eloquent\Relations\HasOne

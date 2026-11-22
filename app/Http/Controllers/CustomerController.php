@@ -232,7 +232,7 @@ class CustomerController extends Controller
                 }
                 return [];
             },
-            'officers' => fn () => \Illuminate\Support\Facades\Cache::remember('inertia_on_duty_officers', 45, fn () => \App\Models\User::where('is_on_duty', true)->get(['id', 'name', 'phone', 'role'])->toArray()),
+            'officers' => fn () => \App\Models\User::forCurrentCompany()->where('is_on_duty', true)->get(['id', 'name', 'phone', 'role'])->toArray(),
             'filters' => [
                 'search' => $request->search ? (string) $request->search : '',
                 'status' => $request->status ? (string) $request->status : '',
