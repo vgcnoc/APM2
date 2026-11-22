@@ -65,16 +65,16 @@ class RoleController extends Controller
 
         $cId = Role::resolveActiveCompanyId();
 
-        // Jika perusahaan aktif adalah Mitra (bukan Holding 1), pastikan role sudah diinisialisasi
+        // Jika perusahaan aktif adalah Mitra (bukan Holding 1), pastikan seluruh role standar sudah ada
         if ($cId > 1) {
-            $existingCount = Role::where('company_id', $cId)->count();
-            if ($existingCount === 0) {
-                // Duplikasi template role dari Holding Pusat (company_id 1) ke Mitra ini
-                $holdingRoles = Role::where(function ($q) {
-                    $q->where('company_id', 1)->orWhereNull('company_id');
-                })->with('permissions')->get();
+            $holdingRoles = Role::where(function ($q) {
+                $q->where('company_id', 1)->orWhereNull('company_id');
+            })->with('permissions')->get();
 
-                foreach ($holdingRoles as $hr) {
+            $existingRoleNames = Role::where('company_id', $cId)->pluck('name')->toArray();
+
+            foreach ($holdingRoles as $hr) {
+                if (!in_array($hr->name, $existingRoleNames, true)) {
                     $newRole = Role::create([
                         'company_id' => $cId,
                         'name' => $hr->name,
