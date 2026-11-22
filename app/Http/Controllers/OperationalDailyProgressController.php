@@ -460,7 +460,7 @@ class OperationalDailyProgressController extends Controller
 
                 if ($isToday) {
                     $q->orWhere(function ($sq) use ($date) {
-                        $sq->whereIn('status', ['in_progress', 'scheduled', 'admin_handling', 'reported', 'open'])
+                        $sq->whereNotIn('status', ['completed', 'resolved', 'closed', 'resolved_by_admin', 'canceled', 'cancelled'])
                            ->whereNull('resolved_at')
                            ->where(function ($ssq) use ($date) {
                                $ssq->whereNull('scheduled_date')
@@ -478,6 +478,11 @@ class OperationalDailyProgressController extends Controller
         }
 
         foreach ($pgsQuery->get() as $pgs) {
+            // Abaikan tiket yang dibatalkan
+            if (in_array($pgs->status, ['canceled', 'cancelled'])) {
+                continue;
+            }
+
             $techNames = $pgs->technicians->pluck('name')->toArray();
             if (empty($techNames) && $pgs->leadTechnician) {
                 $techNames[] = $pgs->leadTechnician->name;
@@ -509,23 +514,9 @@ class OperationalDailyProgressController extends Controller
                 continue;
             }
 
-            // Jika tiket belum selesai tapi pelanggan sudah memiliki tiket PGS lain yang dibuat & diselesaikan pada/setelahnya (duplikat yang sudah tertangani):
-            if (!$isDone && $pgs->customer_id) {
-                $hasLaterDone = PgsTicket::where('customer_id', $pgs->customer_id)
-                    ->where('id', '!=', $pgs->id)
-                    ->whereIn('status', ['completed', 'resolved', 'closed', 'resolved_by_admin'])
-                    ->where('created_at', '>=', $pgs->created_at)
-                    ->whereNotNull('resolved_at')
-                    ->where('resolved_at', '>=', $pgs->created_at)
-                    ->exists();
-                if ($hasLaterDone) {
-                    continue;
-                }
-            }
-
-            // Jika tiket tanpa jadwal dibuat sebelum tanggal ini dan tidak sedang aktif dikerjakan:
+            // Jika viewing tanggal lampau (bukan hari ini), tiket tanpa jadwal yang dibuat sebelum tanggal filter tidak dimunculkan di hari lampau lain
             $createdDateStr = $pgs->created_at ? Carbon::parse($pgs->created_at)->toDateString() : null;
-            if (empty($pgs->scheduled_date) && $createdDateStr && $createdDateStr < $date && !$isInProgress && !$isRescheduled) {
+            if (!$isToday && empty($pgs->scheduled_date) && $createdDateStr && $createdDateStr < $date && !$isInProgress && !$isRescheduled) {
                 continue;
             }
 
@@ -583,7 +574,7 @@ class OperationalDailyProgressController extends Controller
 
                 if ($isToday) {
                     $q->orWhere(function ($sq) use ($date) {
-                        $sq->whereIn('status', ['in_progress', 'scheduled', 'admin_handling', 'reported', 'open'])
+                        $sq->whereNotIn('status', ['completed', 'resolved', 'closed', 'resolved_by_admin', 'canceled', 'cancelled'])
                            ->whereNull('resolved_at')
                            ->where(function ($ssq) use ($date) {
                                $ssq->whereNull('scheduled_date')
@@ -601,6 +592,11 @@ class OperationalDailyProgressController extends Controller
         }
 
         foreach ($pgkQuery->get() as $pgk) {
+            // Abaikan tiket yang dibatalkan
+            if (in_array($pgk->status, ['canceled', 'cancelled'])) {
+                continue;
+            }
+
             $techNames = $pgk->technicians->pluck('name')->toArray();
             if (empty($techNames) && $pgk->leadTechnician) {
                 $techNames[] = $pgk->leadTechnician->name;
@@ -632,23 +628,9 @@ class OperationalDailyProgressController extends Controller
                 continue;
             }
 
-            // Jika tiket belum selesai tapi pelanggan sudah memiliki tiket PGK lain yang dibuat & diselesaikan pada/setelahnya (duplikat yang sudah tertangani):
-            if (!$isDone && $pgk->customer_id) {
-                $hasLaterDone = PgkTicket::where('customer_id', $pgk->customer_id)
-                    ->where('id', '!=', $pgk->id)
-                    ->whereIn('status', ['completed', 'resolved', 'closed', 'resolved_by_admin'])
-                    ->where('created_at', '>=', $pgk->created_at)
-                    ->whereNotNull('resolved_at')
-                    ->where('resolved_at', '>=', $pgk->created_at)
-                    ->exists();
-                if ($hasLaterDone) {
-                    continue;
-                }
-            }
-
-            // Jika tiket tanpa jadwal dibuat sebelum tanggal ini dan tidak sedang aktif dikerjakan:
+            // Jika viewing tanggal lampau (bukan hari ini), tiket tanpa jadwal yang dibuat sebelum tanggal filter tidak dimunculkan di hari lampau lain
             $createdDateStr = $pgk->created_at ? Carbon::parse($pgk->created_at)->toDateString() : null;
-            if (empty($pgk->scheduled_date) && $createdDateStr && $createdDateStr < $date && !$isInProgress && !$isRescheduled) {
+            if (!$isToday && empty($pgk->scheduled_date) && $createdDateStr && $createdDateStr < $date && !$isInProgress && !$isRescheduled) {
                 continue;
             }
 
@@ -718,7 +700,7 @@ class OperationalDailyProgressController extends Controller
 
                 if ($isToday) {
                     $q->orWhere(function ($sq) use ($date) {
-                        $sq->whereIn('status', ['in_progress', 'scheduled', 'admin_handling', 'reported', 'open'])
+                        $sq->whereNotIn('status', ['completed', 'resolved', 'closed', 'resolved_by_admin', 'canceled', 'cancelled'])
                            ->whereNull('resolved_at')
                            ->where(function ($ssq) use ($date) {
                                $ssq->whereNull('scheduled_date')
@@ -738,6 +720,11 @@ class OperationalDailyProgressController extends Controller
         }
 
         foreach ($pgjQuery->get() as $pgj) {
+            // Abaikan tiket yang dibatalkan
+            if (in_array($pgj->status, ['canceled', 'cancelled'])) {
+                continue;
+            }
+
             $techNames = $pgj->technicians->pluck('name')->toArray();
             if (empty($techNames) && $pgj->leadTechnician) {
                 $techNames[] = $pgj->leadTechnician->name;
@@ -762,9 +749,9 @@ class OperationalDailyProgressController extends Controller
                 continue;
             }
 
-            // Jika tiket tanpa jadwal dibuat sebelum tanggal ini dan tidak sedang aktif dikerjakan:
+            // Jika viewing tanggal lampau (bukan hari ini), tiket tanpa jadwal yang dibuat sebelum tanggal filter tidak dimunculkan di hari lampau lain
             $createdDateStr = $pgj->created_at ? Carbon::parse($pgj->created_at)->toDateString() : null;
-            if (empty($pgj->scheduled_date) && $createdDateStr && $createdDateStr < $date && !$isInProgress && !$isRescheduled) {
+            if (!$isToday && empty($pgj->scheduled_date) && $createdDateStr && $createdDateStr < $date && !$isInProgress && !$isRescheduled) {
                 continue;
             }
 
@@ -1222,9 +1209,9 @@ class OperationalDailyProgressController extends Controller
                 }
             }
 
-            // Jika tiket tanpa jadwal dibuat sebelum tanggal filter $date (bukan dibuat hari ini) dan tidak sedang aktif dikerjakan:
+            // Jika viewing tanggal lampau (bukan hari ini), tiket tanpa jadwal yang dibuat sebelum tanggal filter tidak dimunculkan di hari lampau lain:
             $createdDateStr = $cbp->created_at ? Carbon::parse($cbp->created_at)->toDateString() : null;
-            if (empty($cbp->scheduled_date) && $createdDateStr && $createdDateStr < $date && !$isInProgress && !$isRescheduled) {
+            if (!$isToday && empty($cbp->scheduled_date) && $createdDateStr && $createdDateStr < $date && !$isInProgress && !$isRescheduled) {
                 continue;
             }
 
@@ -1341,9 +1328,9 @@ class OperationalDailyProgressController extends Controller
                 continue;
             }
 
-            // Jika tiket tanpa jadwal dibuat sebelum tanggal ini dan tidak sedang aktif dikerjakan:
+            // Jika viewing tanggal lampau (bukan hari ini), tiket tanpa jadwal yang dibuat sebelum tanggal filter tidak dimunculkan di hari lampau lain:
             $createdDateStr = $m->created_at ? Carbon::parse($m->created_at)->toDateString() : null;
-            if (empty($m->scheduled_date) && $createdDateStr && $createdDateStr < $date && !$isInProgress && !$isRescheduled) {
+            if (!$isToday && empty($m->scheduled_date) && $createdDateStr && $createdDateStr < $date && !$isInProgress && !$isRescheduled) {
                 continue;
             }
 
