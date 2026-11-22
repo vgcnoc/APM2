@@ -422,10 +422,26 @@ class User extends Authenticatable
 
     /**
      * Alias resmi penugasan: hanya personil yang terdaftar di data karyawan aktif
+     * serta otomatis terisolasi berdasarkan company / mitra yang sedang aktif.
      */
     public function scopeForAssignment($query)
     {
-        return $this->scopeActiveEmployeeOnly($query);
+        $q = $this->scopeActiveEmployeeOnly($query);
+
+        if (\Illuminate\Support\Facades\Auth::check()) {
+            $user = \Illuminate\Support\Facades\Auth::user();
+            if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
+                $switchCompanyId = session('active_company_id');
+                if ($switchCompanyId && $switchCompanyId !== 'all') {
+                    $q->where('users.company_id', (int) $switchCompanyId);
+                }
+            } else {
+                $companyId = (int) ($user->company_id ?: 1);
+                $q->where('users.company_id', $companyId);
+            }
+        }
+
+        return $q;
     }
 
     public function customer(): \Illuminate\Database\Eloquent\Relations\HasOne
