@@ -197,9 +197,6 @@ class PgjController extends Controller
         })->orderBy('name')->get();
 
         $leadTechnicians = User::forAssignment()->role(['kepala teknisi', 'admin', 'noc', 'manager'])->select('id', 'name')->get();
-        if ($leadTechnicians->isEmpty()) {
-            $leadTechnicians = User::forAssignment()->select('id', 'name')->get();
-        }
 
         return Inertia::render('Pgj/Index', [
             'tickets' => $tickets,

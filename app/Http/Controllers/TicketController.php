@@ -42,15 +42,12 @@ class TicketController extends Controller
             'tickets' => $tickets,
             'customers' => fn () => Customer::where('status', 'active')->select('id', 'name', 'customer_code', 'address')->get(),
             'technicians' => function () {
-                $techs = User::forAssignment()->where(function($q) {
+                return User::forAssignment()->where(function($q) {
                     $q->whereHas('roles', fn($r) => $r->whereIn('name', ['teknisi', 'kepala teknisi', 'maintenance', 'teknisi lapangan', 'teknisi tim serbu', 'tim serbu'])->orWhere('name', 'like', '%teknisi%')->orWhere('name', 'like', '%serbu%'))
                       ->orWhereIn('role', ['teknisi', 'kepala teknisi', 'maintenance', 'teknisi lapangan', 'teknisi tim serbu', 'tim serbu'])
                       ->orWhere('role', 'like', '%teknisi%')
                       ->orWhere('role', 'like', '%serbu%');
                 })->select('id', 'name')->orderBy('name')->get();
-                return $techs->isEmpty()
-                    ? User::forAssignment()->select('id', 'name')->orderBy('name')->get()
-                    : $techs;
             },
             'filters' => $request->only(['search', 'status', 'priority'])
         ]);

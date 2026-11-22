@@ -423,7 +423,8 @@ class ResellerBillingController extends Controller
             });
 
         // Daftar penagih untuk opsi filter
-        $collectors = \App\Models\User::where('is_active', true)
+        $collectors = \App\Models\User::forAssignment()
+            ->where('is_active', true)
             ->where(function($q) {
                 $q->whereHas('roles', fn($rq) => $rq->whereIn('name', ['penagih', 'admin', 'super admin', 'biller', 'teknisi']))
                   ->orWhereIn('id', Payment::select('collected_by')->whereNotNull('collected_by'));

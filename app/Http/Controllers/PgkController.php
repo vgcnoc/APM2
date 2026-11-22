@@ -158,7 +158,7 @@ class PgkController extends Controller
             },
             'areas' => fn () => DataScopeService::getScopedAreas($user, 'pgk'),
             'technicians' => function () {
-                $techs = User::forAssignment()->where(function ($query) {
+                return User::forAssignment()->where(function ($query) {
                     $query->whereHas('roles', function ($q) {
                         $q->whereIn('name', ['teknisi', 'kepala teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance', 'teknisi-2', 'maintenance-1'])
                           ->orWhere('name', 'like', '%teknisi%')
@@ -168,11 +168,9 @@ class PgkController extends Controller
                     ->orWhere('role', 'like', '%teknisi%')
                     ->orWhere('role', 'like', '%serbu%');
                 })->select('id', 'name', 'phone')->orderBy('name')->get();
-                return $techs->isEmpty() ? User::forAssignment()->select('id', 'name', 'phone')->get() : $techs;
             },
             'leadTechnicians' => function () {
-                $leads = User::forAssignment()->role(['kepala teknisi', 'admin', 'noc', 'manager'])->select('id', 'name')->get();
-                return $leads->isEmpty() ? User::forAssignment()->select('id', 'name')->get() : $leads;
+                return User::forAssignment()->role(['kepala teknisi', 'admin', 'noc', 'manager'])->select('id', 'name')->get();
             },
             'materials' => fn () => Material::select('id', 'name', 'category', 'unit', 'stock')->where('stock', '>', 0)->get(),
             'filters' => $request->only(['search', 'status', 'priority', 'channel', 'area_id']),

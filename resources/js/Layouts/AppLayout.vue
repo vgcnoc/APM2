@@ -1107,6 +1107,7 @@ const menuItems = [
         theme: 'rose',
         active: (url) => (url || '').startsWith('/operational/network-maintenance') || (url || '').includes('tab=maintenance'),
         permission: 'menu_network_maintenance',
+        module: 'network',
     },
     {
         type: 'link',
@@ -1125,6 +1126,7 @@ const menuItems = [
         theme: 'rose',
         active: (url) => (url || '').startsWith('/monitoring-teknisi'),
         permission: 'menu_monitoring_teknisi',
+        module: 'attendance',
     },
     {
         type: 'dropdown',

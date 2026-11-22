@@ -38,6 +38,50 @@ class Company extends Model
     ];
 
     /**
+     * Normalisasi nama modul tersimpan (mendukung backward-compatibility seperti 'invoices' -> 'billing')
+     */
+    public function getAllowedModulesAttribute($value): ?array
+    {
+        if ($value === null) {
+            return null;
+        }
+        $modules = is_string($value) ? json_decode($value, true) : $value;
+        if (!is_array($modules)) {
+            return [];
+        }
+        $normalized = [];
+        foreach ($modules as $mod) {
+            if ($mod === 'invoices') {
+                $normalized[] = 'billing';
+            } elseif ($mod === 'monitoring') {
+                continue;
+            } else {
+                $normalized[] = $mod;
+            }
+        }
+        return array_values(array_unique($normalized));
+    }
+
+    public function setAllowedModulesAttribute($value): void
+    {
+        if (is_array($value)) {
+            $normalized = [];
+            foreach ($value as $mod) {
+                if ($mod === 'invoices') {
+                    $normalized[] = 'billing';
+                } elseif ($mod === 'monitoring') {
+                    continue;
+                } else {
+                    $normalized[] = $mod;
+                }
+            }
+            $this->attributes['allowed_modules'] = json_encode(array_values(array_unique($normalized)));
+        } else {
+            $this->attributes['allowed_modules'] = $value;
+        }
+    }
+
+    /**
      * Relasi ke company settings
      */
     public function settings(): HasMany

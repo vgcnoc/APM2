@@ -151,14 +151,8 @@ class PgsController extends Controller
             ->orWhere('role', 'like', '%teknisi%')
             ->orWhere('role', 'like', '%serbu%');
         })->select('id', 'name', 'phone')->orderBy('name')->get();
-        if ($technicians->isEmpty()) {
-            $technicians = User::forAssignment()->select('id', 'name', 'phone')->get();
-        }
 
         $leadTechnicians = User::forAssignment()->role(['kepala teknisi', 'admin', 'noc', 'manager'])->select('id', 'name')->get();
-        if ($leadTechnicians->isEmpty()) {
-            $leadTechnicians = User::forAssignment()->select('id', 'name')->get();
-        }
 
         $materials = fn () => Material::select('id', 'name', 'category', 'unit', 'stock')->where('stock', '>', 0)->get();
         $areas = fn () => DataScopeService::getScopedAreas($user, 'pgs');

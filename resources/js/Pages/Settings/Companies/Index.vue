@@ -337,22 +337,27 @@
                             </div>
                         </div>
 
-                        <!-- Siklus Penagihan -->
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Tgl Terbit Invoice</label>
-                                <input v-model="createForm.invoice_issue_date" type="number" min="1" max="28" class="input-text w-full text-xs" />
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Siklus Penagihan</label>
-                                <select v-model="createForm.billing_cycle" class="input-text w-full text-xs">
-                                    <option value="calendar">Kalender Bulanan</option>
-                                    <option value="anniversary">Anniversary (Tgl Pasang)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Tarif PPN (%)</label>
-                                <input v-model="createForm.tax_ppn" type="number" min="0" max="100" class="input-text w-full text-xs" />
+                        <!-- Siklus Penagihan & Pajak -->
+                        <div class="p-4 rounded-2xl bg-slate-50/80 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 space-y-3">
+                            <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                                <span>📅 Siklus Penagihan & Pajak PPN Mitra</span>
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Tgl Terbit Invoice</label>
+                                    <input v-model="createForm.invoice_issue_date" type="number" min="1" max="28" class="input-text w-full text-xs" />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Siklus Penagihan</label>
+                                    <select v-model="createForm.billing_cycle" class="input-text w-full text-xs">
+                                        <option value="calendar">Kalender Bulanan</option>
+                                        <option value="anniversary">Anniversary (Tgl Pasang)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Tarif PPN (%)</label>
+                                    <input v-model="createForm.tax_ppn" type="number" min="0" max="100" class="input-text w-full text-xs" />
+                                </div>
                             </div>
                         </div>
 
@@ -497,22 +502,27 @@
                             </div>
                         </div>
 
-                        <!-- Siklus Penagihan -->
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Tgl Terbit Invoice</label>
-                                <input v-model="editForm.invoice_issue_date" type="number" min="1" max="28" class="input-text w-full text-xs" />
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Siklus Penagihan</label>
-                                <select v-model="editForm.billing_cycle" class="input-text w-full text-xs">
-                                    <option value="calendar">Kalender Bulanan</option>
-                                    <option value="anniversary">Anniversary (Tgl Pasang)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Tarif PPN (%)</label>
-                                <input v-model="editForm.tax_ppn" type="number" min="0" max="100" class="input-text w-full text-xs" />
+                        <!-- Siklus Penagihan & Pajak -->
+                        <div class="p-4 rounded-2xl bg-slate-50/80 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 space-y-3">
+                            <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                                <span>📅 Siklus Penagihan & Pajak PPN Mitra</span>
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Tgl Terbit Invoice</label>
+                                    <input v-model="editForm.invoice_issue_date" type="number" min="1" max="28" class="input-text w-full text-xs" />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Siklus Penagihan</label>
+                                    <select v-model="editForm.billing_cycle" class="input-text w-full text-xs">
+                                        <option value="calendar">Kalender Bulanan</option>
+                                        <option value="anniversary">Anniversary (Tgl Pasang)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Tarif PPN (%)</label>
+                                    <input v-model="editForm.tax_ppn" type="number" min="0" max="100" class="input-text w-full text-xs" />
+                                </div>
                             </div>
                         </div>
 
@@ -655,6 +665,11 @@ const editForm = ref({
 
 function openEditModal(company) {
     selectedEditCompany.value = company;
+    let rawMods = Array.isArray(company.allowed_modules) ? [...company.allowed_modules] : ['billing', 'customers', 'tickets'];
+    // Normalisasi legacy module keys (invoices -> billing, hapus monitoring)
+    let cleanMods = rawMods.map(m => m === 'invoices' ? 'billing' : m).filter(m => m !== 'monitoring');
+    cleanMods = [...new Set(cleanMods)];
+
     editForm.value = {
         id: company.id,
         name: company.name,
@@ -665,7 +680,7 @@ function openEditModal(company) {
         address: company.address || '',
         status: company.status || 'active',
         max_customers: company.max_customers,
-        allowed_modules: Array.isArray(company.allowed_modules) ? [...company.allowed_modules] : ['billing', 'customers', 'tickets'],
+        allowed_modules: cleanMods,
         payment_banks: Array.isArray(company.payment_banks) ? JSON.parse(JSON.stringify(company.payment_banks)) : [],
         invoice_issue_date: company.invoice_issue_date || 1,
         billing_cycle: company.billing_cycle || 'calendar',
