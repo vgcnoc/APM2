@@ -91,7 +91,7 @@ class UserController extends Controller
         ];
 
         // Fetch roles from Spatie with fallback presets
-        $spatieRoles = \Spatie\Permission\Models\Role::orderBy('name')->pluck('name')->toArray();
+        $spatieRoles = \App\Models\Role::forCurrentCompany()->orderBy('name')->pluck('name')->toArray();
         $presetRoles = ['admin', 'teknisi', 'teknisi-2', 'teknisi tim serbu', 'noc', 'cs', 'sales', 'affiliate', 'finance', 'maintenance', 'maintenance-1', 'infrastruktur', 'reseller', 'manager', 'hrd', 'customer'];
         $allRoles = array_values(array_unique(array_merge($spatieRoles, $presetRoles)));
         sort($allRoles);
@@ -155,7 +155,27 @@ class UserController extends Controller
         
         // Assign Spatie role & clear cache
         try {
-            $roleModel = \Spatie\Permission\Models\Role::firstOrCreate(['name' => $validated['role'], 'guard_name' => 'web']);
+            $userCompanyId = (int) ($user->company_id ?: 1);
+            $roleModel = \App\Models\Role::where('company_id', $userCompanyId)
+                ->where('name', $validated['role'])
+                ->first();
+
+            if (!$roleModel) {
+                $holdingRole = \App\Models\Role::where(function ($q) {
+                    $q->where('company_id', 1)->orWhereNull('company_id');
+                })->where('name', $validated['role'])->with('permissions')->first();
+
+                $roleModel = \App\Models\Role::create([
+                    'company_id' => $userCompanyId,
+                    'name' => $validated['role'],
+                    'guard_name' => 'web',
+                ]);
+
+                if ($holdingRole && $holdingRole->permissions->isNotEmpty()) {
+                    $roleModel->syncPermissions($holdingRole->permissions->pluck('name')->toArray());
+                }
+            }
+
             $user->syncRoles([$roleModel]);
             app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
             \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);
@@ -215,7 +235,27 @@ class UserController extends Controller
         
         // Sync Spatie role & clear cache
         try {
-            $roleModel = \Spatie\Permission\Models\Role::firstOrCreate(['name' => $validated['role'], 'guard_name' => 'web']);
+            $userCompanyId = (int) ($user->company_id ?: 1);
+            $roleModel = \App\Models\Role::where('company_id', $userCompanyId)
+                ->where('name', $validated['role'])
+                ->first();
+
+            if (!$roleModel) {
+                $holdingRole = \App\Models\Role::where(function ($q) {
+                    $q->where('company_id', 1)->orWhereNull('company_id');
+                })->where('name', $validated['role'])->with('permissions')->first();
+
+                $roleModel = \App\Models\Role::create([
+                    'company_id' => $userCompanyId,
+                    'name' => $validated['role'],
+                    'guard_name' => 'web',
+                ]);
+
+                if ($holdingRole && $holdingRole->permissions->isNotEmpty()) {
+                    $roleModel->syncPermissions($holdingRole->permissions->pluck('name')->toArray());
+                }
+            }
+
             $user->syncRoles([$roleModel]);
             app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
             \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);

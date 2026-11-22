@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Spatie\Permission\Models\Role;
+use App\Models\Role;
 use Spatie\Permission\Models\Permission;
 use Inertia\Inertia;
 use Illuminate\Validation\Rule;
@@ -63,14 +63,48 @@ class RoleController extends Controller
         // Auto-sync permissions to DB on page load
         $this->syncPermissionsToDb();
 
-        $roles = Role::with('permissions')->get()->map(function ($role) {
-            return [
-                'id' => $role->id,
-                'name' => $role->name,
-                'permissions' => $role->permissions->pluck('name')->toArray(),
-                'users_count' => $role->users()->count(),
-            ];
-        });
+        $cId = Role::resolveActiveCompanyId();
+
+        // Jika perusahaan aktif adalah Mitra (bukan Holding 1), pastikan role sudah diinisialisasi
+        if ($cId > 1) {
+            $existingCount = Role::where('company_id', $cId)->count();
+            if ($existingCount === 0) {
+                // Duplikasi template role dari Holding Pusat (company_id 1) ke Mitra ini
+                $holdingRoles = Role::where(function ($q) {
+                    $q->where('company_id', 1)->orWhereNull('company_id');
+                })->with('permissions')->get();
+
+                foreach ($holdingRoles as $hr) {
+                    $newRole = Role::create([
+                        'company_id' => $cId,
+                        'name' => $hr->name,
+                        'guard_name' => $hr->guard_name ?: 'web',
+                    ]);
+                    if ($hr->permissions->isNotEmpty()) {
+                        $newRole->syncPermissions($hr->permissions->pluck('name')->toArray());
+                    }
+                }
+            }
+        }
+
+        $roles = Role::forCurrentCompany()
+            ->with('permissions')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($role) use ($cId) {
+                return [
+                    'id' => $role->id,
+                    'name' => $role->name,
+                    'permissions' => $role->permissions->pluck('name')->toArray(),
+                    'users_count' => $role->users()->where(function ($uq) use ($cId) {
+                        if ($cId === 1) {
+                            $uq->where('users.company_id', 1)->orWhereNull('users.company_id');
+                        } else {
+                            $uq->where('users.company_id', $cId);
+                        }
+                    })->count(),
+                ];
+            });
 
         return Inertia::render('Settings/Roles/Index', [
             'roles' => $roles,
@@ -84,13 +118,23 @@ class RoleController extends Controller
     {
         $this->syncPermissionsToDb();
         $request->merge(['name' => strtolower(trim($request->name))]);
+        $cId = Role::resolveActiveCompanyId();
 
         $request->validate([
-            'name' => 'required|string|max:100|unique:roles,name',
+            'name' => [
+                'required',
+                'string',
+                'max:100',
+                Rule::unique('roles', 'name')->where('company_id', $cId),
+            ],
             'permissions' => 'array',
         ]);
 
-        $role = Role::create(['name' => $request->name, 'guard_name' => 'web']);
+        $role = Role::create([
+            'company_id' => $cId,
+            'name' => $request->name,
+            'guard_name' => 'web',
+        ]);
 
         if ($request->has('permissions') && is_array($request->permissions)) {
             $role->syncPermissions($request->permissions);
@@ -107,9 +151,26 @@ class RoleController extends Controller
     {
         $this->syncPermissionsToDb();
         $request->merge(['name' => strtolower(trim($request->name))]);
+        $cId = Role::resolveActiveCompanyId();
+
+        // Validasi kepemilikan role
+        if ($cId === 1) {
+            if ($role->company_id && $role->company_id !== 1) {
+                abort(403, 'Role ini bukan milik Pusat.');
+            }
+        } else {
+            if ($role->company_id !== $cId) {
+                abort(403, 'Role ini bukan milik perusahaan Anda.');
+            }
+        }
 
         $request->validate([
-            'name' => ['required', 'string', 'max:100', Rule::unique('roles', 'name')->ignore($role->id)],
+            'name' => [
+                'required',
+                'string',
+                'max:100',
+                Rule::unique('roles', 'name')->where('company_id', $cId)->ignore($role->id),
+            ],
             'permissions' => 'array',
         ]);
 
@@ -126,9 +187,6 @@ class RoleController extends Controller
         $role->update(['name' => $request->name]);
 
         // PENTING: hanya sinkronkan izin jika payload benar-benar mengirim daftar izin.
-        // Sebelumnya aksi "Ubah Nama" (tanpa daftar izin) memanggil syncPermissions([])
-        // sehingga seluruh izin role terhapus, lalu saat deploy role kosong diisi ulang
-        // dengan template preset (menu yang sudah dimatikan admin muncul kembali).
         if ($request->exists('permissions') && is_array($request->input('permissions'))) {
             $role->syncPermissions($request->input('permissions'));
             $this->markRoleCustomized($role);
@@ -148,24 +206,29 @@ class RoleController extends Controller
         ]);
 
         $targetName = strtolower(trim($request->name));
+        $cId = Role::resolveActiveCompanyId();
 
         if ($targetName === strtolower($role->name)) {
             return redirect()->back()->with('error', "Nama role tujuan tidak boleh sama persis dengan role sumber.");
         }
 
         $sourcePermissions = $role->permissions->pluck('name')->toArray();
-        $existingRole = Role::where('name', $targetName)->first();
+        $existingRole = Role::where('company_id', $cId)->where('name', $targetName)->first();
 
         if ($existingRole) {
             $existingRole->syncPermissions($sourcePermissions);
             $this->markRoleCustomized($existingRole);
             app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
-        \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);
+            \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);
 
             return redirect()->back()->with('success', "Seluruh izin (" . count($sourcePermissions) . " izin) dari role '{$role->name}' berhasil disalin ke role '{$existingRole->name}'.");
         }
 
-        $newRole = Role::create(['name' => $targetName, 'guard_name' => 'web']);
+        $newRole = Role::create([
+            'company_id' => $cId,
+            'name' => $targetName,
+            'guard_name' => 'web',
+        ]);
         $newRole->syncPermissions($sourcePermissions);
         $this->markRoleCustomized($newRole);
 
@@ -177,6 +240,17 @@ class RoleController extends Controller
 
     public function applyPreset(Request $request, Role $role)
     {
+        $cId = Role::resolveActiveCompanyId();
+        if ($cId === 1) {
+            if ($role->company_id && $role->company_id !== 1) {
+                abort(403, 'Role ini bukan milik Pusat.');
+            }
+        } else {
+            if ($role->company_id !== $cId) {
+                abort(403, 'Role ini bukan milik perusahaan Anda.');
+            }
+        }
+
         $presetKey = strtolower(trim($request->input('preset', $role->name)));
         $presets = \App\Support\PermissionRegistry::getDefaultRolePresets();
 
@@ -201,15 +275,15 @@ class RoleController extends Controller
             $role->syncPermissions($permissions);
             $this->markRoleCustomized($role);
 
-            // Samakan teknisi-2 dengan teknisi secara otomatis (Yahya Maulana)
+            // Samakan teknisi-2 dengan teknisi secara otomatis jika di company yang sama
             if ($role->name === 'teknisi') {
-                $t2 = Role::where('name', 'teknisi-2')->first();
+                $t2 = Role::where('company_id', $cId)->where('name', 'teknisi-2')->first();
                 if ($t2) {
                     $t2->syncPermissions($permissions);
                     $this->markRoleCustomized($t2);
                 }
             } elseif ($role->name === 'teknisi-2') {
-                $t = Role::where('name', 'teknisi')->first();
+                $t = Role::where('company_id', $cId)->where('name', 'teknisi')->first();
                 if ($t) {
                     $t->syncPermissions($permissions);
                     $this->markRoleCustomized($t);
@@ -225,12 +299,31 @@ class RoleController extends Controller
 
     public function destroy(Role $role)
     {
+        $cId = Role::resolveActiveCompanyId();
+        if ($cId === 1) {
+            if ($role->company_id && $role->company_id !== 1) {
+                abort(403, 'Role ini bukan milik Pusat.');
+            }
+        } else {
+            if ($role->company_id !== $cId) {
+                abort(403, 'Role ini bukan milik perusahaan Anda.');
+            }
+        }
+
         if ($role->name === 'admin') {
             return redirect()->back()->with('error', 'Role Admin tidak dapat dihapus.');
         }
 
-        if ($role->users()->count() > 0) {
-            return redirect()->back()->with('error', "Role '{$role->name}' masih digunakan oleh {$role->users()->count()} user. Pindahkan user terlebih dahulu.");
+        $usersInThisCompany = $role->users()->where(function ($uq) use ($cId) {
+            if ($cId === 1) {
+                $uq->where('users.company_id', 1)->orWhereNull('users.company_id');
+            } else {
+                $uq->where('users.company_id', $cId);
+            }
+        })->count();
+
+        if ($usersInThisCompany > 0) {
+            return redirect()->back()->with('error', "Role '{$role->name}' masih digunakan oleh {$usersInThisCompany} user di perusahaan ini. Pindahkan user terlebih dahulu.");
         }
 
         $role->delete();
