@@ -6,6 +6,7 @@ use Spatie\Permission\Models\Role as SpatieRole;
 use Spatie\Permission\Contracts\Role as RoleContract;
 use Spatie\Permission\Guard;
 use Spatie\Permission\Exceptions\RoleDoesNotExist;
+use Spatie\Permission\Exceptions\RoleAlreadyExists;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Role extends SpatieRole
@@ -61,11 +62,64 @@ class Role extends SpatieRole
     }
 
     /**
+     * Override create agar pengecekan duplikat memperhitungkan company_id.
+     */
+    public static function create(array $attributes = [])
+    {
+        $attributes['guard_name'] ??= Guard::getDefaultName(static::class);
+        $attributes['company_id'] = !empty($attributes['company_id']) ? (int) $attributes['company_id'] : static::resolveActiveCompanyId();
+
+        $params = [
+            'name' => $attributes['name'],
+            'guard_name' => $attributes['guard_name'],
+            'company_id' => $attributes['company_id'],
+        ];
+
+        if (static::findByParam($params)) {
+            throw RoleAlreadyExists::create($attributes['name'], $attributes['guard_name']);
+        }
+
+        return static::query()->create($attributes);
+    }
+
+    /**
+     * Override findByParam agar menyaring berdasarkan company_id.
+     */
+    protected static function findByParam(array $params = []): ?RoleContract
+    {
+        $query = static::query();
+
+        if (isset($params[(new static)->getKeyName()])) {
+            $query->where((new static)->getKeyName(), $params[(new static)->getKeyName()]);
+        } else {
+            if (isset($params['name'])) {
+                $query->where('name', $params['name']);
+            }
+            if (isset($params['company_id'])) {
+                $query->where('company_id', $params['company_id']);
+            } else {
+                $cId = static::resolveActiveCompanyId();
+                if ($cId === 1) {
+                    $query->where(fn($q) => $q->where('company_id', 1)->orWhereNull('company_id'));
+                } else {
+                    $query->where('company_id', $cId);
+                }
+            }
+        }
+
+        if (isset($params['guard_name'])) {
+            $query->where('guard_name', $params['guard_name']);
+        }
+
+        return $query->first();
+    }
+
+    /**
      * Override findByName dengan mempertimbangkan company_id dan fallback ke holding.
      */
-    public static function findByName(string $name, $guardName = null): RoleContract
+    public static function findByName(string $name, ?string $guardName = null): RoleContract
     {
-        $guardName = $guardName ?? Guard::getDefaultName(static::class);
+        $guardName ??= Guard::getDefaultName(static::class);
         $cId = static::resolveActiveCompanyId();
 
         $role = static::where('company_id', $cId)
@@ -83,7 +137,7 @@ class Role extends SpatieRole
         }
 
         if (!$role) {
-            throw RoleDoesNotExist::named($name);
+            throw RoleDoesNotExist::named($name, $guardName);
         }
 
         return $role;
@@ -92,9 +146,9 @@ class Role extends SpatieRole
     /**
      * Override findOrCreate dengan mengikat ke company_id aktif.
      */
-    public static function findOrCreate(string $name, $guardName = null): RoleContract
+    public static function findOrCreate(string $name, ?string $guardName = null): RoleContract
     {
-        $guardName = $guardName ?? Guard::getDefaultName(static::class);
+        $guardName ??= Guard::getDefaultName(static::class);
         $cId = static::resolveActiveCompanyId();
 
         $role = static::where('company_id', $cId)
