@@ -202,6 +202,10 @@ class IncentiveDeductionController extends Controller
         $allRecords = $allRecords->sortByDesc('created_at')->values();
 
         // 10. Calculate KPI & Counts
+        $countInsentif = $incentives->count();
+        $countPotongan = $deductions->count();
+        $countSemua = $countInsentif + $countPotongan;
+
         $totalIncentive = $incentives->sum('amount');
         $totalDeduction = $deductions->sum('amount');
         $countAuto = $incentives->where('mode', 'Auto')->count() + $deductions->where('mode', 'Auto')->count();
