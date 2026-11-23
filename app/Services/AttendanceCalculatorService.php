@@ -762,7 +762,7 @@ class AttendanceCalculatorService
                 return is_string($s->date) ? substr($s->date, 0, 10) : $s->date->format('Y-m-d');
             });
 
-            $hasExplicitWorkRows = $empSchedules->where('status', 'work')->count() > 0;
+            $hasExplicitWorkRows = $empSchedules->where('status', 'work')->whereNotNull('shift_id')->count() > 0;
 
             if ($hasExplicitWorkRows) {
                 // Mode Roster Penuh: Target adalah seluruh tanggal berstatus 'work' yang sudah jatuh tempo
@@ -1333,14 +1333,14 @@ class AttendanceCalculatorService
             if ($workSchedules && $workSchedules->isNotEmpty()) {
                 $empSchedules = $workSchedules->where('employee_id', $emp->id);
                 if ($empSchedules->isNotEmpty()) {
-                    $workSchedulesCount = $empSchedules->where('status', 'work')->count();
+                    $workSchedulesCount = $empSchedules->where('status', 'work')->whereNotNull('shift_id')->count();
                     if ($workSchedulesCount > 0) {
                         $hasCustomWorkSchedule = true;
                         $empWorkDays = $workSchedulesCount;
                         $todayShiftEvaluated = false;
                         $todayCountedInSchedule = false;
 
-                        $empElapsedWorkDays = $empSchedules->where('status', 'work')
+                        $empElapsedWorkDays = $empSchedules->where('status', 'work')->whereNotNull('shift_id')
                             ->filter(function ($s) use ($todayDate, $now, $shiftsById, $settings, &$todayShiftEvaluated, &$todayCountedInSchedule) {
                                 $sDate = is_string($s->date) ? substr($s->date, 0, 10) : $s->date->format('Y-m-d');
                                 if ($sDate < $todayDate) {
@@ -1726,9 +1726,22 @@ class AttendanceCalculatorService
                         $nt = strtolower($s->notes ?? '');
                         return $st === 'alpha' || str_contains($nt, 'alpha') || str_contains($nt, 'mangkir');
                     })->sortByDesc('date')->first();
+
+                    if (!$alphaSchedule) {
+                        // Cari tanggal jadwal kerja di masa lalu (status work & ada shift_id) yang tidak dihadiri karyawan
+                        $presentDates = $empAtts->pluck('date')->map(fn($d) => is_string($d) ? substr($d, 0, 10) : $d->format('Y-m-d'))->toArray();
+                        $nowYmd = Carbon::today('Asia/Jakarta')->format('Y-m-d');
+                        $missedWorkSchedule = $empSchedules->filter(function ($s) use ($presentDates, $nowYmd) {
+                            $sDate = is_string($s->date) ? substr($s->date, 0, 10) : $s->date->format('Y-m-d');
+                            return $s->status === 'work' && !empty($s->shift_id) && $sDate <= $nowYmd && !in_array($sDate, $presentDates, true);
+                        })->sortByDesc('date')->first();
+
+                        $alphaSchedule = $missedWorkSchedule;
+                    }
+
                     $alphaDeductDate = $alphaSchedule 
                         ? Carbon::parse($alphaSchedule->date)->format('Y-m-d') 
-                        : min(Carbon::today('Asia/Jakarta')->format('Y-m-d'), $monthEnd->format('Y-m-d'));
+                        : $monthEnd->format('Y-m-d');
 
                     Deduction::updateOrCreate(
                         [
