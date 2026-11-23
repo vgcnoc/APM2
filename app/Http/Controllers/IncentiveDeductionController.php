@@ -199,7 +199,14 @@ class IncentiveDeductionController extends Controller
             $allRecords = $allRecords->filter(fn($r) => in_array($r['status'], ['disbursed', 'approved', 'paid']));
         }
 
-        $allRecords = $allRecords->sortByDesc('created_at')->values();
+        $allRecords = $allRecords->sort(function ($a, $b) {
+            $dateA = $a['date'] ?? '';
+            $dateB = $b['date'] ?? '';
+            if ($dateA !== $dateB) {
+                return strcmp($dateB, $dateA);
+            }
+            return strcmp($b['created_at'] ?? '', $a['created_at'] ?? '');
+        })->values();
 
         // 10. Calculate KPI & Counts
         $countInsentif = $incentives->count();

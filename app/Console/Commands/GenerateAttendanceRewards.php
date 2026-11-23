@@ -118,16 +118,16 @@ class GenerateAttendanceRewards extends Command
             })
             ->get();
 
-        $totalDeductionsCount = 0;
+        // Sinkronisasi seluruh potongan absensi otomatis per tanggal dan per kejadian
+        $syncRes = AttendanceCalculatorService::syncMonthlyToPayroll($month);
+        $totalDeductionsCount = $syncRes['synced_deductions'] ?? 0;
         $totalRewardsCount = 0;
 
         DB::transaction(function () use (
             $employees, $allMonthAtts, $allSpecialAtts, $allWorkSchedules,
-            $month, $monthStart, $monthEnd, $todayDate, $cutoffTime,
-            $latePenaltyMode, $latePenaltyModeSlug, $penaltyPerMinute, $fixedPenalty, $missingOutAmount, $earlyLeaveAmount, $alphaAmount,
-            $latePenaltyEnabled, $missingOutPenaltyEnabled, $earlyLeavePenaltyEnabled, $alphaPenaltyEnabled,
-            $isRewardEnabled, &$totalDeductionsCount, &$totalRewardsCount,
-            $attSettings, $shiftsById, $nowEval
+            $month, $monthStart, $monthEnd,
+            $isRewardEnabled, &$totalRewardsCount,
+            $attSettings, $shiftsById
         ) {
             $performance = [];
 
@@ -139,191 +139,7 @@ class GenerateAttendanceRewards extends Command
                 $empAtts = $allMonthAtts->where('employee_id', $employee->id);
                 $empSpecialAtts = $allSpecialAtts->where('employee_id', $employee->id);
 
-                // --- 1. POTONGAN KETERLAMBATAN REGULER ---
-                $lateCount = 0;
-                $totalLateMinutes = 0;
-                if ($latePenaltyEnabled) {
-                    $lateRegularAtts = $empAtts->where('status', 'late')->where('late_minutes', '>', 0);
-                    $lateCount = $lateRegularAtts->count();
-                    $totalLateMinutes = (int) $lateRegularAtts->sum('late_minutes');
-
-                    $lateDeductionAmount = ($latePenaltyModeSlug === 'per_menit')
-                        ? ($totalLateMinutes * $penaltyPerMinute)
-                        : ($lateCount * $fixedPenalty);
-
-                    if ($lateDeductionAmount > 0) {
-                        $lateAtts = $empAtts->filter(fn($a) => $a->status === 'late' || (int) ($a->late_minutes ?? 0) > 0)->sortBy('date');
-                        $deductDate = $lateAtts->first() ? Carbon::parse($lateAtts->first()->date)->format('Y-m-d') : $monthEnd->format('Y-m-d');
-                        $lateDatesStr = $lateAtts->map(function ($a) {
-                            $d = Carbon::parse($a->date)->format('d/m');
-                            $m = (int) ($a->late_minutes ?? 0);
-                            return "{$d}" . ($m > 0 ? " [{$m} mnt]" : "");
-                        })->take(5)->implode(', ');
-                        if ($lateAtts->count() > 5) {
-                            $lateDatesStr .= ' dkk';
-                        }
-                        $desc = "Potongan Terlambat Absensi Periode {$month} ({$lateCount}x telat, {$totalLateMinutes} menit: {$lateDatesStr})";
-                        Deduction::updateOrCreate(
-                            [
-                                'user_id' => $linkedUser->id,
-                                'reference_id' => "ATT_LATE_{$employee->id}_{$month}",
-                            ],
-                            [
-                                'type' => 'auto',
-                                'description' => $desc,
-                                'amount' => $lateDeductionAmount,
-                                'deduction_date' => $deductDate,
-                                'status' => 'pending',
-                            ]
-                        );
-                        $totalDeductionsCount++;
-                    }
-                }
-
-                // --- 2. POTONGAN LUPA ABSEN PULANG (MISSING CLOCK-OUT) ---
-                $missingOutCount = 0;
-                if ($missingOutPenaltyEnabled) {
-                    $missingOutAtts = $empAtts->filter(function ($att) use ($nowEval, $attSettings, $shiftsById) {
-                        return AttendanceCalculatorService::isMissingClockOut($att, $nowEval, $attSettings, $shiftsById, 'Asia/Jakarta');
-                    })->sortBy('date');
-                    $missingOutCount = $missingOutAtts->count();
-                    $missingOutDeduction = $missingOutCount * $missingOutAmount;
-
-                    if ($missingOutDeduction > 0) {
-                        $deductDate = $missingOutAtts->first() ? Carbon::parse($missingOutAtts->first()->date)->format('Y-m-d') : $monthEnd->format('Y-m-d');
-                        $datesStr = $missingOutAtts->map(fn($a) => Carbon::parse($a->date)->format('d/m'))->implode(', ');
-                        $desc = "Potongan Lupa Absen Pulang Periode {$month} ({$missingOutCount}x: Tgl {$datesStr})";
-                        Deduction::updateOrCreate(
-                            [
-                                'user_id' => $linkedUser->id,
-                                'reference_id' => "ATT_NO_OUT_{$employee->id}_{$month}",
-                            ],
-                            [
-                                'type' => 'auto',
-                                'description' => $desc,
-                                'amount' => $missingOutDeduction,
-                                'deduction_date' => $deductDate,
-                                'status' => 'pending',
-                            ]
-                        );
-                        $totalDeductionsCount++;
-                    }
-                }
-
-                // --- 3. POTONGAN PULANG CEPAT (EARLY LEAVE) ---
-                $earlyCount = 0;
-                if ($earlyLeavePenaltyEnabled) {
-                    $earlyAtts = $empAtts->filter(function ($att) {
-                        $earlyMins = (int) ($att->early_leave_minutes ?? 0);
-                        if ($earlyMins > 0) return true;
-                        return str_contains(strtolower($att->notes ?? ''), 'pulang lebih awal');
-                    })->sortBy('date');
-                    $earlyCount = $earlyAtts->count();
-                    $earlyDeduction = $earlyCount * $earlyLeaveAmount;
-
-                    if ($earlyDeduction > 0) {
-                        $deductDate = $earlyAtts->first() ? Carbon::parse($earlyAtts->first()->date)->format('Y-m-d') : $monthEnd->format('Y-m-d');
-                        $earlyDatesStr = $earlyAtts->map(function ($a) {
-                            $d = Carbon::parse($a->date)->format('d/m');
-                            $m = (int) ($a->early_leave_minutes ?? 0);
-                            return "{$d}" . ($m > 0 ? " [{$m} mnt]" : "");
-                        })->implode(', ');
-                        $desc = "Potongan Pulang Cepat Periode {$month} ({$earlyCount}x: {$earlyDatesStr})";
-                        Deduction::updateOrCreate(
-                            [
-                                'user_id' => $linkedUser->id,
-                                'reference_id' => "ATT_EARLY_{$employee->id}_{$month}",
-                            ],
-                            [
-                                'type' => 'auto',
-                                'description' => $desc,
-                                'amount' => $earlyDeduction,
-                                'deduction_date' => $deductDate,
-                                'status' => 'pending',
-                            ]
-                        );
-                        $totalDeductionsCount++;
-                    }
-                }
-
-                // --- 4. POTONGAN ALPHA / MANGKIR JADWAL KERJA ---
-                $alphaCount = 0;
-                if ($alphaPenaltyEnabled) {
-                    $scheduledDates = $allWorkSchedules->where('employee_id', $employee->id)
-                        ->pluck('date')
-                        ->map(fn($d) => is_string($d) ? substr($d, 0, 10) : $d->format('Y-m-d'))
-                        ->unique()
-                        ->filter(fn($d) => $d <= $todayDate);
-
-                    $regularAttendedDates = $empAtts->whereNotNull('clock_in')
-                        ->pluck('date')
-                        ->map(fn($d) => is_string($d) ? substr($d, 0, 10) : $d->format('Y-m-d'))
-                        ->unique();
-
-                    $specialAttendedDates = $empSpecialAtts->whereNotNull('clock_in')
-                        ->pluck('date')
-                        ->map(fn($d) => is_string($d) ? substr($d, 0, 10) : $d->format('Y-m-d'))
-                        ->unique();
-
-                    $alphaDates = $scheduledDates->diff($regularAttendedDates)->diff($specialAttendedDates)->sort();
-                    $alphaCount = $alphaDates->count();
-                    $alphaDeduction = $alphaCount * $alphaAmount;
-
-                    if ($alphaDeduction > 0) {
-                        $deductDate = $alphaDates->first() ? Carbon::parse($alphaDates->first())->format('Y-m-d') : min(Carbon::today('Asia/Jakarta')->format('Y-m-d'), $monthEnd->format('Y-m-d'));
-                        $alphaDatesStr = $alphaDates->map(fn($d) => Carbon::parse($d)->format('d/m'))->implode(', ');
-                        $rateStr = " @ Rp " . number_format($alphaAmount, 0, ',', '.') . "/hari";
-                        $desc = "Potongan Alpha / Mangkir Jadwal Kerja Periode {$month} ({$alphaCount} hari{$rateStr}: Tgl {$alphaDatesStr})";
-                        Deduction::updateOrCreate(
-                            [
-                                'user_id' => $linkedUser->id,
-                                'reference_id' => "ATT_ALPHA_{$employee->id}_{$month}",
-                            ],
-                            [
-                                'type' => 'auto',
-                                'description' => $desc,
-                                'amount' => $alphaDeduction,
-                                'deduction_date' => $deductDate,
-                                'status' => 'pending',
-                            ]
-                        );
-                        $totalDeductionsCount++;
-                    }
-                }
-
-                // --- 5. POTONGAN TIM KHUSUS (JIKA ANGGOTA TIM KHUSUS) ---
-                if ($empSpecialAtts->isNotEmpty()) {
-                    $byTeam = $empSpecialAtts->groupBy('special_team_id');
-                    foreach ($byTeam as $teamId => $teamAtts) {
-                        $team = $teamAtts->first()->team;
-                        $sLates = $teamAtts->where('status', 'late')->count();
-                        $sNoOuts = $teamAtts->filter(fn($sAtt) => AttendanceCalculatorService::isSpecialMissingClockOut($sAtt, $team, $nowEval))->count();
-                        $sLateFine = $sLates * (float) ($team?->late_deduction_amount ?? 10000);
-                        $sNoOutFine = $sNoOuts * (float) ($team?->no_out_deduction_amount ?? 10000);
-                        $totalSpecialFine = $sLateFine + $sNoOutFine;
-
-                        if ($totalSpecialFine > 0) {
-                            $latestSpecial = $teamAtts->filter(fn($sAtt) => $sAtt->status === 'late' || AttendanceCalculatorService::isSpecialMissingClockOut($sAtt, $team, $nowEval))->sortByDesc('date')->first();
-                            $deductDate = $latestSpecial ? Carbon::parse($latestSpecial->date)->format('Y-m-d') : min(Carbon::today('Asia/Jakarta')->format('Y-m-d'), $monthEnd->format('Y-m-d'));
-                            $teamName = $team?->name ?? 'Tim Khusus';
-                            $desc = "Potongan Absen {$teamName} Periode {$month} ({$sLates}x telat, {$sNoOuts}x tanpa absen pulang)";
-                            Deduction::updateOrCreate(
-                                [
-                                    'user_id' => $linkedUser->id,
-                                    'reference_id' => "SPECIAL_DEDUCT_{$teamId}_{$employee->id}_{$month}",
-                                ],
-                                [
-                                    'type' => 'auto',
-                                    'description' => $desc,
-                                    'amount' => $totalSpecialFine,
-                                    'deduction_date' => $deductDate,
-                                    'status' => 'pending',
-                                ]
-                            );
-                            $totalDeductionsCount++;
-                        }
-                    }
-                }
+                // Seluruh potongan absensi telah disinkronkan per tanggal dan per kejadian oleh AttendanceCalculatorService::syncMonthlyToPayroll
 
                 // Tandai absensi sudah disinkronkan ke payroll
                 if ($empAtts->isNotEmpty()) {

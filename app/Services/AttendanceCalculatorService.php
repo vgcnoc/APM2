@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Attendance;
+use App\Models\AttendanceLeave;
 use App\Models\Deduction;
 use App\Models\Employee;
 use App\Models\Payroll;
@@ -1627,82 +1628,85 @@ class AttendanceCalculatorService
                 }
 
                 $hasAnyPenalty = false;
+                $activeRefIds = [];
                 $empAtts = $attendances->where('employee_id', $emp->id);
                 $empSchedules = $workSchedules ? $workSchedules->where('employee_id', $emp->id) : collect();
 
-                // 1. Potongan Terlambat
+                // 1. Potongan Terlambat (Per Tanggal & Per Kejadian)
                 if ($row['penalties']['late'] > 0) {
                     $lateAtts = $empAtts->filter(function ($a) {
                         return $a->status === 'late' || (int) ($a->late_minutes ?? 0) > 0;
                     })->sortBy('date');
 
-                    $lateDatesStr = $lateAtts->map(function ($a) {
-                        $d = Carbon::parse($a->date)->format('d/m');
-                        $m = (int) ($a->late_minutes ?? 0);
-                        return "{$d}" . ($m > 0 ? " [{$m} mnt]" : "");
-                    })->take(5)->implode(', ');
-                    if ($lateAtts->count() > 5) {
-                        $lateDatesStr .= ' dkk';
+                    foreach ($lateAtts as $lAtt) {
+                        $lDateStr = is_string($lAtt->date) ? substr($lAtt->date, 0, 10) : $lAtt->date->format('Y-m-d');
+                        $dmy = Carbon::parse($lDateStr)->format('d/m/Y');
+                        $mins = (int) ($lAtt->late_minutes ?? 0);
+
+                        $itemFine = ($settings['late_mode'] === 'per_menit')
+                            ? ($mins * $settings['late_per_minute_amount'])
+                            : $settings['late_fixed_amount'];
+
+                        if ($itemFine > 0) {
+                            $refId = "ATT_LATE_{$emp->id}_{$lDateStr}";
+                            $activeRefIds[] = $refId;
+                            $lateDesc = "Potongan Terlambat Absensi (Tgl {$dmy}" . ($mins > 0 ? " - Telat {$mins} menit" : "") . ")";
+
+                            Deduction::updateOrCreate(
+                                [
+                                    'user_id' => $user->id,
+                                    'reference_id' => $refId,
+                                ],
+                                [
+                                    'type' => 'auto',
+                                    'description' => $lateDesc,
+                                    'amount' => $itemFine,
+                                    'deduction_date' => $lDateStr,
+                                    'status' => 'pending',
+                                ]
+                            );
+                            $syncedDeductionsCount++;
+                            $hasAnyPenalty = true;
+                        }
                     }
-
-                    $lateDeductDate = $lateAtts->first() ? Carbon::parse($lateAtts->first()->date)->format('Y-m-d') : $monthEnd->format('Y-m-d');
-                    $lateDesc = "Potongan Terlambat Absensi Periode {$month} ({$row['total_late']}x telat, {$row['total_late_minutes']} menit: {$lateDatesStr})";
-
-                    Deduction::updateOrCreate(
-                        [
-                            'user_id' => $user->id,
-                            'reference_id' => "ATT_LATE_{$emp->id}_{$month}",
-                        ],
-                        [
-                            'type' => 'auto',
-                            'description' => $lateDesc,
-                            'amount' => $row['penalties']['late'],
-                            'deduction_date' => $lateDeductDate,
-                            'status' => 'pending',
-                        ]
-                    );
-                    $syncedDeductionsCount++;
-                    $hasAnyPenalty = true;
-                } else {
-                    Deduction::where('user_id', $user->id)
-                        ->where('reference_id', "ATT_LATE_{$emp->id}_{$month}")
-                        ->where('status', 'pending')
-                        ->delete();
                 }
 
-                // 2. Potongan Lupa Pulang (Missing Out)
+                // 2. Potongan Lupa Pulang / Missing Out (Per Tanggal & Per Kejadian)
                 if ($row['penalties']['missing_out'] > 0) {
                     $missingOutAtts = $empAtts->filter(function ($a) use ($nowEvalSpecial, $settings, $shiftsById) {
                         return self::isMissingClockOut($a, $nowEvalSpecial, $settings, $shiftsById, 'Asia/Jakarta');
                     })->sortBy('date');
 
-                    $datesStr = $missingOutAtts->map(fn($a) => Carbon::parse($a->date)->format('d/m'))->implode(', ');
-                    $missingOutDeductDate = $missingOutAtts->first() ? Carbon::parse($missingOutAtts->first()->date)->format('Y-m-d') : $monthEnd->format('Y-m-d');
-                    $missingOutDesc = "Potongan Lupa Absen Pulang Periode {$month} ({$row['total_missing_out']}x" . ($datesStr !== '' ? ": Tgl {$datesStr}" : "") . ")";
+                    foreach ($missingOutAtts as $mAtt) {
+                        $mDateStr = is_string($mAtt->date) ? substr($mAtt->date, 0, 10) : $mAtt->date->format('Y-m-d');
+                        $dmy = Carbon::parse($mDateStr)->format('d/m/Y');
+                        $itemFine = (float) ($settings['missing_out_amount'] ?? 10000);
 
-                    Deduction::updateOrCreate(
-                        [
-                            'user_id' => $user->id,
-                            'reference_id' => "ATT_NO_OUT_{$emp->id}_{$month}",
-                        ],
-                        [
-                            'type' => 'auto',
-                            'description' => $missingOutDesc,
-                            'amount' => $row['penalties']['missing_out'],
-                            'deduction_date' => $missingOutDeductDate,
-                            'status' => 'pending',
-                        ]
-                    );
-                    $syncedDeductionsCount++;
-                    $hasAnyPenalty = true;
-                } else {
-                    Deduction::where('user_id', $user->id)
-                        ->where('reference_id', "ATT_NO_OUT_{$emp->id}_{$month}")
-                        ->where('status', 'pending')
-                        ->delete();
+                        if ($itemFine > 0) {
+                            $refId = "ATT_NO_OUT_{$emp->id}_{$mDateStr}";
+                            $activeRefIds[] = $refId;
+                            $missingDesc = "Potongan Lupa Absen Pulang (Tgl {$dmy})";
+
+                            Deduction::updateOrCreate(
+                                [
+                                    'user_id' => $user->id,
+                                    'reference_id' => $refId,
+                                ],
+                                [
+                                    'type' => 'auto',
+                                    'description' => $missingDesc,
+                                    'amount' => $itemFine,
+                                    'deduction_date' => $mDateStr,
+                                    'status' => 'pending',
+                                ]
+                            );
+                            $syncedDeductionsCount++;
+                            $hasAnyPenalty = true;
+                        }
+                    }
                 }
 
-                // 3. Potongan Pulang Cepat
+                // 3. Potongan Pulang Cepat / Early Leave (Per Tanggal & Per Kejadian)
                 if ($row['penalties']['early_leave'] > 0) {
                     $earlyAtts = $empAtts->filter(function ($a) {
                         $earlyMins = (int) ($a->early_leave_minutes ?? 0);
@@ -1710,38 +1714,37 @@ class AttendanceCalculatorService
                         return str_contains(strtolower($a->notes ?? ''), 'pulang lebih awal');
                     })->sortBy('date');
 
-                    $earlyDatesStr = $earlyAtts->map(function ($a) {
-                        $d = Carbon::parse($a->date)->format('d/m');
-                        $m = (int) ($a->early_leave_minutes ?? 0);
-                        return "{$d}" . ($m > 0 ? " [{$m} mnt]" : "");
-                    })->implode(', ');
+                    foreach ($earlyAtts as $eAtt) {
+                        $eDateStr = is_string($eAtt->date) ? substr($eAtt->date, 0, 10) : $eAtt->date->format('Y-m-d');
+                        $dmy = Carbon::parse($eDateStr)->format('d/m/Y');
+                        $mins = (int) ($eAtt->early_leave_minutes ?? 0);
+                        $itemFine = (float) ($settings['early_leave_amount'] ?? 10000);
 
-                    $earlyDeductDate = $earlyAtts->first() ? Carbon::parse($earlyAtts->first()->date)->format('Y-m-d') : $monthEnd->format('Y-m-d');
-                    $earlyDesc = "Potongan Pulang Cepat Periode {$month} ({$row['total_early_leave']}x: {$earlyDatesStr})";
+                        if ($itemFine > 0) {
+                            $refId = "ATT_EARLY_{$emp->id}_{$eDateStr}";
+                            $activeRefIds[] = $refId;
+                            $earlyDesc = "Potongan Pulang Cepat (Tgl {$dmy}" . ($mins > 0 ? " - Pulang awal {$mins} menit" : "") . ")";
 
-                    Deduction::updateOrCreate(
-                        [
-                            'user_id' => $user->id,
-                            'reference_id' => "ATT_EARLY_{$emp->id}_{$month}",
-                        ],
-                        [
-                            'type' => 'auto',
-                            'description' => $earlyDesc,
-                            'amount' => $row['penalties']['early_leave'],
-                            'deduction_date' => $earlyDeductDate,
-                            'status' => 'pending',
-                        ]
-                    );
-                    $syncedDeductionsCount++;
-                    $hasAnyPenalty = true;
-                } else {
-                    Deduction::where('user_id', $user->id)
-                        ->where('reference_id', "ATT_EARLY_{$emp->id}_{$month}")
-                        ->where('status', 'pending')
-                        ->delete();
+                            Deduction::updateOrCreate(
+                                [
+                                    'user_id' => $user->id,
+                                    'reference_id' => $refId,
+                                ],
+                                [
+                                    'type' => 'auto',
+                                    'description' => $earlyDesc,
+                                    'amount' => $itemFine,
+                                    'deduction_date' => $eDateStr,
+                                    'status' => 'pending',
+                                ]
+                            );
+                            $syncedDeductionsCount++;
+                            $hasAnyPenalty = true;
+                        }
+                    }
                 }
 
-                // 4. Potongan Alpha / Mangkir
+                // 4. Potongan Alpha / Mangkir (Per Tanggal & Per Kejadian)
                 if ($row['penalties']['alpha'] > 0) {
                     $presentDates = $empAtts->pluck('date')->map(fn($d) => is_string($d) ? substr($d, 0, 10) : $d->format('Y-m-d'))->toArray();
                     $nowYmd = Carbon::today('Asia/Jakarta')->format('Y-m-d');
@@ -1755,36 +1758,37 @@ class AttendanceCalculatorService
                         return $isAlphaStatus || $isMissedWork;
                     })->sortBy('date');
 
-                    $alphaDatesStr = $alphaSchedules->map(fn($s) => Carbon::parse($s->date)->format('d/m'))->implode(', ');
-                    $alphaDeductDate = $alphaSchedules->first() ? Carbon::parse($alphaSchedules->first()->date)->format('Y-m-d') : $monthEnd->format('Y-m-d');
+                    $dailyRate = $row['total_alpha'] > 0 ? (int) round($row['penalties']['alpha'] / $row['total_alpha']) : (float) ($settings['alpha_amount'] ?? 35000);
 
-                    $dailyRate = $row['total_alpha'] > 0 ? (int) round($row['penalties']['alpha'] / $row['total_alpha']) : 0;
-                    $rateStr = $dailyRate > 0 ? " @ Rp " . number_format($dailyRate, 0, ',', '.') . "/hari" : '';
-                    $alphaDesc = "Potongan Alpha / Mangkir Kerja Periode {$month} ({$row['total_alpha']} hari{$rateStr}" . ($alphaDatesStr !== '' ? ": Tgl {$alphaDatesStr}" : "") . ")";
+                    foreach ($alphaSchedules as $aSched) {
+                        $aDateStr = is_string($aSched->date) ? substr($aSched->date, 0, 10) : $aSched->date->format('Y-m-d');
+                        $dmy = Carbon::parse($aDateStr)->format('d/m/Y');
 
-                    Deduction::updateOrCreate(
-                        [
-                            'user_id' => $user->id,
-                            'reference_id' => "ATT_ALPHA_{$emp->id}_{$month}",
-                        ],
-                        [
-                            'type' => 'auto',
-                            'description' => $alphaDesc,
-                            'amount' => $row['penalties']['alpha'],
-                            'deduction_date' => $alphaDeductDate,
-                            'status' => 'pending',
-                        ]
-                    );
-                    $syncedDeductionsCount++;
-                    $hasAnyPenalty = true;
-                } else {
-                    Deduction::where('user_id', $user->id)
-                        ->where('reference_id', "ATT_ALPHA_{$emp->id}_{$month}")
-                        ->where('status', 'pending')
-                        ->delete();
+                        if ($dailyRate > 0) {
+                            $refId = "ATT_ALPHA_{$emp->id}_{$aDateStr}";
+                            $activeRefIds[] = $refId;
+                            $alphaDesc = "Potongan Alpha / Mangkir Kerja (Tgl {$dmy})";
+
+                            Deduction::updateOrCreate(
+                                [
+                                    'user_id' => $user->id,
+                                    'reference_id' => $refId,
+                                ],
+                                [
+                                    'type' => 'auto',
+                                    'description' => $alphaDesc,
+                                    'amount' => $dailyRate,
+                                    'deduction_date' => $aDateStr,
+                                    'status' => 'pending',
+                                ]
+                            );
+                            $syncedDeductionsCount++;
+                            $hasAnyPenalty = true;
+                        }
+                    }
                 }
 
-                // 5. Potongan Sakit Tanpa Surat Dokter
+                // 5. Potongan Sakit Tanpa Surat Dokter (Per Tanggal & Per Kejadian)
                 if (($row['penalties']['sick_no_cert'] ?? 0) > 0) {
                     $sickSchedules = $empSchedules->filter(function ($s) {
                         $st = strtolower($s->status ?? '');
@@ -1793,43 +1797,45 @@ class AttendanceCalculatorService
                         return $isSick && (str_contains($nt, 'tanpa surat') || str_contains($nt, 'tanpa dokter') || $st === 'sick_no_cert');
                     })->sortBy('date');
 
-                    $sickDatesStr = $sickSchedules->map(fn($s) => Carbon::parse($s->date)->format('d/m'))->implode(', ');
-                    $sickDeductDate = $sickSchedules->first() ? Carbon::parse($sickSchedules->first()->date)->format('Y-m-d') : min(Carbon::today('Asia/Jakarta')->format('Y-m-d'), $monthEnd->format('Y-m-d'));
+                    $dailyRate = $row['total_sick_no_cert'] > 0 ? (int) round($row['penalties']['sick_no_cert'] / $row['total_sick_no_cert']) : (float) ($settings['sick_no_cert_amount'] ?? 20000);
 
-                    $reasons = $sickSchedules->map(function($s) {
-                        $note = trim($s->notes ?? '');
-                        $clean = trim(preg_replace('/^\[.*?\]\s*/', '', $note));
-                        return $clean;
-                    })->filter()->unique()->values()->toArray();
-                    $reasonStr = !empty($reasons) ? implode('; ', $reasons) : '';
+                    foreach ($sickSchedules as $sSched) {
+                        $sDateStr = is_string($sSched->date) ? substr($sSched->date, 0, 10) : $sSched->date->format('Y-m-d');
+                        $dmy = Carbon::parse($sDateStr)->format('d/m/Y');
+                        
+                        $note = trim($sSched->notes ?? '');
+                        $cleanReason = trim(preg_replace('/^\[.*?\]\s*/', '', $note));
+                        if ($cleanReason === '') {
+                            $cleanReason = AttendanceLeave::where('employee_id', $emp->id)
+                                ->whereDate('date', $sDateStr)
+                                ->value('reason') ?? '';
+                        }
 
-                    $dailyRate = $row['total_sick_no_cert'] > 0 ? (int) round($row['penalties']['sick_no_cert'] / $row['total_sick_no_cert']) : 0;
-                    $rateStr = $dailyRate > 0 ? " @ Rp " . number_format($dailyRate, 0, ',', '.') . "/hari" : '';
-                    $sickDesc = "Potongan Sakit Tanpa Surat Dokter Periode {$month} ({$row['total_sick_no_cert']} hari{$rateStr}" . ($sickDatesStr !== '' ? ": Tgl {$sickDatesStr}" : "") . ($reasonStr !== '' ? " - Catatan: {$reasonStr}" : "") . ")";
+                        if ($dailyRate > 0) {
+                            $refId = "ATT_SICK_NO_CERT_{$emp->id}_{$sDateStr}";
+                            $activeRefIds[] = $refId;
+                            $sickDesc = "Potongan Sakit Tanpa Surat Dokter (Tgl {$dmy}" . ($cleanReason !== '' ? " - Catatan: {$cleanReason}" : "") . ")";
 
-                    Deduction::updateOrCreate(
-                        [
-                            'user_id' => $user->id,
-                            'reference_id' => "ATT_SICK_NO_CERT_{$emp->id}_{$month}",
-                        ],
-                        [
-                            'type' => 'auto',
-                            'description' => $sickDesc,
-                            'amount' => $row['penalties']['sick_no_cert'],
-                            'deduction_date' => $sickDeductDate,
-                            'status' => 'pending',
-                        ]
-                    );
-                    $syncedDeductionsCount++;
-                    $hasAnyPenalty = true;
-                } else {
-                    Deduction::where('user_id', $user->id)
-                        ->where('reference_id', "ATT_SICK_NO_CERT_{$emp->id}_{$month}")
-                        ->where('status', 'pending')
-                        ->delete();
+                            Deduction::updateOrCreate(
+                                [
+                                    'user_id' => $user->id,
+                                    'reference_id' => $refId,
+                                ],
+                                [
+                                    'type' => 'auto',
+                                    'description' => $sickDesc,
+                                    'amount' => $dailyRate,
+                                    'deduction_date' => $sDateStr,
+                                    'status' => 'pending',
+                                ]
+                            );
+                            $syncedDeductionsCount++;
+                            $hasAnyPenalty = true;
+                        }
+                    }
                 }
 
-                // 6. Potongan Izin Tidak Masuk
+                // 6. Potongan Izin Tidak Masuk (Per Tanggal & Per Kejadian)
                 if (($row['penalties']['permit'] ?? 0) > 0) {
                     $permitSchedules = $empSchedules->filter(function ($s) {
                         $st = strtolower($s->status ?? '');
@@ -1837,100 +1843,124 @@ class AttendanceCalculatorService
                         return ($st === 'leave') || ($st === 'permit') || str_starts_with($nt, '[izin') || str_contains($nt, 'izin');
                     })->sortBy('date');
 
-                    $permitDatesStr = $permitSchedules->map(fn($s) => Carbon::parse($s->date)->format('d/m'))->implode(', ');
-                    $permitDeductDate = $permitSchedules->first() ? Carbon::parse($permitSchedules->first()->date)->format('Y-m-d') : min(Carbon::today('Asia/Jakarta')->format('Y-m-d'), $monthEnd->format('Y-m-d'));
+                    $dailyRate = $row['total_permit'] > 0 ? (int) round($row['penalties']['permit'] / $row['total_permit']) : (float) ($settings['permit_amount'] ?? 25000);
 
-                    // Cari alasan dari notes jadwal atau attendance_leaves
-                    $reasons = $permitSchedules->map(function($s) {
-                        $note = trim($s->notes ?? '');
-                        $clean = trim(preg_replace('/^\[.*?\]\s*/', '', $note));
-                        return $clean;
-                    })->filter()->unique()->values()->toArray();
+                    foreach ($permitSchedules as $pSched) {
+                        $pDateStr = is_string($pSched->date) ? substr($pSched->date, 0, 10) : $pSched->date->format('Y-m-d');
+                        $dmy = Carbon::parse($pDateStr)->format('d/m/Y');
 
-                    if (empty($reasons)) {
-                        $leaveReasons = AttendanceLeave::where('employee_id', $emp->id)
-                            ->where('type', 'permit')
-                            ->whereMonth('date', $parsedDate->month)
-                            ->whereYear('date', $parsedDate->year)
-                            ->pluck('reason')
-                            ->filter()
-                            ->unique()
-                            ->toArray();
-                        $reasons = array_values($leaveReasons);
-                    }
-                    $reasonStr = !empty($reasons) ? implode('; ', $reasons) : '';
+                        $note = trim($pSched->notes ?? '');
+                        $cleanReason = trim(preg_replace('/^\[.*?\]\s*/', '', $note));
+                        if ($cleanReason === '') {
+                            $cleanReason = AttendanceLeave::where('employee_id', $emp->id)
+                                ->whereDate('date', $pDateStr)
+                                ->value('reason') ?? '';
+                        }
 
-                    $dailyRate = $row['total_permit'] > 0 ? (int) round($row['penalties']['permit'] / $row['total_permit']) : 0;
-                    $rateStr = $dailyRate > 0 ? " @ Rp " . number_format($dailyRate, 0, ',', '.') . "/hari" : '';
-                    $permitDesc = "Potongan Izin Tidak Masuk Periode {$month} ({$row['total_permit']} hari{$rateStr}: Tgl {$permitDatesStr}" . ($reasonStr !== '' ? " - Alasan: {$reasonStr}" : "") . ")";
+                        if ($dailyRate > 0) {
+                            $refId = "ATT_PERMIT_{$emp->id}_{$pDateStr}";
+                            $activeRefIds[] = $refId;
+                            $permitDesc = "Potongan Izin Tidak Masuk (Tgl {$dmy}" . ($cleanReason !== '' ? " - Alasan: {$cleanReason}" : "") . ")";
 
-                    Deduction::updateOrCreate(
-                        [
-                            'user_id' => $user->id,
-                            'reference_id' => "ATT_PERMIT_{$emp->id}_{$month}",
-                        ],
-                        [
-                            'type' => 'auto',
-                            'description' => $permitDesc,
-                            'amount' => $row['penalties']['permit'],
-                            'deduction_date' => $permitDeductDate,
-                            'status' => 'pending',
-                        ]
-                    );
-                    $syncedDeductionsCount++;
-                    $hasAnyPenalty = true;
-                } else {
-                    Deduction::where('user_id', $user->id)
-                        ->where('reference_id', "ATT_PERMIT_{$emp->id}_{$month}")
-                        ->where('status', 'pending')
-                        ->delete();
-                }
-
-                // 7. Potongan Absensi Tim Khusus
-                $empSpecialAtts = $specialAtts->where('employee_id', $emp->id);
-                if ($empSpecialAtts->isNotEmpty()) {
-                    $byTeam = $empSpecialAtts->groupBy('special_team_id');
-                    foreach ($byTeam as $teamId => $teamAtts) {
-                        $team = $teamAtts->first()->team;
-                        $sLates = $teamAtts->where('status', 'late')->count();
-                        $sNoOuts = $teamAtts->filter(fn($sAtt) => AttendanceCalculatorService::isSpecialMissingClockOut($sAtt, $team, $nowEvalSpecial))->count();
-                        $sLateFine = $sLates * (float) ($team?->late_deduction_amount ?? 10000);
-                        $sNoOutFine = $sNoOuts * (float) ($team?->no_out_deduction_amount ?? 10000);
-                        $totalSpecialFine = $sLateFine + $sNoOutFine;
-                        $specialRef = "SPECIAL_DEDUCT_{$teamId}_{$emp->id}_{$month}";
-
-                        if ($totalSpecialFine > 0) {
-                            $latestSpecial = $teamAtts->filter(function ($sAtt) use ($team, $nowEvalSpecial) {
-                                return $sAtt->status === 'late' || AttendanceCalculatorService::isSpecialMissingClockOut($sAtt, $team, $nowEvalSpecial);
-                            })->sortByDesc('date')->first();
-                            $specialDeductDate = $latestSpecial 
-                                ? Carbon::parse($latestSpecial->date)->format('Y-m-d') 
-                                : min(Carbon::today('Asia/Jakarta')->format('Y-m-d'), $monthEnd->format('Y-m-d'));
-
-                            $teamName = $team?->name ?? 'Tim Khusus';
-                            $desc = "Potongan Absen {$teamName} Periode {$month} ({$sLates}x telat, {$sNoOuts}x tanpa absen pulang)";
                             Deduction::updateOrCreate(
                                 [
                                     'user_id' => $user->id,
-                                    'reference_id' => $specialRef,
+                                    'reference_id' => $refId,
                                 ],
                                 [
                                     'type' => 'auto',
-                                    'description' => $desc,
-                                    'amount' => $totalSpecialFine,
-                                    'deduction_date' => $specialDeductDate,
+                                    'description' => $permitDesc,
+                                    'amount' => $dailyRate,
+                                    'deduction_date' => $pDateStr,
                                     'status' => 'pending',
                                 ]
                             );
                             $syncedDeductionsCount++;
                             $hasAnyPenalty = true;
-                        } else {
-                            Deduction::where('user_id', $user->id)
-                                ->where('reference_id', $specialRef)
-                                ->where('status', 'pending')
-                                ->delete();
                         }
                     }
+                }
+
+                // 7. Potongan Absensi Tim Khusus (Per Tanggal & Per Kejadian)
+                $empSpecialAtts = $specialAtts->where('employee_id', $emp->id);
+                if ($empSpecialAtts->isNotEmpty()) {
+                    foreach ($empSpecialAtts as $sAtt) {
+                        $team = $sAtt->team;
+                        $sDateStr = is_string($sAtt->date) ? substr($sAtt->date, 0, 10) : $sAtt->date->format('Y-m-d');
+                        $dmy = Carbon::parse($sDateStr)->format('d/m/Y');
+                        $teamName = $team?->name ?? 'Tim Khusus';
+
+                        if ($sAtt->status === 'late') {
+                            $lateFine = (float) ($team?->late_deduction_amount ?? 10000);
+                            if ($lateFine > 0) {
+                                $refId = "SPECIAL_DED_LATE_{$sAtt->special_team_id}_{$emp->id}_{$sDateStr}";
+                                $activeRefIds[] = $refId;
+                                $desc = "Potongan Absen {$teamName} (Tgl {$dmy} - Terlambat)";
+
+                                Deduction::updateOrCreate(
+                                    [
+                                        'user_id' => $user->id,
+                                        'reference_id' => $refId,
+                                    ],
+                                    [
+                                        'type' => 'auto',
+                                        'description' => $desc,
+                                        'amount' => $lateFine,
+                                        'deduction_date' => $sDateStr,
+                                        'status' => 'pending',
+                                    ]
+                                );
+                                $syncedDeductionsCount++;
+                                $hasAnyPenalty = true;
+                            }
+                        }
+
+                        if (AttendanceCalculatorService::isSpecialMissingClockOut($sAtt, $team, $nowEvalSpecial)) {
+                            $noOutFine = (float) ($team?->no_out_deduction_amount ?? 10000);
+                            if ($noOutFine > 0) {
+                                $refId = "SPECIAL_DED_NO_OUT_{$sAtt->special_team_id}_{$emp->id}_{$sDateStr}";
+                                $activeRefIds[] = $refId;
+                                $desc = "Potongan Absen {$teamName} (Tgl {$dmy} - Tanpa Absen Pulang)";
+
+                                Deduction::updateOrCreate(
+                                    [
+                                        'user_id' => $user->id,
+                                        'reference_id' => $refId,
+                                    ],
+                                    [
+                                        'type' => 'auto',
+                                        'description' => $desc,
+                                        'amount' => $noOutFine,
+                                        'deduction_date' => $sDateStr,
+                                        'status' => 'pending',
+                                    ]
+                                );
+                                $syncedDeductionsCount++;
+                                $hasAnyPenalty = true;
+                            }
+                        }
+                    }
+                }
+
+                // 8. Bersihkan potongan pending lama yang tidak aktif lagi atau potongan bundle bulanan lama
+                $staleDeductions = Deduction::where('user_id', $user->id)
+                    ->where('status', 'pending')
+                    ->where(function($q) use ($emp, $month, $parsedDate) {
+                        $q->where(function($sub) use ($emp) {
+                            $sub->where('reference_id', 'like', "ATT_%_{$emp->id}_%")
+                                ->orWhere('reference_id', 'like', "SPECIAL_DED%_{$emp->id}_%")
+                                ->orWhere('reference_id', 'like', "SPECIAL_DEDUCT%_{$emp->id}_%");
+                        })->where(function($sub) use ($parsedDate, $month) {
+                            $sub->whereMonth('deduction_date', $parsedDate->month)
+                                ->whereYear('deduction_date', $parsedDate->year)
+                                ->orWhere('reference_id', 'like', "%_{$month}"); // membersihkan ID bundle bulanan lama
+                        });
+                    })
+                    ->whereNotIn('reference_id', $activeRefIds)
+                    ->get();
+
+                foreach ($staleDeductions as $stale) {
+                    $stale->delete();
                 }
 
                 if ($hasAnyPenalty) {
