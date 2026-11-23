@@ -152,9 +152,17 @@ class GenerateAttendanceRewards extends Command
                         : ($lateCount * $fixedPenalty);
 
                     if ($lateDeductionAmount > 0) {
-                        $latestLate = $empAtts->filter(fn($a) => $a->status === 'late' || (int) ($a->late_minutes ?? 0) > 0)->sortByDesc('date')->first();
-                        $deductDate = $latestLate ? Carbon::parse($latestLate->date)->format('Y-m-d') : $monthEnd->format('Y-m-d');
-                        $desc = "Potongan Terlambat Absensi Periode {$month} ({$lateCount}x telat, total {$totalLateMinutes} menit)";
+                        $lateAtts = $empAtts->filter(fn($a) => $a->status === 'late' || (int) ($a->late_minutes ?? 0) > 0)->sortBy('date');
+                        $deductDate = $lateAtts->first() ? Carbon::parse($lateAtts->first()->date)->format('Y-m-d') : $monthEnd->format('Y-m-d');
+                        $lateDatesStr = $lateAtts->map(function ($a) {
+                            $d = Carbon::parse($a->date)->format('d/m');
+                            $m = (int) ($a->late_minutes ?? 0);
+                            return "{$d}" . ($m > 0 ? " [{$m} mnt]" : "");
+                        })->take(5)->implode(', ');
+                        if ($lateAtts->count() > 5) {
+                            $lateDatesStr .= ' dkk';
+                        }
+                        $desc = "Potongan Terlambat Absensi Periode {$month} ({$lateCount}x telat, {$totalLateMinutes} menit: {$lateDatesStr})";
                         Deduction::updateOrCreate(
                             [
                                 'user_id' => $linkedUser->id,
@@ -177,14 +185,14 @@ class GenerateAttendanceRewards extends Command
                 if ($missingOutPenaltyEnabled) {
                     $missingOutAtts = $empAtts->filter(function ($att) use ($nowEval, $attSettings, $shiftsById) {
                         return AttendanceCalculatorService::isMissingClockOut($att, $nowEval, $attSettings, $shiftsById, 'Asia/Jakarta');
-                    });
+                    })->sortBy('date');
                     $missingOutCount = $missingOutAtts->count();
                     $missingOutDeduction = $missingOutCount * $missingOutAmount;
 
                     if ($missingOutDeduction > 0) {
-                        $latestMissingOut = $missingOutAtts->sortByDesc('date')->first();
-                        $deductDate = $latestMissingOut ? Carbon::parse($latestMissingOut->date)->format('Y-m-d') : $monthEnd->format('Y-m-d');
-                        $desc = "Potongan Lupa Absen Pulang Periode {$month} ({$missingOutCount}x tanpa clock-out)";
+                        $deductDate = $missingOutAtts->first() ? Carbon::parse($missingOutAtts->first()->date)->format('Y-m-d') : $monthEnd->format('Y-m-d');
+                        $datesStr = $missingOutAtts->map(fn($a) => Carbon::parse($a->date)->format('d/m'))->implode(', ');
+                        $desc = "Potongan Lupa Absen Pulang Periode {$month} ({$missingOutCount}x: Tgl {$datesStr})";
                         Deduction::updateOrCreate(
                             [
                                 'user_id' => $linkedUser->id,
@@ -209,14 +217,18 @@ class GenerateAttendanceRewards extends Command
                         $earlyMins = (int) ($att->early_leave_minutes ?? 0);
                         if ($earlyMins > 0) return true;
                         return str_contains(strtolower($att->notes ?? ''), 'pulang lebih awal');
-                    });
+                    })->sortBy('date');
                     $earlyCount = $earlyAtts->count();
                     $earlyDeduction = $earlyCount * $earlyLeaveAmount;
 
                     if ($earlyDeduction > 0) {
-                        $latestEarly = $earlyAtts->sortByDesc('date')->first();
-                        $deductDate = $latestEarly ? Carbon::parse($latestEarly->date)->format('Y-m-d') : $monthEnd->format('Y-m-d');
-                        $desc = "Potongan Pulang Cepat Periode {$month} ({$earlyCount}x pulang sebelum waktu)";
+                        $deductDate = $earlyAtts->first() ? Carbon::parse($earlyAtts->first()->date)->format('Y-m-d') : $monthEnd->format('Y-m-d');
+                        $earlyDatesStr = $earlyAtts->map(function ($a) {
+                            $d = Carbon::parse($a->date)->format('d/m');
+                            $m = (int) ($a->early_leave_minutes ?? 0);
+                            return "{$d}" . ($m > 0 ? " [{$m} mnt]" : "");
+                        })->implode(', ');
+                        $desc = "Potongan Pulang Cepat Periode {$month} ({$earlyCount}x: {$earlyDatesStr})";
                         Deduction::updateOrCreate(
                             [
                                 'user_id' => $linkedUser->id,
@@ -253,14 +265,15 @@ class GenerateAttendanceRewards extends Command
                         ->map(fn($d) => is_string($d) ? substr($d, 0, 10) : $d->format('Y-m-d'))
                         ->unique();
 
-                    $alphaDates = $scheduledDates->diff($regularAttendedDates)->diff($specialAttendedDates);
+                    $alphaDates = $scheduledDates->diff($regularAttendedDates)->diff($specialAttendedDates)->sort();
                     $alphaCount = $alphaDates->count();
                     $alphaDeduction = $alphaCount * $alphaAmount;
 
                     if ($alphaDeduction > 0) {
-                        $latestAlpha = $alphaDates->sortDesc()->first();
-                        $deductDate = $latestAlpha ? Carbon::parse($latestAlpha)->format('Y-m-d') : min(Carbon::today('Asia/Jakarta')->format('Y-m-d'), $monthEnd->format('Y-m-d'));
-                        $desc = "Potongan Alpha / Mangkir Jadwal Kerja Periode {$month} ({$alphaCount} hari tidak hadir)";
+                        $deductDate = $alphaDates->first() ? Carbon::parse($alphaDates->first())->format('Y-m-d') : min(Carbon::today('Asia/Jakarta')->format('Y-m-d'), $monthEnd->format('Y-m-d'));
+                        $alphaDatesStr = $alphaDates->map(fn($d) => Carbon::parse($d)->format('d/m'))->implode(', ');
+                        $rateStr = " @ Rp " . number_format($alphaAmount, 0, ',', '.') . "/hari";
+                        $desc = "Potongan Alpha / Mangkir Jadwal Kerja Periode {$month} ({$alphaCount} hari{$rateStr}: Tgl {$alphaDatesStr})";
                         Deduction::updateOrCreate(
                             [
                                 'user_id' => $linkedUser->id,
