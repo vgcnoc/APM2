@@ -36,20 +36,32 @@ class BookingController extends Controller
             ], 422);
         }
 
-        // Simpan data pelanggan baru dengan status 'booking'
-        $customer = Customer::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'address' => $request->address,
-            'latitude' => $request->latitude,
-            'longitude' => $request->longitude,
-            'area' => $request->area,
-            'registration_date' => $request->registration_date,
-            'sales_id' => $request->sales_id,
-            'package_id' => $request->package_id,
-            'status' => 'booking',
-        ]);
+        // Simpan data pelanggan baru dengan status 'booking' (dengan retry jika terjadi bentrokan kode bersamaan)
+        $maxRetries = 5;
+        $customer = null;
+        for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+            try {
+                $customer = Customer::create([
+                    'name' => $request->name,
+                    'email' => $request->email,
+                    'phone' => $request->phone,
+                    'address' => $request->address,
+                    'latitude' => $request->latitude,
+                    'longitude' => $request->longitude,
+                    'area' => $request->area,
+                    'registration_date' => $request->registration_date,
+                    'sales_id' => $request->sales_id,
+                    'package_id' => $request->package_id,
+                    'status' => 'booking',
+                ]);
+                break;
+            } catch (\Illuminate\Database\UniqueConstraintViolationException | \Illuminate\Database\QueryException $e) {
+                if (str_contains($e->getMessage(), 'customers_customer_code_unique') && $attempt < $maxRetries) {
+                    continue;
+                }
+                throw $e;
+            }
+        }
 
         return response()->json([
             'status' => 'success',

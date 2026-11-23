@@ -2935,7 +2935,19 @@ class CustomerController extends Controller
 
         $resellerUser = null;
         DB::transaction(function () use ($validated, $request, $isPureReseller, &$customer, &$resellerUser) {
-            $customer = Customer::create($validated);
+            $maxRetries = 5;
+            for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                try {
+                    $customer = Customer::create($validated);
+                    break;
+                } catch (\Illuminate\Database\UniqueConstraintViolationException | \Illuminate\Database\QueryException $e) {
+                    if (str_contains($e->getMessage(), 'customers_customer_code_unique') && $attempt < $maxRetries) {
+                        unset($validated['customer_code']);
+                        continue;
+                    }
+                    throw $e;
+                }
+            }
 
             if (!empty($validated['is_reseller']) && $validated['is_reseller']) {
                 $tier = $request->input('reseller_tier', 'regular');

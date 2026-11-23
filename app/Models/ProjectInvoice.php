@@ -89,7 +89,8 @@ class ProjectInvoice extends Model
         $date = $date ?? Carbon::now();
         $prefix = 'INV-PRJ-' . $date->format('Ym') . '-';
 
-        $lastNumber = self::where('invoice_number', 'LIKE', $prefix . '%')
+        $lastNumber = self::withoutGlobalScopes()
+            ->where('invoice_number', 'LIKE', $prefix . '%')
             ->orderBy('id', 'desc')
             ->value('invoice_number');
 
@@ -100,7 +101,13 @@ class ProjectInvoice extends Model
             $nextSeq = 1;
         }
 
-        return $prefix . str_pad((string)$nextSeq, 4, '0', STR_PAD_LEFT);
+        $candidate = $prefix . str_pad((string)$nextSeq, 4, '0', STR_PAD_LEFT);
+        while (self::withoutGlobalScopes()->where('invoice_number', $candidate)->exists()) {
+            $nextSeq++;
+            $candidate = $prefix . str_pad((string)$nextSeq, 4, '0', STR_PAD_LEFT);
+        }
+
+        return $candidate;
     }
 
     /**

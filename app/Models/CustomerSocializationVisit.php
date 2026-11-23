@@ -63,17 +63,24 @@ class CustomerSocializationVisit extends Model
     public static function generateVisitNumber(): string
     {
         $prefix = 'SOS-' . date('Ym');
-        $last = self::where('visit_number', 'LIKE', "{$prefix}-%")
+        $last = self::withoutGlobalScopes()
+            ->where('visit_number', 'LIKE', "{$prefix}-%")
             ->orderByDesc('id')
             ->first();
 
         if ($last && preg_match('/' . preg_quote($prefix, '/') . '-(\d+)/', $last->visit_number, $matches)) {
-            $nextSeq = str_pad((int) $matches[1] + 1, 4, '0', STR_PAD_LEFT);
+            $sequence = (int) $matches[1] + 1;
         } else {
-            $nextSeq = '0001';
+            $sequence = 1;
         }
 
-        return "{$prefix}-{$nextSeq}";
+        $candidate = "{$prefix}-" . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+        while (self::withoutGlobalScopes()->where('visit_number', $candidate)->exists()) {
+            $sequence++;
+            $candidate = "{$prefix}-" . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+        }
+
+        return $candidate;
     }
 
     public function getPhotoVisitUrlsAttribute(): array

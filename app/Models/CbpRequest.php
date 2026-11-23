@@ -80,10 +80,17 @@ class CbpRequest extends Model
         static::creating(function (CbpRequest $cbp) {
             if (empty($cbp->cbp_number)) {
                 $prefix = 'CBP-' . date('Ymd') . '-';
-                $lastNum = static::where('cbp_number', 'like', $prefix . '%')
-                    ->orderByDesc('id')->value('cbp_number');
+                $lastNum = static::withoutGlobalScopes()
+                    ->where('cbp_number', 'like', $prefix . '%')
+                    ->orderByDesc('id')
+                    ->value('cbp_number');
                 $next = $lastNum ? (int) substr($lastNum, -4) + 1 : 1;
-                $cbp->cbp_number = $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
+                $candidate = $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
+                while (static::withoutGlobalScopes()->where('cbp_number', $candidate)->exists()) {
+                    $next++;
+                    $candidate = $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
+                }
+                $cbp->cbp_number = $candidate;
             }
         });
     }

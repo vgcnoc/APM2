@@ -615,6 +615,28 @@ class Customer extends Model
 
     // ── Auto-generate customer code & Area Sync ────────────────
 
+    /**
+     * Generate unique global customer code across all companies.
+     * Mengabaikan CompanyScope karena customer_code memiliki Unique Constraint global pada tabel customers.
+     */
+    public static function generateNextCustomerCode(): string
+    {
+        $maxNum = (int) (static::withoutGlobalScopes()
+            ->where('customer_code', 'like', 'CUS-%')
+            ->selectRaw("MAX(CAST(SUBSTRING(customer_code, 5) AS UNSIGNED)) as max_num")
+            ->value('max_num') ?? 0);
+
+        $nextNumber = max($maxNum + 1, 1);
+        $candidate = 'CUS-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+
+        while (static::withoutGlobalScopes()->where('customer_code', $candidate)->exists()) {
+            $nextNumber++;
+            $candidate = 'CUS-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+        }
+
+        return $candidate;
+    }
+
     protected static function booted(): void
     {
         static::saving(function (Customer $customer) {
@@ -646,11 +668,7 @@ class Customer extends Model
                 $customer->is_migrated = true;
             }
             if (empty($customer->customer_code)) {
-                $lastCode = static::orderByDesc('id')->value('customer_code');
-                $nextNumber = $lastCode
-                    ? (int) substr($lastCode, 4) + 1
-                    : 1;
-                $customer->customer_code = 'CUS-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+                $customer->customer_code = static::generateNextCustomerCode();
             }
 
             if (empty($customer->registration_date)) {

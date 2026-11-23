@@ -75,7 +75,8 @@ class CustomerAgreement extends Model
         $yearMonth = Carbon::now()->format('Ym');
         $datePrefix = "{$prefix}-{$yearMonth}-";
 
-        $lastAgreement = self::where('agreement_number', 'LIKE', "{$datePrefix}%")
+        $lastAgreement = self::withoutGlobalScopes()
+            ->where('agreement_number', 'LIKE', "{$datePrefix}%")
             ->orderByDesc('id')
             ->first();
 
@@ -84,7 +85,13 @@ class CustomerAgreement extends Model
             $sequence = intval($matches[1]) + 1;
         }
 
-        return $datePrefix . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+        $candidate = $datePrefix . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+        while (self::withoutGlobalScopes()->where('agreement_number', $candidate)->exists()) {
+            $sequence++;
+            $candidate = $datePrefix . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+        }
+
+        return $candidate;
     }
 }
 

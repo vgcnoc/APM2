@@ -139,11 +139,17 @@ class PgsTicket extends Model
         static::creating(function (PgsTicket $ticket) {
             if (empty($ticket->ticket_number)) {
                 $prefix = 'PGS-' . date('Ymd') . '-';
-                $last = static::where('ticket_number', 'like', $prefix . '%')
+                $last = static::withoutGlobalScopes()
+                    ->where('ticket_number', 'like', $prefix . '%')
                     ->orderByDesc('id')
                     ->value('ticket_number');
                 $next = $last ? (int) substr($last, -4) + 1 : 1;
-                $ticket->ticket_number = $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
+                $candidate = $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
+                while (static::withoutGlobalScopes()->where('ticket_number', $candidate)->exists()) {
+                    $next++;
+                    $candidate = $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
+                }
+                $ticket->ticket_number = $candidate;
             }
         });
     }

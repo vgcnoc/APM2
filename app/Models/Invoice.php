@@ -81,11 +81,17 @@ class Invoice extends Model
                     ? \Carbon\Carbon::parse($invoice->issued_date)->format('Ym')
                     : now(config('billing.timezone', 'Asia/Jakarta'))->format('Ym');
                 $prefix = 'INV-' . $ym . '-';
-                $lastNum = static::where('invoice_number', 'like', $prefix . '%')
+                $lastNum = static::withoutGlobalScopes()
+                    ->where('invoice_number', 'like', $prefix . '%')
                     ->orderByRaw('LENGTH(invoice_number) DESC, invoice_number DESC')
                     ->value('invoice_number');
                 $next = $lastNum ? ((int) substr($lastNum, strlen($prefix))) + 1 : 1;
-                $invoice->invoice_number = $prefix . str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+                $candidate = $prefix . str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+                while (static::withoutGlobalScopes()->where('invoice_number', $candidate)->exists()) {
+                    $next++;
+                    $candidate = $prefix . str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+                }
+                $invoice->invoice_number = $candidate;
             }
         });
 
