@@ -51,7 +51,7 @@ class Reseller extends Model
     {
         do {
             $code = 'MSTR-' . strtoupper(Str::random(5));
-        } while (static::where('referral_code', $code)->exists());
+        } while (static::withoutGlobalScopes()->where('referral_code', $code)->exists());
 
         return $code;
     }

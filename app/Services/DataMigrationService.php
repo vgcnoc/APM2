@@ -819,7 +819,7 @@ class DataMigrationService
                 'sample' => [
                     [
                         // Sample 1: Pelanggan Aktif Berbayar (Siklus Lengkap 6 Tahap)
-                        'kode_pelanggan' => 'CUS-001001',
+                        'kode_pelanggan' => '', // Kosongkan agar dibuatkan otomatis kode unik oleh sistem (CUS-XXXXXX)
                         'nama_lengkap' => 'Ahmad Subardjo',
                         'nomor_wa' => '081234567890',
                         'email' => 'ahmad@example.com',
@@ -875,7 +875,7 @@ class DataMigrationService
                     ],
                     [
                         // Sample 2: Pelanggan Aktif Free Home (Voucher Rumahan ONT)
-                        'kode_pelanggan' => 'CUS-001002',
+                        'kode_pelanggan' => '', // Kosongkan agar dibuatkan otomatis kode unik oleh sistem (CUS-XXXXXX)
                         'nama_lengkap' => 'Siti Nurhaliza',
                         'nomor_wa' => '085811223344',
                         'email' => '',
@@ -1509,6 +1509,7 @@ class DataMigrationService
         $usersCache = User::forCurrentCompany()->pluck('id', 'email')->mapWithKeys(fn($id, $email) => [strtolower($email) => $id])->toArray();
         $userNamesCache = User::forCurrentCompany()->pluck('id', 'name')->mapWithKeys(fn($id, $name) => [strtolower($name) => $id])->toArray();
         $customersCache = Customer::pluck('id', 'customer_code')->toArray();
+        $globalCustomersCache = Customer::withoutGlobalScopes()->pluck('company_id', 'customer_code')->toArray();
         $odpsCollection = Odp::with('area')->get();
         $odpsCache = $odpsCollection->keyBy(fn($o) => strtolower(trim($o->name)));
         $odpsNormalizedCache = [];
@@ -1578,7 +1579,7 @@ class DataMigrationService
                         $areasCache, $packagesCache, $usersCache, $userNamesCache, $customersCache,
                         $options, $areasNormalizedCache, $userPhonesCache, $affiliateCodesCache, $employeesIakCache,
                         $odpsCache, $odpsNormalizedCache, $odpsStrippedNormCache, $allUsersList, $allEmployeesList,
-                        $rowInfos, $holdingPackagesCache
+                        $rowInfos, $holdingPackagesCache, $globalCustomersCache
                     );
                     break;
                 case 'network':
@@ -1832,7 +1833,8 @@ class DataMigrationService
         $allUsersList = [],
         $allEmployeesList = [],
         &$infos = [],
-        $holdingPackagesCache = []
+        $holdingPackagesCache = [],
+        $globalCustomersCache = []
     ) {
         $name = trim((string)($row['nama_lengkap'] ?? $row['nama'] ?? ''));
         $rawPhone = trim((string)($row['nomor_wa'] ?? $row['phone'] ?? $row['no_wa'] ?? ''));
@@ -1868,14 +1870,22 @@ class DataMigrationService
             $phone = substr($phone, 0, 30);
         }
 
-        // Check duplicate
+        // Check duplicate & placeholder
         $isExisting = false;
-        if (!empty($customerCode) && isset($customersCache[$customerCode])) {
-            $isExisting = true;
-            if (($options['duplicate_mode'] ?? 'skip') === 'update') {
-                $warnings[] = "Kode pelanggan '{$customerCode}' sudah ada; data akan diperbarui.";
-            } else {
-                $warnings[] = "Kode pelanggan '{$customerCode}' sudah terdaftar; baris ini akan dilewati.";
+        if (!empty($customerCode)) {
+            if (in_array(strtoupper($customerCode), ['CUS-XXXXXX', 'CUS-000000', 'AUTO'])) {
+                $customerCode = '';
+                $infos[] = "Format kode pelanggan menggunakan placeholder; sistem akan menerbitkan kode unik otomatis (CUS-XXXXXX).";
+            } elseif (isset($customersCache[$customerCode])) {
+                $isExisting = true;
+                if (($options['duplicate_mode'] ?? 'skip') === 'update') {
+                    $warnings[] = "Kode pelanggan '{$customerCode}' sudah ada di mitra ini; data akan diperbarui.";
+                } else {
+                    $warnings[] = "Kode pelanggan '{$customerCode}' sudah terdaftar di mitra ini; baris ini akan dilewati.";
+                }
+            } elseif (isset($globalCustomersCache[$customerCode])) {
+                $warnings[] = "Kode pelanggan '{$customerCode}' sudah terdaftar pada perusahaan/mitra lain; sistem akan otomatis menerbitkan kode unik baru untuk mitra ini.";
+                $customerCode = '';
             }
         }
 
@@ -2523,6 +2533,9 @@ class DataMigrationService
                         $salesEmail = $slug . '@isp.local';
                         $salesUser = User::forCurrentCompany()->where('email', $salesEmail)->first();
                         if (!$salesUser) {
+                            if (User::withoutGlobalScopes()->where('email', $salesEmail)->exists()) {
+                                $salesEmail = $slug . ".c{$activeCompanyId}" . '@isp.local';
+                            }
                             $salesUser = User::create([
                                 'company_id' => $activeCompanyId,
                                 'name' => ucwords(strtolower($rawSales)),
@@ -2612,7 +2625,23 @@ class DataMigrationService
             }
         }
 
-        $customerCode = $data['customer_code'];
+        $customerCode = !empty($data['customer_code']) ? trim((string)$data['customer_code']) : null;
+        if ($customerCode && in_array(strtoupper($customerCode), ['CUS-XXXXXX', 'CUS-000000', 'AUTO'])) {
+            $customerCode = null;
+        }
+
+        // Cek apakah kode pelanggan ini sudah terdaftar pada perusahaan / unit mitra lain
+        if ($customerCode) {
+            $takenByOther = Customer::withoutGlobalScopes()
+                ->where('customer_code', $customerCode)
+                ->where('company_id', '!=', $activeCompanyId)
+                ->exists();
+            if ($takenByOther) {
+                // Set null agar auto-generate kode unik baru bebas bentrok untuk mitra ini
+                $customerCode = null;
+            }
+        }
+
         $existing = null;
         if ($customerCode) {
             $existing = Customer::where('customer_code', $customerCode)->first();
@@ -2649,30 +2678,44 @@ class DataMigrationService
         } else {
             $identityPhoto = $this->resolvePhotoPath($data['identity_photo'] ?? null, 'customers');
 
-            // Insert new
-            $customer = Customer::create([
-                'customer_code' => $customerCode,
-                'name' => $data['name'],
-                'phone' => substr($data['phone'], 0, 50),
-                'email' => $data['email'],
-                'area' => $data['area'],
-                'area_id' => $areaId,
-                'address' => $data['address'],
-                'package_id' => $packageId ?: ($data['package_id'] ?? null),
-                'base_amount' => $data['base_amount'],
-                'installation_fee' => $data['installation_fee'],
-                'service_status' => $data['service_status'],
-                'billing_type' => $data['billing_type'],
-                'status' => $data['status'],
-                'registration_date' => $data['registration_date'],
-                'activation_date' => $data['activation_date'],
-                'sales_id' => $salesId,
-                'latitude' => self::parseCoordinate($data['latitude'] ?? null, 'lat'),
-                'longitude' => self::parseCoordinate($data['longitude'] ?? null, 'lng'),
-                'identity_photo' => $identityPhoto,
-                'notes' => $data['notes'],
-                'is_migrated' => true,
-            ]);
+            // Insert new dengan proteksi bentrok multi-thread / sequence
+            $maxRetries = 5;
+            $customer = null;
+            for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                try {
+                    $customer = Customer::create([
+                        'company_id' => $activeCompanyId,
+                        'customer_code' => $customerCode ?: null,
+                        'name' => $data['name'],
+                        'phone' => substr($data['phone'], 0, 50),
+                        'email' => $data['email'],
+                        'area' => $data['area'],
+                        'area_id' => $areaId,
+                        'address' => $data['address'],
+                        'package_id' => $packageId ?: ($data['package_id'] ?? null),
+                        'base_amount' => $data['base_amount'],
+                        'installation_fee' => $data['installation_fee'],
+                        'service_status' => $data['service_status'],
+                        'billing_type' => $data['billing_type'],
+                        'status' => $data['status'],
+                        'registration_date' => $data['registration_date'],
+                        'activation_date' => $data['activation_date'],
+                        'sales_id' => $salesId,
+                        'latitude' => self::parseCoordinate($data['latitude'] ?? null, 'lat'),
+                        'longitude' => self::parseCoordinate($data['longitude'] ?? null, 'lng'),
+                        'identity_photo' => $identityPhoto,
+                        'notes' => $data['notes'],
+                        'is_migrated' => true,
+                    ]);
+                    break;
+                } catch (\Illuminate\Database\UniqueConstraintViolationException | \Illuminate\Database\QueryException $e) {
+                    if (str_contains($e->getMessage(), 'customers_customer_code_unique') && $attempt < $maxRetries) {
+                        $customerCode = null;
+                        continue;
+                    }
+                    throw $e;
+                }
+            }
             $targetCust = $customer;
         }
 
@@ -3836,10 +3879,15 @@ class DataMigrationService
             $mappedRole = !empty($data['position']) ? \App\Http\Controllers\EmployeeController::mapPositionToRole($data['position']) : 'cs';
 
             if (!$user) {
+                $targetEmail = $data['email'];
+                if (User::withoutGlobalScopes()->whereRaw('LOWER(email) = ?', [strtolower($targetEmail)])->exists()) {
+                    $parts = explode('@', $targetEmail);
+                    $targetEmail = $parts[0] . "+c{$activeCompanyId}@" . ($parts[1] ?? 'isp.local');
+                }
                 $user = User::create([
                     'company_id' => $activeCompanyId,
                     'name' => $data['name'],
-                    'email' => $data['email'],
+                    'email' => $targetEmail,
                     'role' => $mappedRole,
                     'password' => bcrypt($initialPassword),
                     'phone' => $data['phone'] ?: null,

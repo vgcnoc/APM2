@@ -75,18 +75,23 @@ class PgjTicket extends Model
         static::creating(function ($ticket) {
             if (empty($ticket->ticket_number)) {
                 $datePrefix = 'PGJ-' . date('Ymd') . '-';
-                $lastTicket = self::where('ticket_number', 'like', $datePrefix . '%')
+                $lastTicket = self::withoutGlobalScopes()
+                    ->where('ticket_number', 'like', $datePrefix . '%')
                     ->orderBy('id', 'desc')
                     ->first();
 
                 if ($lastTicket) {
                     $lastNumber = (int) substr($lastTicket->ticket_number, -4);
-                    $newNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+                    $next = $lastNumber + 1;
                 } else {
-                    $newNumber = '0001';
+                    $next = 1;
                 }
-
-                $ticket->ticket_number = $datePrefix . $newNumber;
+                $candidate = $datePrefix . str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+                while (self::withoutGlobalScopes()->where('ticket_number', $candidate)->exists()) {
+                    $next++;
+                    $candidate = $datePrefix . str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+                }
+                $ticket->ticket_number = $candidate;
             }
         });
     }

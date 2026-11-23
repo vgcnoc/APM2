@@ -2942,7 +2942,7 @@ class CustomerController extends Controller
                     break;
                 } catch (\Illuminate\Database\UniqueConstraintViolationException | \Illuminate\Database\QueryException $e) {
                     if (str_contains($e->getMessage(), 'customers_customer_code_unique') && $attempt < $maxRetries) {
-                        unset($validated['customer_code']);
+                        $validated['customer_code'] = Customer::generateNextCustomerCode();
                         continue;
                     }
                     throw $e;

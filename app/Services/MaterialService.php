@@ -100,7 +100,8 @@ class MaterialService
         $datePart = $ymd ?: now()->format('Ymd');
         $likePattern = "{$cleanPrefix}-{$datePart}-%";
 
-        $lastNumber = MaterialTransaction::where('transaction_number', 'like', $likePattern)
+        $lastNumber = MaterialTransaction::withoutGlobalScopes()
+            ->where('transaction_number', 'like', $likePattern)
             ->orderByRaw('LENGTH(transaction_number) DESC')
             ->orderByDesc('transaction_number')
             ->value('transaction_number');
@@ -109,12 +110,12 @@ class MaterialService
         if ($lastNumber && preg_match('/-(\d+)$/', $lastNumber, $matches)) {
             $seq = ((int) $matches[1]) + 1;
         } else {
-            $seq = MaterialTransaction::whereDate('created_at', today())->count() + 1;
+            $seq = MaterialTransaction::withoutGlobalScopes()->whereDate('created_at', today())->count() + 1;
         }
 
         do {
             $candidate = "{$cleanPrefix}-{$datePart}-" . str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
-            $exists = MaterialTransaction::where('transaction_number', $candidate)->exists();
+            $exists = MaterialTransaction::withoutGlobalScopes()->where('transaction_number', $candidate)->exists();
             $seq++;
         } while ($exists);
 

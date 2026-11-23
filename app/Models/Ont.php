@@ -120,17 +120,24 @@ class Ont extends Model
 
         static::creating(function ($ont) {
             if (empty($ont->ont_id)) {
-                $lastOnt = static::whereNotNull('ont_id')
+                $lastOnt = static::withoutGlobalScopes()
+                                 ->whereNotNull('ont_id')
                                  ->where('ont_id', 'like', 'V%')
                                  ->orderByRaw('CAST(SUBSTRING(ont_id, 2) AS UNSIGNED) DESC')
                                  ->first();
                 
                 if ($lastOnt) {
                     $lastNumber = (int) substr($lastOnt->ont_id, 1);
-                    $ont->ont_id = 'V' . str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+                    $next = $lastNumber + 1;
                 } else {
-                    $ont->ont_id = 'V1001';
+                    $next = 1001;
                 }
+                $candidate = 'V' . str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+                while (static::withoutGlobalScopes()->where('ont_id', $candidate)->exists()) {
+                    $next++;
+                    $candidate = 'V' . str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+                }
+                $ont->ont_id = $candidate;
             }
         });
 

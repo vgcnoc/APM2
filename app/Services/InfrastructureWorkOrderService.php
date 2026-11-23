@@ -80,7 +80,8 @@ class InfrastructureWorkOrderService
         $prefix = ($type === 'odc_deployment') ? 'WO-ODC' : 'WO-ODP';
         $yearMonth = now()->format('Ym');
 
-        $lastWo = InfrastructureWorkOrder::where('wo_number', 'like', "{$prefix}-{$yearMonth}-%")
+        $lastWo = InfrastructureWorkOrder::withoutGlobalScopes()
+            ->where('wo_number', 'like', "{$prefix}-{$yearMonth}-%")
             ->orderByDesc('id')
             ->value('wo_number');
 
@@ -90,7 +91,13 @@ class InfrastructureWorkOrderService
             $nextSeq = (int) end($parts) + 1;
         }
 
-        return sprintf('%s-%s-%04d', $prefix, $yearMonth, $nextSeq);
+        $candidate = sprintf('%s-%s-%04d', $prefix, $yearMonth, $nextSeq);
+        while (InfrastructureWorkOrder::withoutGlobalScopes()->where('wo_number', $candidate)->exists()) {
+            $nextSeq++;
+            $candidate = sprintf('%s-%s-%04d', $prefix, $yearMonth, $nextSeq);
+        }
+
+        return $candidate;
     }
 
     /**
