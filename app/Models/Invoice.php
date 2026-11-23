@@ -69,6 +69,13 @@ class Invoice extends Model
     protected static function booted(): void
     {
         static::creating(function (Invoice $invoice) {
+            if (empty($invoice->company_id) && !empty($invoice->customer_id)) {
+                $cust = Customer::withoutGlobalScopes()->find($invoice->customer_id);
+                if ($cust && $cust->company_id) {
+                    $invoice->company_id = (int) $cust->company_id;
+                }
+            }
+
             if (empty($invoice->invoice_number)) {
                 $ym = $invoice->issued_date
                     ? \Carbon\Carbon::parse($invoice->issued_date)->format('Ym')

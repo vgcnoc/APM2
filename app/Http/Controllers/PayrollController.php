@@ -133,7 +133,7 @@ class PayrollController extends Controller
 
         $excludedRoles = ['customer', 'pelanggan', 'reseller', 'superadmin', 'super admin', 'toko', 'demo', 'affiliate', 'mitra', 'affiliator'];
 
-        $usersQuery = User::where(function($q) use ($month, $year) {
+        $usersQuery = User::forCurrentCompany()->where(function($q) use ($month, $year) {
                 $q->where('is_active', true)
                   ->orWhereHas('incentives', function($iq) use ($month, $year) {
                       $iq->where('status', 'pending')
@@ -871,7 +871,7 @@ class PayrollController extends Controller
 
         $excludedRoles = ['customer', 'pelanggan', 'reseller', 'superadmin', 'super admin', 'toko', 'demo', 'affiliate', 'mitra', 'affiliator'];
 
-        $usersQuery = User::where(function($q) use ($month, $year) {
+        $usersQuery = User::forCurrentCompany()->where(function($q) use ($month, $year) {
                 $q->where('is_active', true)
                   ->orWhereHas('incentives', function($iq) use ($month, $year) {
                       $iq->where('status', 'pending')

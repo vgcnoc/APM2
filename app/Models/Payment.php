@@ -84,6 +84,22 @@ class Payment extends Model
 
     protected static function booted(): void
     {
+        static::creating(function (Payment $payment) {
+            if (empty($payment->company_id)) {
+                if (!empty($payment->invoice_id)) {
+                    $inv = Invoice::withoutGlobalScopes()->find($payment->invoice_id);
+                    if ($inv && $inv->company_id) {
+                        $payment->company_id = (int) $inv->company_id;
+                    }
+                } elseif (!empty($payment->customer_id)) {
+                    $cust = Customer::withoutGlobalScopes()->find($payment->customer_id);
+                    if ($cust && $cust->company_id) {
+                        $payment->company_id = (int) $cust->company_id;
+                    }
+                }
+            }
+        });
+
         static::saved(function (Payment $payment) {
             $payment->syncInvoiceStatus();
         });

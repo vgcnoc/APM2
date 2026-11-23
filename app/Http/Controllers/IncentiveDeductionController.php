@@ -139,7 +139,7 @@ class IncentiveDeductionController extends Controller
         );
 
         $excludedRoles = ['customer', 'pelanggan', 'reseller', 'superadmin', 'super admin', 'toko', 'demo', 'affiliate', 'mitra', 'affiliator'];
-        $usersQuery = User::with('area')->where('is_active', true)
+        $usersQuery = User::forCurrentCompany()->with('area')->where('is_active', true)
             ->excludeTokoAndDemo()
             ->whereNotIn('role', $excludedRoles)
             ->whereDoesntHave('roles', function($q) use ($excludedRoles) {

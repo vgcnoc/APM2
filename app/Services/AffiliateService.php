@@ -292,7 +292,7 @@ class AffiliateService
             if ($user->booking_fee > 0) {
                 $amount = (float) $user->booking_fee;
             } else {
-                $masterBooking = \App\Models\MasterFee::where('type', 'Fee Booking')->where('is_active', true)->value('nominal');
+                $masterBooking = \App\Models\MasterFee::getFeeNominal('Fee Booking', 0);
                 if ($masterBooking > 0) {
                     $amount = (float) $masterBooking;
                 }
@@ -450,7 +450,7 @@ class AffiliateService
                             if ($user->booking_fee > 0) {
                                 $penaltyAmount = (float) $user->booking_fee;
                             } else {
-                                $masterBooking = \App\Models\MasterFee::where('type', 'Fee Booking')->where('is_active', true)->value('nominal');
+                                $masterBooking = \App\Models\MasterFee::getFeeNominal('Fee Booking', 0);
                                 if ($masterBooking > 0) {
                                     $penaltyAmount = (float) $masterBooking;
                                 }
@@ -541,7 +541,7 @@ class AffiliateService
 
                     if (!$alreadyClawedBackSurvey && !$alreadyDeductedSurvey) {
                         // Cari nominal Fee Survey (default dari MasterFee)
-                        $surveyPenaltyAmount = (float) (\App\Models\MasterFee::where('type', 'Fee Survey')->where('is_active', true)->value('nominal') ?? 15000);
+                        $surveyPenaltyAmount = \App\Models\MasterFee::getFeeNominal('Fee Survey', 15000);
 
                         $recordedIncentive = \App\Models\Incentive::where('user_id', $surveyor->id)
                             ->where('type', 'auto')

@@ -2148,11 +2148,11 @@ class CustomerController extends Controller
                 'prorata_formula' => \App\Models\Setting::get('prorata_formula', 'exact_days'),
             ],
             'masterFees' => fn () => [
-                'booking' => (float) (\App\Models\MasterFee::where('type', 'Fee Booking')->where('is_active', true)->value('nominal') ?? 35000),
-                'survey' => (float) (\App\Models\MasterFee::where('type', 'Fee Survey')->where('is_active', true)->value('nominal') ?? 15000),
-                'pasang' => (float) (\App\Models\MasterFee::where('type', 'Fee Pasang')->where('is_active', true)->value('nominal') ?? 35000),
+                'booking' => \App\Models\MasterFee::getFeeNominal('Fee Booking', 35000),
+                'survey' => \App\Models\MasterFee::getFeeNominal('Fee Survey', 15000),
+                'pasang' => \App\Models\MasterFee::getFeeNominal('Fee Pasang', 35000),
             ],
-            'masterFeePasang' => fn () => (float) (\App\Models\MasterFee::where('type', 'Fee Pasang')->where('is_active', true)->value('nominal') ?? 35000),
+            'masterFeePasang' => fn () => \App\Models\MasterFee::getFeeNominal('Fee Pasang', 35000),
         ]);
     }
 
@@ -4557,6 +4557,7 @@ class CustomerController extends Controller
                     $amount = (int) round($amount);
 
                     \App\Models\Invoice::create([
+                        'company_id' => $customer->company_id ?: 1,
                         'customer_id' => $customer->id,
                         'period_month' => $targetPeriodMonth,
                         'period_year' => $targetPeriodYear,
@@ -4609,7 +4610,7 @@ class CustomerController extends Controller
 
                         // Fee booking hanya berlaku untuk booking baru sejak 1 Oktober 2026.
                         if ($isOperationalFeeEligible && $isEmployee) {
-                            $masterBooking = (float) (\App\Models\MasterFee::where('type', 'Fee Booking')->where('is_active', true)->value('nominal') ?? 35000);
+                            $masterBooking = \App\Models\MasterFee::getFeeNominal('Fee Booking', 35000);
                             $bookingAmount = ($salesUser->booking_fee && (float)$salesUser->booking_fee > 0)
                                 ? (float) $salesUser->booking_fee
                                 : $masterBooking;
@@ -4671,7 +4672,7 @@ class CustomerController extends Controller
                         }
                     }
                     $surveyorIds = $surveyorIds->unique()->filter()->values();
-                    $masterFeeSurvey = (float) (\App\Models\MasterFee::where('type', 'Fee Survey')->where('is_active', true)->value('nominal') ?? 15000);
+                    $masterFeeSurvey = \App\Models\MasterFee::getFeeNominal('Fee Survey', 15000);
 
                     foreach ($surveyorIds as $srvId) {
                         $surveyorUser = \App\Models\User::find($srvId);
@@ -4726,7 +4727,7 @@ class CustomerController extends Controller
                     }
 
                     $technicianIds = $installSchedules->pluck('technician_id')->unique()->filter()->values();
-                    $masterFeePasang = (float) (\App\Models\MasterFee::where('type', 'Fee Pasang')->where('is_active', true)->value('nominal') ?? 35000);
+                    $masterFeePasang = \App\Models\MasterFee::getFeeNominal('Fee Pasang', 35000);
 
                     foreach ($technicianIds as $techId) {
                         $techUser = \App\Models\User::find($techId);

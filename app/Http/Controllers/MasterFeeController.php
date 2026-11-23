@@ -10,6 +10,16 @@ class MasterFeeController extends Controller
 {
     public function index(Request $request)
     {
+        $activeCompanyId = (int) (session('active_company_id') ?: (auth()->user()?->company_id ?: 1));
+        if ($activeCompanyId !== 1 && MasterFee::count() === 0) {
+            $holdingFees = MasterFee::withoutGlobalScopes()->where('company_id', 1)->get();
+            foreach ($holdingFees as $hf) {
+                $cloned = $hf->replicate();
+                $cloned->company_id = $activeCompanyId;
+                $cloned->save();
+            }
+        }
+
         $search = $request->query('search');
         $tab = $request->query('tab', 'semua');
 

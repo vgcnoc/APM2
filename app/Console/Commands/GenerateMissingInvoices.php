@@ -107,6 +107,7 @@ class GenerateMissingInvoices extends Command
                     ->setTimezone(config('billing.timezone', 'Asia/Jakarta'));
 
                 Invoice::create([
+                    'company_id' => $customer->company_id ?: 1,
                     'customer_id' => $customer->id,
                     'billing_type' => $billingType,
                     'billing_cycle' => $customer->billing_cycle ?: 'calendar',

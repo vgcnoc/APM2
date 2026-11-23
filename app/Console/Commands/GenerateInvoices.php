@@ -154,6 +154,7 @@ class GenerateInvoices extends Command
             $amount = (int) round($amount);
 
             Invoice::create([
+                'company_id' => $customer->company_id ?: 1,
                 'customer_id' => $customer->id,
                 'billing_type' => $customer->billing_type ?: $globalBillingType,
                 'billing_cycle' => $effectiveCycle,
