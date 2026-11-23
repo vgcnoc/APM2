@@ -791,6 +791,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/settings/payroll', [\App\Http\Controllers\SettingController::class, 'updatePayroll'])->name('settings.payroll.update');
         Route::post('/settings/payroll/test-xendit', [\App\Http\Controllers\SettingController::class, 'testXendit'])->name('settings.payroll.test-xendit');
         Route::post('/settings/payroll/test-flip', [\App\Http\Controllers\SettingController::class, 'testFlip'])->name('settings.payroll.test-flip');
+        Route::post('/settings/payroll/test-duitku', [\App\Http\Controllers\SettingController::class, 'testDuitku'])->name('settings.payroll.test-duitku');
     });
 
     // ── WhatsApp Gateway & Blast Cerdas ───────────────────────

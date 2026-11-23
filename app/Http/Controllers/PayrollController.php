@@ -362,6 +362,7 @@ class PayrollController extends Controller
         $categories = \App\Models\PayrollCategory::where('is_active', true)->get();
         $xenditService = new \App\Services\XenditDisbursementService();
         $flipService = new \App\Services\FlipDisbursementService();
+        $duitkuService = new \App\Services\DuitkuDisbursementService();
 
         $activeProvider = Setting::get('active_disbursement_provider', 'none');
         if ($activeProvider === 'none') {
@@ -369,6 +370,8 @@ class PayrollController extends Controller
                 $activeProvider = 'flip';
             } elseif ($xenditService->isEnabled()) {
                 $activeProvider = 'xendit';
+            } elseif ($duitkuService->isEnabled()) {
+                $activeProvider = 'duitku';
             }
         }
 
@@ -383,10 +386,12 @@ class PayrollController extends Controller
             'activeProvider' => $activeProvider,
             'flipConfig' => $flipService->getConfig(),
             'xenditConfig' => $xenditService->getConfig(),
+            'duitkuConfig' => $duitkuService->getConfig(),
             'disbursementConfig' => [
                 'active_provider' => $activeProvider,
                 'flip' => $flipService->getConfig(),
                 'xendit' => $xenditService->getConfig(),
+                'duitku' => $duitkuService->getConfig(),
             ],
             'recapBpjs' => $recapBpjs,
             'payrollCategories' => $categories
@@ -456,6 +461,20 @@ class PayrollController extends Controller
         }
         if ($request->has('xendit_auto_disburse_on_approve')) {
             Setting::set('xendit_auto_disburse_on_approve', $request->boolean('xendit_auto_disburse_on_approve') ? '1' : '0');
+        }
+
+        // Duitku Auto Transfer Settings
+        if ($request->has('duitku_disbursement_enabled')) {
+            Setting::set('duitku_disbursement_enabled', $request->boolean('duitku_disbursement_enabled') ? '1' : '0');
+        }
+        if ($request->has('duitku_merchant_code')) {
+            Setting::set('duitku_merchant_code', $request->duitku_merchant_code ?? '');
+        }
+        if ($request->has('duitku_api_key')) {
+            Setting::set('duitku_disbursement_api_key', $request->duitku_api_key ?? '');
+        }
+        if ($request->has('duitku_auto_disburse_on_approve')) {
+            Setting::set('duitku_auto_disburse_on_approve', $request->boolean('duitku_auto_disburse_on_approve') ? '1' : '0');
         }
 
         return back()->with('success', 'Pengaturan penggajian & tarif BPJS berhasil disimpan.');
@@ -790,14 +809,16 @@ class PayrollController extends Controller
                 ]);
             }
 
-            // 5. Cek opsi Auto Transfer via Flip atau Xendit
+            // 5. Cek opsi Auto Transfer via Flip, Xendit, atau Duitku
             $flipService = new \App\Services\FlipDisbursementService();
             $xenditService = new \App\Services\XenditDisbursementService();
+            $duitkuService = new \App\Services\DuitkuDisbursementService();
 
             $activeProvider = Setting::get('active_disbursement_provider', 'none');
             $requestedProvider = $request->input('provider');
             if ($request->boolean('use_flip')) $requestedProvider = 'flip';
             if ($request->boolean('use_xendit')) $requestedProvider = 'xendit';
+            if ($request->boolean('use_duitku')) $requestedProvider = 'duitku';
 
             $provider = $requestedProvider ?: $activeProvider;
             $autoDisburseMsg = '';
@@ -835,6 +856,23 @@ class PayrollController extends Controller
                     }
 
                     $autoDisburseMsg = " | Auto Transfer Xendit Berhasil ({$xenditResult['disbursement_status']}) Ref: {$xenditResult['disbursement_id']}";
+                }
+            } elseif ($provider === 'duitku' && $netSalary > 0) {
+                $shouldDisburseDuitku = $request->boolean('use_duitku') || ($duitkuService->isEnabled() && Setting::get('duitku_auto_disburse_on_approve') === '1') || $request->filled('provider');
+                if ($shouldDisburseDuitku && $duitkuService->isEnabled()) {
+                    $duitkuResult = $duitkuService->disbursePayroll(
+                        $payroll,
+                        $user,
+                        $netSalary,
+                        "Gaji {$user->name} Periode " . str_pad($month, 2, '0', STR_PAD_LEFT) . "/{$year}"
+                    );
+
+                    if ($duitkuResult['status'] === 'error') {
+                        DB::rollBack();
+                        return back()->with('error', "Gagal Auto Transfer Duitku: " . $duitkuResult['message']);
+                    }
+
+                    $autoDisburseMsg = " | Auto Transfer Duitku Berhasil ({$duitkuResult['disbursement_status']}) Ref: {$duitkuResult['disbursement_id']}";
                 }
             }
 
@@ -912,16 +950,19 @@ class PayrollController extends Controller
 
         $flipService = new \App\Services\FlipDisbursementService();
         $xenditService = new \App\Services\XenditDisbursementService();
+        $duitkuService = new \App\Services\DuitkuDisbursementService();
 
         $activeProvider = Setting::get('active_disbursement_provider', 'none');
         $requestedProvider = $request->input('provider');
         if ($request->boolean('use_flip')) $requestedProvider = 'flip';
         if ($request->boolean('use_xendit')) $requestedProvider = 'xendit';
+        if ($request->boolean('use_duitku')) $requestedProvider = 'duitku';
 
         $provider = $requestedProvider ?: $activeProvider;
 
         $shouldUseFlip = ($provider === 'flip') && ($request->boolean('use_flip') || ($flipService->isEnabled() && Setting::get('flip_auto_disburse_on_approve') === '1') || $request->filled('provider'));
         $shouldUseXendit = ($provider === 'xendit') && ($request->boolean('use_xendit') || ($xenditService->isEnabled() && Setting::get('xendit_auto_disburse_on_approve') === '1') || $request->filled('provider'));
+        $shouldUseDuitku = ($provider === 'duitku') && ($request->boolean('use_duitku') || ($duitkuService->isEnabled() && Setting::get('duitku_auto_disburse_on_approve') === '1') || $request->filled('provider'));
 
         $transferredCount = 0;
         $transferErrors = [];
@@ -995,6 +1036,7 @@ class PayrollController extends Controller
                 $channel = 'manual';
                 if ($shouldUseFlip) $channel = 'flip';
                 elseif ($shouldUseXendit) $channel = 'xendit';
+                elseif ($shouldUseDuitku) $channel = 'duitku';
 
                 // 1. Create Expense (Buku Kas Umum) - Metode Akrual
                 $periodEnd = Carbon::create($year, $month, 1)->endOfMonth()->endOfDay();
@@ -1070,6 +1112,19 @@ class PayrollController extends Controller
                     } else {
                         $transferredCount++;
                     }
+                } elseif ($shouldUseDuitku && $netSalary > 0) {
+                    $duitkuResult = $duitkuService->disbursePayroll(
+                        $payroll,
+                        $user,
+                        $netSalary,
+                        "Gaji Batch {$user->name} " . str_pad($month, 2, '0', STR_PAD_LEFT) . "/{$year}"
+                    );
+
+                    if ($duitkuResult['status'] === 'error') {
+                        $transferErrors[] = "{$user->name}: " . $duitkuResult['message'];
+                    } else {
+                        $transferredCount++;
+                    }
                 }
 
                 $disbursedCount++;
@@ -1079,8 +1134,8 @@ class PayrollController extends Controller
             DB::commit();
 
             $extraMsg = "";
-            if ($shouldUseFlip || $shouldUseXendit) {
-                $providerName = $shouldUseFlip ? 'Flip' : 'Xendit';
+            if ($shouldUseFlip || $shouldUseXendit || $shouldUseDuitku) {
+                $providerName = $shouldUseFlip ? 'Flip' : ($shouldUseXendit ? 'Xendit' : 'Duitku');
                 $extraMsg = ". Auto Transfer {$providerName}: {$transferredCount} staf berhasil dikirim.";
                 if (!empty($transferErrors)) {
                     $extraMsg .= " Beberapa gagal: " . implode('; ', array_slice($transferErrors, 0, 2));
@@ -1181,6 +1236,43 @@ class PayrollController extends Controller
         }
 
         return response()->json(['status' => 'success']);
+    }
+
+    /**
+     * Webhook Callback dari Duitku untuk status disbursement
+     */
+    public function handleDuitkuWebhook(Request $request)
+    {
+        Log::info('[DuitkuDisbursement Webhook] Received:', $request->all());
+
+        $disburseId = $request->input('disburseId') ?: $request->input('id');
+        $custRefId = $request->input('custRefId') ?: $request->input('orderId');
+        $status = strtoupper($request->input('status', ''));
+        $respCode = (string) $request->input('responseCode', '');
+
+        // Map status
+        $mappedStatus = 'PENDING';
+        if ($status === 'SUCCESS' || $status === 'DONE' || $status === 'COMPLETED' || $respCode === '00') {
+            $mappedStatus = 'COMPLETED';
+        } elseif ($status === 'FAILED' || $status === 'CANCELLED' || $respCode === '02') {
+            $mappedStatus = 'FAILED';
+        }
+
+        if ($disburseId || $custRefId) {
+            $payroll = Payroll::where('disbursement_id', (string) $disburseId)
+                ->orWhere('disbursement_reference', (string) $custRefId)
+                ->first();
+
+            if ($payroll) {
+                $payroll->update([
+                    'disbursement_status' => $mappedStatus,
+                    'disbursement_error' => $mappedStatus === 'FAILED' ? ($request->input('responseDesc') ?? 'Transfer ditolak oleh Duitku') : null,
+                    'disbursement_payload' => json_encode($request->all()),
+                ]);
+            }
+        }
+
+        return response()->json(['status' => 'success', 'responseCode' => '00']);
     }
 
     /**

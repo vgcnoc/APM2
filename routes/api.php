@@ -27,3 +27,6 @@ Route::post('/webhooks/xendit/disbursement', [\App\Http\Controllers\PayrollContr
 // Webhook Callback Flip for Business (Auto Transfer Payroll)
 Route::post('/webhooks/flip/disbursement', [\App\Http\Controllers\PayrollController::class, 'handleFlipWebhook'])->name('api.flip.webhook');
 
+// Webhook Callback Duitku Disbursement (Auto Transfer Payroll)
+Route::post('/webhooks/duitku/disbursement', [\App\Http\Controllers\PayrollController::class, 'handleDuitkuWebhook'])->name('api.duitku.webhook');
+

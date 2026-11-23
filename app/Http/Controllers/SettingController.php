@@ -73,6 +73,12 @@ class SettingController extends Controller
             'xendit_secret_key' => Setting::get('xendit_secret_key', ''),
             'xendit_webhook_token' => Setting::get('xendit_webhook_token', ''),
             'xendit_auto_disburse_on_approve' => Setting::get('xendit_auto_disburse_on_approve', '0') === '1',
+            // Duitku Disbursement
+            'duitku_disbursement_enabled' => Setting::get('duitku_disbursement_enabled', '0') === '1',
+            'duitku_merchant_code' => Setting::get('duitku_merchant_code', Setting::get('duitku_merchant_id', '')),
+            'duitku_api_key' => Setting::get('duitku_disbursement_api_key', Setting::get('duitku_api_key', '')),
+            'duitku_environment' => Setting::get('duitku_disbursement_environment', Setting::get('duitku_environment', 'sandbox')),
+            'duitku_auto_disburse_on_approve' => Setting::get('duitku_auto_disburse_on_approve', '0') === '1',
         ]);
     }
 
@@ -84,7 +90,7 @@ class SettingController extends Controller
             'payroll_components' => 'nullable|array',
             'payroll_note' => 'nullable|string',
             'payroll_incentive_mode' => 'required|string',
-            'active_disbursement_provider' => 'nullable|string|in:none,flip,xendit',
+            'active_disbursement_provider' => 'nullable|string|in:none,flip,xendit,duitku',
             // Flip
             'flip_disbursement_enabled' => 'nullable|boolean',
             'flip_secret_key' => 'nullable|string',
@@ -96,6 +102,12 @@ class SettingController extends Controller
             'xendit_secret_key' => 'nullable|string',
             'xendit_webhook_token' => 'nullable|string',
             'xendit_auto_disburse_on_approve' => 'nullable|boolean',
+            // Duitku
+            'duitku_disbursement_enabled' => 'nullable|boolean',
+            'duitku_merchant_code' => 'nullable|string',
+            'duitku_api_key' => 'nullable|string',
+            'duitku_environment' => 'nullable|string|in:sandbox,production',
+            'duitku_auto_disburse_on_approve' => 'nullable|boolean',
         ]);
 
         Setting::set('payroll_cutoff_date', $request->payroll_cutoff_date);
@@ -108,12 +120,15 @@ class SettingController extends Controller
         $activeProvider = $request->input('active_disbursement_provider', 'none');
         $flipEnabled = $request->boolean('flip_disbursement_enabled');
         $xenditEnabled = $request->boolean('xendit_disbursement_enabled');
+        $duitkuEnabled = $request->boolean('duitku_disbursement_enabled');
 
         // Sinkronisasi otomatis: Jika provider dipilih sebagai aktif, pastikan modulnya aktif
         if ($activeProvider === 'flip') {
             $flipEnabled = true;
         } elseif ($activeProvider === 'xendit') {
             $xenditEnabled = true;
+        } elseif ($activeProvider === 'duitku') {
+            $duitkuEnabled = true;
         }
 
         // Jika salah satu modul diaktifkan sedangkan provider masih 'none', jadikan provider tersebut aktif
@@ -121,11 +136,14 @@ class SettingController extends Controller
             $activeProvider = 'flip';
         } elseif ($xenditEnabled && $activeProvider === 'none') {
             $activeProvider = 'xendit';
+        } elseif ($duitkuEnabled && $activeProvider === 'none') {
+            $activeProvider = 'duitku';
         }
 
         Setting::set('active_disbursement_provider', $activeProvider);
         Setting::set('flip_disbursement_enabled', $flipEnabled ? '1' : '0');
         Setting::set('xendit_disbursement_enabled', $xenditEnabled ? '1' : '0');
+        Setting::set('duitku_disbursement_enabled', $duitkuEnabled ? '1' : '0');
 
         // Flip Settings
         if ($request->has('flip_secret_key')) {
@@ -152,6 +170,20 @@ class SettingController extends Controller
             Setting::set('xendit_auto_disburse_on_approve', $request->boolean('xendit_auto_disburse_on_approve') ? '1' : '0');
         }
 
+        // Duitku Settings
+        if ($request->has('duitku_merchant_code')) {
+            Setting::set('duitku_merchant_code', $request->duitku_merchant_code ?? '');
+        }
+        if ($request->has('duitku_api_key')) {
+            Setting::set('duitku_disbursement_api_key', $request->duitku_api_key ?? '');
+        }
+        if ($request->has('duitku_environment')) {
+            Setting::set('duitku_disbursement_environment', $request->duitku_environment ?? 'sandbox');
+        }
+        if ($request->has('duitku_auto_disburse_on_approve')) {
+            Setting::set('duitku_auto_disburse_on_approve', $request->boolean('duitku_auto_disburse_on_approve') ? '1' : '0');
+        }
+
         return redirect()->back()->with('success', 'Pengaturan sistem gaji & auto transfer disbursement berhasil diperbarui.');
     }
 
@@ -169,6 +201,16 @@ class SettingController extends Controller
         $environment = $request->input('environment') ?: Setting::get('flip_environment', 'sandbox');
         $service = new \App\Services\FlipDisbursementService();
         $result = $service->testConnection($secretKey, $environment);
+        return response()->json($result);
+    }
+
+    public function testDuitku(Request $request)
+    {
+        $merchantCode = $request->input('merchant_code') ?: Setting::get('duitku_merchant_code', Setting::get('duitku_merchant_id'));
+        $apiKey = $request->input('api_key') ?: Setting::get('duitku_disbursement_api_key', Setting::get('duitku_api_key'));
+        $environment = $request->input('environment') ?: Setting::get('duitku_disbursement_environment', Setting::get('duitku_environment', 'sandbox'));
+        $service = new \App\Services\DuitkuDisbursementService();
+        $result = $service->testConnection($merchantCode, $apiKey, $environment);
         return response()->json($result);
     }
 

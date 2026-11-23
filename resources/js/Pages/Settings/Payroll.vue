@@ -41,7 +41,7 @@
                     </div>
 
                     <!-- Pilihan Radio Provider -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-5">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-5">
                         <!-- 1. Flip for Business -->
                         <div 
                             @click="selectProvider('flip')" 
@@ -59,7 +59,7 @@
                                         class="h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 cursor-pointer"
                                     />
                                 </div>
-                                <h3 class="text-sm font-black text-slate-900">Flip for Business (Big Flip)</h3>
+                                <h3 class="text-sm font-black text-slate-900">Flip for Business</h3>
                                 <p class="text-[11px] text-amber-800 font-semibold mt-1">⭐ Biaya Hemat: Rp 1.500 – Rp 3.000 / tx</p>
                                 <p class="text-[11px] text-slate-500 mt-1">Bisa didaftarkan oleh <strong>Perorangan / UMKM</strong> tanpa harus memiliki badan hukum PT.</p>
                             </div>
@@ -100,7 +100,36 @@
                             </div>
                         </div>
 
-                        <!-- 3. Manual / Nonaktif -->
+                        <!-- 3. Duitku Disbursement -->
+                        <div 
+                            @click="selectProvider('duitku')" 
+                            class="relative p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between"
+                            :class="form.active_disbursement_provider === 'duitku' ? 'border-emerald-500 bg-emerald-50/40 shadow-sm ring-2 ring-emerald-500/20' : 'border-slate-200 hover:border-slate-300 bg-white'"
+                        >
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-2xl">🟢</span>
+                                    <input 
+                                        type="radio" 
+                                        value="duitku" 
+                                        :checked="form.active_disbursement_provider === 'duitku'" 
+                                        @change="selectProvider('duitku')"
+                                        class="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 cursor-pointer"
+                                    />
+                                </div>
+                                <h3 class="text-sm font-black text-slate-900">Duitku Disbursement</h3>
+                                <p class="text-[11px] text-emerald-800 font-semibold mt-1">⚡ Biaya: Rp 2.500 / tx</p>
+                                <p class="text-[11px] text-slate-500 mt-1">Transfer langsung dari <strong>saldo Duitku</strong> pembayaran tagihan pelanggan Anda.</p>
+                            </div>
+                            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                                <span class="text-slate-400">Status Modul:</span>
+                                <span :class="form.duitku_disbursement_enabled ? 'text-emerald-700 font-bold' : 'text-slate-500 font-medium'">
+                                    {{ form.duitku_disbursement_enabled ? '● Aktif' : '○ Nonaktif' }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- 4. Manual / Nonaktif -->
                         <div 
                             @click="selectProvider('none')" 
                             class="relative p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between"
@@ -117,7 +146,7 @@
                                         class="h-4 w-4 text-slate-700 focus:ring-slate-500 border-gray-300 cursor-pointer"
                                     />
                                 </div>
-                                <h3 class="text-sm font-black text-slate-900">Nonaktif (Pencatatan Manual)</h3>
+                                <h3 class="text-sm font-black text-slate-900">Nonaktif (Manual)</h3>
                                 <p class="text-[11px] text-slate-600 font-semibold mt-1">Tanpa Biaya Gateway (Rp 0)</p>
                                 <p class="text-[11px] text-slate-500 mt-1">Gaji ditransfer manual via M-Banking kantor atau tunai (cash). Sistem hanya mencatat pembukuan.</p>
                             </div>
@@ -129,7 +158,7 @@
                     </div>
 
                     <!-- Tab Switcher Konfigurasi API -->
-                    <div class="flex items-center gap-2 mt-6 pt-5 border-t border-slate-100">
+                    <div class="flex items-center gap-2 mt-6 pt-5 border-t border-slate-100 flex-wrap">
                         <span class="text-xs font-bold text-slate-500 mr-1">Konfigurasi API:</span>
                         <button 
                             type="button" 
@@ -138,7 +167,7 @@
                             :class="activeTab === 'flip' ? 'bg-amber-500 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
                         >
                             <span>🟠</span>
-                            <span>Konfigurasi Flip for Business</span>
+                            <span>Konfigurasi Flip</span>
                         </button>
                         <button 
                             type="button" 
@@ -148,6 +177,15 @@
                         >
                             <span>⚡</span>
                             <span>Konfigurasi Xendit</span>
+                        </button>
+                        <button 
+                            type="button" 
+                            @click="activeTab = 'duitku'" 
+                            class="px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer"
+                            :class="activeTab === 'duitku' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+                        >
+                            <span>🟢</span>
+                            <span>Konfigurasi Duitku</span>
                         </button>
                     </div>
                 </div>
@@ -459,6 +497,170 @@
                     </div>
                 </div>
 
+                <!-- 2C. FORM KONFIGURASI DUITKU DISBURSEMENT -->
+                <div v-show="activeTab === 'duitku'" class="bg-gradient-to-br from-slate-900 via-emerald-950/80 to-slate-900 rounded-3xl p-6 sm:p-7 text-white shadow-xl relative overflow-hidden border border-emerald-900/50 animate-fade-in">
+                    <div class="absolute -right-12 -top-12 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                    <div class="relative z-10">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
+                            <div class="flex items-center gap-3.5">
+                                <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-2xl shadow-inner">
+                                    🟢
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <h3 class="text-base font-extrabold text-white">Duitku Disbursement (Transfer Antar Bank)</h3>
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                                            API Gateway
+                                        </span>
+                                    </div>
+                                    <p class="text-xs !text-slate-200 mt-0.5">Transfer gaji langsung menggunakan saldo Duitku hasil pembayaran tagihan internet pelanggan</p>
+                                </div>
+                            </div>
+
+                            <!-- Toggle Aktifkan Duitku -->
+                            <div class="flex items-center gap-3 bg-white/5 border border-white/10 px-4 py-2.5 rounded-2xl">
+                                <span class="text-xs font-bold text-slate-300">Aktifkan Modul:</span>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        :checked="form.duitku_disbursement_enabled" 
+                                        @change="toggleDuitku($event.target.checked)" 
+                                        class="sr-only peer"
+                                    />
+                                    <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Form Inputs Duitku -->
+                        <div class="space-y-5 pt-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <!-- Merchant Code -->
+                                <div>
+                                    <label class="block text-xs font-extrabold text-slate-200 uppercase tracking-wider mb-2">
+                                        Merchant Code Duitku *
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        v-model="form.duitku_merchant_code" 
+                                        placeholder="Contoh: D12345 atau kode merchant Anda" 
+                                        class="w-full bg-slate-800/80 border border-slate-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 text-white rounded-xl px-4 py-2.5 text-xs font-mono shadow-sm transition-all"
+                                        required
+                                    />
+                                    <p class="text-[11px] !text-slate-200 mt-1">Ditemukan di Dashboard Duitku &rarr; Profil Merchant / Proyek Anda.</p>
+                                </div>
+
+                                <!-- Environment -->
+                                <div>
+                                    <label class="block text-xs font-extrabold text-slate-200 uppercase tracking-wider mb-2">
+                                        Environment (Mode Operasional) *
+                                    </label>
+                                    <select 
+                                        v-model="form.duitku_environment" 
+                                        class="w-full bg-slate-800/80 border border-slate-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 text-white rounded-xl px-4 py-2.5 text-xs font-bold shadow-sm transition-all cursor-pointer"
+                                    >
+                                        <option value="sandbox">Sandbox (Testing / Simulasi)</option>
+                                        <option value="production">Production (Live / Uang Asli)</option>
+                                    </select>
+                                    <p class="text-[11px] !text-slate-200 mt-1">Gunakan mode Sandbox untuk simulasi tanpa memotong saldo kas riil.</p>
+                                </div>
+
+                                <!-- API Key Duitku -->
+                                <div class="md:col-span-2">
+                                    <label class="block text-xs font-extrabold text-slate-200 uppercase tracking-wider mb-2 flex items-center justify-between">
+                                        <span>Duitku API Key / Secret Key *</span>
+                                        <span class="text-[10px] text-slate-400">Jaga kerahasiaan kunci ini</span>
+                                    </label>
+                                    <div class="relative">
+                                        <input 
+                                            :type="showDuitkuKey ? 'text' : 'password'" 
+                                            v-model="form.duitku_api_key" 
+                                            placeholder="Masukkan Duitku API Key Anda..." 
+                                            class="w-full bg-slate-800/80 border border-slate-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 text-white rounded-xl pl-4 pr-24 py-2.5 text-xs font-mono shadow-sm transition-all"
+                                            required
+                                        />
+                                        <button 
+                                            type="button" 
+                                            @click="showDuitkuKey = !showDuitkuKey" 
+                                            class="absolute right-2 top-1.5 px-3 py-1 rounded-lg text-[11px] font-bold text-slate-300 hover:text-white bg-slate-700/60 hover:bg-slate-700 transition-colors cursor-pointer"
+                                        >
+                                            {{ showDuitkuKey ? 'Sembunyikan' : 'Tampilkan' }}
+                                        </button>
+                                    </div>
+                                    <p class="text-[11px] !text-slate-200 mt-1">API Key Duitku digunakan untuk otentikasi transfer dana dan pembuatan digital signature.</p>
+                                </div>
+                            </div>
+
+                            <!-- Opsi Otomatisasi Pencairan Duitku -->
+                            <div class="pt-2">
+                                <label class="flex items-start gap-3 p-3.5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        v-model="form.duitku_auto_disburse_on_approve" 
+                                        class="rounded border-slate-700 bg-slate-800 text-emerald-500 focus:ring-emerald-400 mt-0.5"
+                                    />
+                                    <div>
+                                        <span class="text-xs font-extrabold text-white block">Auto Disburse Duitku Otomatis Saat Tombol "Cairkan" Ditekan</span>
+                                        <span class="text-[11px] !text-slate-200 block mt-0.5">Jika dicentang dan Duitku aktif, menekan tombol Cairkan / Cairkan Semua di menu Payroll akan langsung mentransfer dana via Duitku.</span>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <!-- Action Bar: Test Connection & Webhook Info Duitku -->
+                            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-3 border-t border-white/10">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <button 
+                                        type="button" 
+                                        @click="testDuitku" 
+                                        :disabled="isTestingDuitku || !form.duitku_api_key || !form.duitku_merchant_code" 
+                                        class="px-4 py-2 rounded-xl text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white transition-all shadow-md flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                                    >
+                                        <svg v-if="isTestingDuitku" class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                        <span v-else>🟢</span>
+                                        <span>{{ isTestingDuitku ? 'Menguji & Mengambil Saldo...' : 'Tes Koneksi & Cek Saldo Duitku' }}</span>
+                                    </button>
+
+                                    <button 
+                                        type="button" 
+                                        @click="copyDuitkuWebhookUrl" 
+                                        class="px-3 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/15 text-emerald-200 border border-white/10 transition-colors flex items-center gap-1.5 cursor-pointer" 
+                                        title="Salin Webhook URL untuk didaftarkan di Duitku"
+                                    >
+                                        <span>📋</span>
+                                        <span>Salin Webhook URL Duitku</span>
+                                    </button>
+                                </div>
+
+                                <div v-if="duitkuTestResult" class="text-xs">
+                                    <span v-if="duitkuTestResult.status === 'success'" class="text-emerald-400 font-bold flex items-center gap-1.5">
+                                        <span>✓</span>
+                                        <span>{{ duitkuTestResult.message }}</span>
+                                    </span>
+                                    <span v-else class="text-rose-400 font-bold flex items-center gap-1.5">
+                                        <span>⚠️</span>
+                                        <span>{{ duitkuTestResult.message }}</span>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Box Saldo Kas & Panduan Webhook -->
+                            <div v-if="duitkuTestResult && duitkuTestResult.status === 'success'" class="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-400/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in">
+                                <div>
+                                    <div class="text-[11px] uppercase tracking-wider text-emerald-300 font-bold">Saldo Kas Duitku Siap Transfer (Disbursement)</div>
+                                    <div class="text-2xl font-black text-white font-mono mt-0.5">Rp {{ formatRupiah(duitkuTestResult.balance) }}</div>
+                                    <div class="text-[10px] text-emerald-200/80 mt-0.5">Environment: {{ duitkuTestResult.environment }}</div>
+                                </div>
+                                <div class="text-right">
+                                    <span class="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold text-xs border border-emerald-400/30">
+                                        ✓ API Duitku Terkoneksi
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 3. PENGATURAN SISTEM GAJI, CUTOFF & MEMO -->
                 <div class="bg-white shadow-sm rounded-3xl border border-slate-100 p-6 sm:p-7">
                     <h3 class="text-base font-extrabold text-slate-900 flex items-center gap-2 mb-4">
@@ -593,9 +795,15 @@ const props = defineProps({
     xendit_secret_key: String,
     xendit_webhook_token: String,
     xendit_auto_disburse_on_approve: Boolean,
+    // Duitku
+    duitku_disbursement_enabled: Boolean,
+    duitku_merchant_code: String,
+    duitku_api_key: String,
+    duitku_environment: String,
+    duitku_auto_disburse_on_approve: Boolean,
 });
 
-const activeTab = ref(props.active_disbursement_provider === 'xendit' ? 'xendit' : 'flip');
+const activeTab = ref(props.active_disbursement_provider === 'xendit' ? 'xendit' : (props.active_disbursement_provider === 'duitku' ? 'duitku' : 'flip'));
 
 const form = useForm({
     payroll_cutoff_date: Number(props.payroll_cutoff_date) || 1,
@@ -603,7 +811,7 @@ const form = useForm({
     payroll_components: props.payroll_components || ['insentif', 'potongan'],
     payroll_note: props.payroll_note || '',
     payroll_incentive_mode: props.payroll_incentive_mode || 'Bulanan (sekali sebulan)',
-    active_disbursement_provider: props.active_disbursement_provider || (props.flip_disbursement_enabled ? 'flip' : (props.xendit_disbursement_enabled ? 'xendit' : 'none')),
+    active_disbursement_provider: props.active_disbursement_provider || (props.flip_disbursement_enabled ? 'flip' : (props.xendit_disbursement_enabled ? 'xendit' : (props.duitku_disbursement_enabled ? 'duitku' : 'none'))),
     // Flip
     flip_disbursement_enabled: props.active_disbursement_provider === 'flip' ? true : Boolean(props.flip_disbursement_enabled),
     flip_secret_key: props.flip_secret_key || '',
@@ -615,6 +823,12 @@ const form = useForm({
     xendit_secret_key: props.xendit_secret_key || '',
     xendit_webhook_token: props.xendit_webhook_token || '',
     xendit_auto_disburse_on_approve: Boolean(props.xendit_auto_disburse_on_approve),
+    // Duitku
+    duitku_disbursement_enabled: props.active_disbursement_provider === 'duitku' ? true : Boolean(props.duitku_disbursement_enabled),
+    duitku_merchant_code: props.duitku_merchant_code || '',
+    duitku_api_key: props.duitku_api_key || '',
+    duitku_environment: props.duitku_environment || 'sandbox',
+    duitku_auto_disburse_on_approve: Boolean(props.duitku_auto_disburse_on_approve),
 });
 
 // Sinkronisasi Form jika props berubah dari backend
@@ -626,6 +840,9 @@ watch(() => props.flip_disbursement_enabled, (val) => {
 });
 watch(() => props.xendit_disbursement_enabled, (val) => {
     form.xendit_disbursement_enabled = Boolean(val);
+});
+watch(() => props.duitku_disbursement_enabled, (val) => {
+    form.duitku_disbursement_enabled = Boolean(val);
 });
 watch(() => props.payroll_note, (val) => {
     form.payroll_note = val || '';
@@ -640,6 +857,9 @@ const selectProvider = (provider) => {
     } else if (provider === 'xendit') {
         form.xendit_disbursement_enabled = true;
         activeTab.value = 'xendit';
+    } else if (provider === 'duitku') {
+        form.duitku_disbursement_enabled = true;
+        activeTab.value = 'duitku';
     }
 };
 
@@ -667,6 +887,18 @@ const toggleXendit = (checked) => {
     }
 };
 
+const toggleDuitku = (checked) => {
+    form.duitku_disbursement_enabled = checked;
+    if (checked) {
+        form.active_disbursement_provider = 'duitku';
+        activeTab.value = 'duitku';
+    } else {
+        if (form.active_disbursement_provider === 'duitku') {
+            form.active_disbursement_provider = 'none';
+        }
+    }
+};
+
 const showFlipKey = ref(false);
 const isTestingFlip = ref(false);
 const flipTestResult = ref(null);
@@ -675,15 +907,21 @@ const showXenditKey = ref(false);
 const isTestingXendit = ref(false);
 const xenditTestResult = ref(null);
 
+const showDuitkuKey = ref(false);
+const isTestingDuitku = ref(false);
+const duitkuTestResult = ref(null);
+
 const getActiveProviderLabel = computed(() => {
     if (form.active_disbursement_provider === 'flip') return '🟠 Flip for Business Aktif';
     if (form.active_disbursement_provider === 'xendit') return '⚡ Xendit Aktif';
+    if (form.active_disbursement_provider === 'duitku') return '🟢 Duitku Disbursement Aktif';
     return 'Manual / Cash (Nonaktif)';
 });
 
 const getActiveProviderBadgeClass = computed(() => {
     if (form.active_disbursement_provider === 'flip') return 'bg-amber-100 text-amber-800 border border-amber-300';
     if (form.active_disbursement_provider === 'xendit') return 'bg-indigo-100 text-indigo-800 border border-indigo-300';
+    if (form.active_disbursement_provider === 'duitku') return 'bg-emerald-100 text-emerald-800 border border-emerald-300';
     return 'bg-slate-100 text-slate-700 border border-slate-300';
 });
 
@@ -798,6 +1036,65 @@ const copyXenditWebhookUrl = () => {
         title: 'Webhook URL Xendit Disalin',
         html: `<p class="text-xs text-slate-600 mb-2">URL Webhook berhasil disalin ke clipboard:</p><code class="text-xs bg-slate-100 p-2 rounded-xl block text-indigo-700 font-mono break-all mb-3">${url}</code><p class="text-[11px] text-slate-500">Daftarkan URL ini di <strong>Dashboard Xendit &rarr; Settings &rarr; Callbacks &rarr; Disbursements</strong>.</p>`,
         confirmButtonColor: '#4f46e5',
+        confirmButtonText: 'Mengerti'
+    });
+};
+
+const testDuitku = async () => {
+    isTestingDuitku.value = true;
+    duitkuTestResult.value = null;
+    try {
+        const response = await axios.post(route('settings.payroll.test-duitku'), {
+            merchant_code: form.duitku_merchant_code,
+            api_key: form.duitku_api_key,
+            environment: form.duitku_environment,
+        });
+        duitkuTestResult.value = response.data;
+        if (response.data?.status === 'success') {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Koneksi Duitku Berhasil!',
+                text: `Saldo kas siap transfer: Rp ${formatRupiah(response.data.balance)}`,
+                showConfirmButton: false,
+                timer: 4000,
+                timerProgressBar: true
+            });
+        } else {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Tes Koneksi Duitku Gagal',
+                text: response.data?.message || 'Gagal verifikasi Merchant Code & API Key Duitku.',
+                confirmButtonColor: '#059669'
+            });
+        }
+    } catch (e) {
+        const msg = e.response?.data?.message || e.message || 'Gagal menghubungi server Duitku.';
+        duitkuTestResult.value = {
+            status: 'error',
+            message: msg
+        };
+        Swal.fire({
+            icon: 'error',
+            title: 'Kesalahan Jaringan / Server Duitku',
+            text: msg,
+            confirmButtonColor: '#059669'
+        });
+    } finally {
+        isTestingDuitku.value = false;
+    }
+};
+
+const copyDuitkuWebhookUrl = () => {
+    const origin = window.location.origin;
+    const url = `${origin}/api/webhooks/duitku/disbursement`;
+    navigator.clipboard.writeText(url);
+    Swal.fire({
+        icon: 'success',
+        title: 'Webhook URL Duitku Disalin',
+        html: `<p class="text-xs text-slate-600 mb-2">URL Webhook berhasil disalin ke clipboard:</p><code class="text-xs bg-slate-100 p-2 rounded-xl block text-emerald-700 font-mono break-all mb-3">${url}</code><p class="text-[11px] text-slate-500">Daftarkan URL ini di <strong>Dashboard Duitku &rarr; Proyek &rarr; Webhook Callback Disbursement</strong>.</p>`,
+        confirmButtonColor: '#059669',
         confirmButtonText: 'Mengerti'
     });
 };

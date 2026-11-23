@@ -51,20 +51,26 @@
                             ? 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100' 
                             : (activeProvider === 'xendit' && xenditConfig?.enabled 
                                 ? 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100' 
-                                : 'bg-white hover:bg-slate-50 border-slate-300 text-slate-700')"
+                                : (activeProvider === 'duitku' && duitkuConfig?.enabled 
+                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100' 
+                                    : 'bg-white hover:bg-slate-50 border-slate-300 text-slate-700'))"
                         :title="activeProvider === 'flip' && flipConfig?.enabled 
                             ? 'Auto Transfer Flip Aktif (' + flipConfig.environment + ')' 
                             : (activeProvider === 'xendit' && xenditConfig?.enabled 
                                 ? 'Auto Transfer Xendit Aktif (' + xenditConfig.environment + ')' 
-                                : 'Atur Flip for Business atau Xendit')"
+                                : (activeProvider === 'duitku' && duitkuConfig?.enabled 
+                                    ? 'Auto Transfer Duitku Aktif (' + duitkuConfig.environment + ')' 
+                                    : 'Atur Auto Transfer Flip, Xendit, atau Duitku'))"
                     >
-                        <span>{{ activeProvider === 'flip' && flipConfig?.enabled ? '🟠' : (activeProvider === 'xendit' && xenditConfig?.enabled ? '⚡' : '⚙️') }}</span>
+                        <span>{{ activeProvider === 'flip' && flipConfig?.enabled ? '🟠' : (activeProvider === 'xendit' && xenditConfig?.enabled ? '⚡' : (activeProvider === 'duitku' && duitkuConfig?.enabled ? '🟢' : '⚙️')) }}</span>
                         <span>
                             {{ activeProvider === 'flip' && flipConfig?.enabled 
                                 ? 'Flip: Aktif (' + flipConfig.environment + ')' 
                                 : (activeProvider === 'xendit' && xenditConfig?.enabled 
                                     ? 'Xendit: Aktif (' + xenditConfig.environment + ')' 
-                                    : 'Setup Auto Transfer') 
+                                    : (activeProvider === 'duitku' && duitkuConfig?.enabled 
+                                        ? 'Duitku: Aktif (' + duitkuConfig.environment + ')' 
+                                        : 'Setup Auto Transfer')) 
                             }}
                         </span>
                     </a>
@@ -344,6 +350,21 @@
                                             :title="user.disbursement_error || ('Xendit Ref: ' + user.disbursement_id)"
                                         >
                                             <span>⚡ Xendit: {{ user.disbursement_status || 'PENDING' }}</span>
+                                        </span>
+                                    </div>
+
+                                    <!-- Status Duitku jika ada -->
+                                    <div v-if="user.disbursement_channel === 'duitku'" class="mt-1">
+                                        <span 
+                                            class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-extrabold"
+                                            :class="{
+                                                'bg-emerald-50 text-emerald-700 border border-emerald-200': user.disbursement_status === 'COMPLETED',
+                                                'bg-amber-50 text-amber-700 border border-amber-200': user.disbursement_status === 'PENDING',
+                                                'bg-rose-50 text-rose-700 border border-rose-200': user.disbursement_status === 'FAILED',
+                                            }"
+                                            :title="user.disbursement_error || ('Duitku Ref: ' + user.disbursement_id)"
+                                        >
+                                            <span>🟢 Duitku: {{ user.disbursement_status || 'PENDING' }}</span>
                                         </span>
                                     </div>
                                     <div v-if="user.is_paid && user.payment_date" class="text-[9px] text-slate-400 mt-0.5">
@@ -1213,6 +1234,7 @@ const props = defineProps({
     activeProvider: String,
     flipConfig: Object,
     xenditConfig: Object,
+    duitkuConfig: Object,
     disbursementConfig: Object,
     recapBpjs: Object,
     payrollCategories: Array
@@ -1892,13 +1914,15 @@ const disburse = (user) => {
         ? `<div class="mt-2 text-xs text-rose-600 font-semibold bg-rose-50 p-2.5 rounded-xl border border-rose-100">↳ Potongan iuran BPJS staf: <b>-Rp ${formatRupiah(user.bpjs.total_employee)}</b></div>` 
         : '';
     
-    const activeProv = props.activeProvider || (props.flipConfig?.enabled ? 'flip' : (props.xenditConfig?.enabled ? 'xendit' : 'none'));
+    const activeProv = props.activeProvider || (props.flipConfig?.enabled ? 'flip' : (props.xenditConfig?.enabled ? 'xendit' : (props.duitkuConfig?.enabled ? 'duitku' : 'none')));
     let transferNotice = '';
 
     if (activeProv === 'flip' && props.flipConfig?.enabled) {
         transferNotice = `<div class="mt-2 text-xs text-orange-800 bg-orange-50 p-2.5 rounded-xl border border-orange-200 text-left"><b>🟠 Auto Transfer Flip Aktif:</b> Otomatis ditransfer ke <b>${user.bank_name || 'Bank'}</b> (${user.bank_account_number || 'Belum diatur'}) a.n <b>${user.bank_account_holder || user.name}</b> via Flip (${props.flipConfig.environment}).</div>`;
     } else if (activeProv === 'xendit' && props.xenditConfig?.enabled) {
         transferNotice = `<div class="mt-2 text-xs text-indigo-800 bg-indigo-50 p-2.5 rounded-xl border border-indigo-200 text-left"><b>⚡ Auto Transfer Xendit Aktif:</b> Otomatis ditransfer ke <b>${user.bank_name || 'Bank'}</b> (${user.bank_account_number || 'Belum diatur'}) a.n <b>${user.bank_account_holder || user.name}</b> via Xendit (${props.xenditConfig.environment}).</div>`;
+    } else if (activeProv === 'duitku' && props.duitkuConfig?.enabled) {
+        transferNotice = `<div class="mt-2 text-xs text-emerald-800 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 text-left"><b>🟢 Auto Transfer Duitku Aktif:</b> Otomatis ditransfer ke <b>${user.bank_name || 'Bank'}</b> (${user.bank_account_number || 'Belum diatur'}) a.n <b>${user.bank_account_holder || user.name}</b> via Duitku (${props.duitkuConfig.environment}).</div>`;
     }
 
     Swal.fire({
@@ -1964,13 +1988,15 @@ const disburse = (user) => {
 
 // ── Disburse Batch (All) ──
 const disburseAll = () => {
-    const activeProv = props.activeProvider || (props.flipConfig?.enabled ? 'flip' : (props.xenditConfig?.enabled ? 'xendit' : 'none'));
+    const activeProv = props.activeProvider || (props.flipConfig?.enabled ? 'flip' : (props.xenditConfig?.enabled ? 'xendit' : (props.duitkuConfig?.enabled ? 'duitku' : 'none')));
     let transferNotice = '';
 
     if (activeProv === 'flip' && props.flipConfig?.enabled) {
         transferNotice = `<div class="mt-2 text-xs text-orange-800 bg-orange-50 p-2.5 rounded-xl border border-orange-200 text-left"><b>🟠 Auto Transfer Flip Aktif:</b> Semua staf dengan rekening valid akan ditransfer otomatis via Flip (${props.flipConfig.environment}).</div>`;
     } else if (activeProv === 'xendit' && props.xenditConfig?.enabled) {
         transferNotice = `<div class="mt-2 text-xs text-indigo-800 bg-indigo-50 p-2.5 rounded-xl border border-indigo-200 text-left"><b>⚡ Auto Transfer Xendit Aktif:</b> Semua staf dengan rekening valid akan ditransfer otomatis via Xendit (${props.xenditConfig.environment}).</div>`;
+    } else if (activeProv === 'duitku' && props.duitkuConfig?.enabled) {
+        transferNotice = `<div class="mt-2 text-xs text-emerald-800 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 text-left"><b>🟢 Auto Transfer Duitku Aktif:</b> Semua staf dengan rekening valid akan ditransfer otomatis via Duitku (${props.duitkuConfig.environment}).</div>`;
     }
 
     Swal.fire({
