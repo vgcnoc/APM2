@@ -16,93 +16,174 @@
 
             <!-- KPI Cards -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 flex items-center justify-between relative overflow-hidden">
-                    <div>
-                        <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Insentif</p>
-                        <p class="mt-1 text-2xl font-black text-emerald-600 font-mono tracking-tight">Rp {{ formatCurrency(kpi.totalIncentive) }}</p>
+                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 relative overflow-hidden flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Insentif</p>
+                            <p class="mt-1 text-2xl font-black text-emerald-600 font-mono tracking-tight">Rp {{ formatCurrency(kpi.totalIncentive) }}</p>
+                        </div>
+                        <div class="w-11 h-11 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                        </div>
                     </div>
-                    <div class="w-11 h-11 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
-                    </div>
-                </div>
-                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 flex items-center justify-between relative overflow-hidden">
-                    <div>
-                        <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Potongan</p>
-                        <p class="mt-1 text-2xl font-black text-rose-600 font-mono tracking-tight">Rp {{ formatCurrency(kpi.totalDeduction) }}</p>
-                    </div>
-                    <div class="w-11 h-11 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-600">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path></svg>
+                    <div class="mt-3 pt-2.5 border-t border-gray-50 flex items-center justify-between text-[11px]">
+                        <span class="text-gray-500 font-medium">Belum Cair: <b class="text-amber-600 font-mono">Rp {{ formatCurrency(kpi.totalPendingIncentive || 0) }}</b></span>
+                        <span class="text-gray-500 font-medium">Cair: <b class="text-emerald-700 font-mono">Rp {{ formatCurrency(kpi.totalDisbursedIncentive || 0) }}</b></span>
                     </div>
                 </div>
-                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 flex items-center justify-between relative overflow-hidden">
-                    <div>
-                        <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Otomatis</p>
-                        <p class="mt-1 text-2xl font-black text-gray-900 tracking-tight">{{ kpi.countAuto }}</p>
+
+                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 relative overflow-hidden flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Potongan</p>
+                            <p class="mt-1 text-2xl font-black text-rose-600 font-mono tracking-tight">Rp {{ formatCurrency(kpi.totalDeduction) }}</p>
+                        </div>
+                        <div class="w-11 h-11 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-600 shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path></svg>
+                        </div>
                     </div>
-                    <div class="w-11 h-11 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    <div class="mt-3 pt-2.5 border-t border-gray-50 flex items-center justify-between text-[11px]">
+                        <span class="text-gray-500 font-medium">Otomatis: <b class="text-gray-800">{{ kpi.countAuto }}</b></span>
+                        <span class="text-gray-500 font-medium">Manual: <b class="text-gray-800">{{ kpi.countManual }}</b></span>
                     </div>
                 </div>
-                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 flex items-center justify-between relative overflow-hidden">
-                    <div>
-                        <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Manual</p>
-                        <p class="mt-1 text-2xl font-black text-gray-900 tracking-tight">{{ kpi.countManual }}</p>
+
+                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 relative overflow-hidden flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Komponen Otomatis</p>
+                            <p class="mt-1 text-2xl font-black text-gray-900 tracking-tight">{{ kpi.countAuto }}</p>
+                        </div>
+                        <div class="w-11 h-11 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        </div>
                     </div>
-                    <div class="w-11 h-11 bg-teal-50 rounded-2xl flex items-center justify-center text-teal-600">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                    <div class="mt-3 pt-2.5 border-t border-gray-50 text-[11px] text-gray-500 truncate">
+                        Dihitung dari PSB, Survey, Booking &amp; Absensi
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 relative overflow-hidden flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Komponen Manual</p>
+                            <p class="mt-1 text-2xl font-black text-gray-900 tracking-tight">{{ kpi.countManual }}</p>
+                        </div>
+                        <div class="w-11 h-11 bg-teal-50 rounded-2xl flex items-center justify-center text-teal-600 shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-2.5 border-t border-gray-50 text-[11px] text-gray-500 truncate">
+                        Diinput manual oleh Admin / Supervisor
                     </div>
                 </div>
             </div>
 
             <!-- Filters -->
-            <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100">
-                <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-50">
+            <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-gray-100">
                     <div class="flex items-center gap-2">
                         <span class="text-xs font-extrabold uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
                             <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
-                            Filter Otomatis
+                            Filter Insentif &amp; Potongan
                         </span>
-                        <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                            Auto Filter Aktif
+                        <span v-if="activeFilterChips.length > 0" class="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200">
+                            {{ activeFilterChips.length }} Filter Aktif
+                        </span>
+                        <span v-else class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                            Semua Data
                         </span>
                     </div>
-                    <button
-                        v-if="hasActiveFilters"
-                        @click="resetFilters"
-                        type="button"
-                        class="text-xs text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1 hover:underline cursor-pointer"
-                    >
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                        Reset Filter
-                    </button>
+                    
+                    <div class="flex items-center gap-2">
+                        <!-- Toggle Rentang Tanggal Kustom -->
+                        <button
+                            type="button"
+                            @click="toggleDateRangeMode"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer"
+                            :class="isCustomDateRange 
+                                ? 'bg-indigo-50 border-indigo-200 text-indigo-700 shadow-xs' 
+                                : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            <span>{{ isCustomDateRange ? 'Mode: Rentang Tanggal' : 'Mode: Bulan & Tahun' }}</span>
+                        </button>
+
+                        <button
+                            v-if="hasActiveFilters"
+                            @click="resetFilters"
+                            type="button"
+                            class="text-xs text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1 hover:underline cursor-pointer px-2 py-1"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            Reset Filter
+                        </button>
+                    </div>
                 </div>
                 
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <!-- Bulan -->
-                    <div>
-                        <label class="block text-xs font-bold text-gray-600 mb-1 flex items-center gap-1">
-                            <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                            Bulan
-                        </label>
-                        <select v-model="filter.month" class="block w-full border-gray-200 bg-gray-50/50 rounded-xl shadow-xs focus:ring-indigo-500 focus:border-indigo-500 text-xs font-bold py-2.5 px-3 transition-all">
-                            <option v-for="(name, index) in months" :key="index" :value="index + 1">{{ name }}</option>
-                        </select>
-                    </div>
+                <!-- Baris 1: Waktu & Target (Karyawan & Wilayah) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <!-- Tanggal / Periode -->
+                    <template v-if="!isCustomDateRange">
+                        <!-- Bulan -->
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-600 mb-1 flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                Bulan
+                            </label>
+                            <select v-model="filter.month" class="block w-full border-gray-200 bg-gray-50/50 rounded-xl shadow-xs focus:ring-indigo-500 focus:border-indigo-500 text-xs font-bold py-2.5 px-3 transition-all">
+                                <option v-for="(name, index) in months" :key="index" :value="index + 1">{{ name }}</option>
+                            </select>
+                        </div>
 
-                    <!-- Tahun -->
+                        <!-- Tahun -->
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-600 mb-1 flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                Tahun
+                            </label>
+                            <select v-model="filter.year" class="block w-full border-gray-200 bg-gray-50/50 rounded-xl shadow-xs focus:ring-indigo-500 focus:border-indigo-500 text-xs font-bold py-2.5 px-3 transition-all">
+                                <option v-for="y in [2024, 2025, 2026, 2027, 2028]" :key="y" :value="y">{{ y }}</option>
+                            </select>
+                        </div>
+                    </template>
+                    <template v-else>
+                        <!-- Dari Tanggal -->
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-600 mb-1 flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                Dari Tanggal
+                            </label>
+                            <input type="date" v-model="filter.start_date" class="block w-full border-gray-200 bg-gray-50/50 rounded-xl shadow-xs focus:ring-indigo-500 focus:border-indigo-500 text-xs font-bold py-2 px-3 transition-all" />
+                        </div>
+
+                        <!-- Sampai Tanggal -->
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-600 mb-1 flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                Sampai Tanggal
+                            </label>
+                            <input type="date" v-model="filter.end_date" class="block w-full border-gray-200 bg-gray-50/50 rounded-xl shadow-xs focus:ring-indigo-500 focus:border-indigo-500 text-xs font-bold py-2 px-3 transition-all" />
+                        </div>
+                    </template>
+
+                    <!-- Filter Karyawan / Staf -->
                     <div>
-                        <label class="block text-xs font-bold text-gray-600 mb-1 flex items-center gap-1">
-                            <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            Tahun
+                        <label class="block text-[11px] font-bold text-gray-600 mb-1 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                            Karyawan / Staf
                         </label>
-                        <select v-model="filter.year" class="block w-full border-gray-200 bg-gray-50/50 rounded-xl shadow-xs focus:ring-indigo-500 focus:border-indigo-500 text-xs font-bold py-2.5 px-3 transition-all">
-                            <option v-for="y in [2024, 2025, 2026, 2027, 2028]" :key="y" :value="y">{{ y }}</option>
+                        <select v-model="filter.user_id" class="block w-full border-gray-200 bg-gray-50/50 rounded-xl shadow-xs focus:ring-indigo-500 focus:border-indigo-500 text-xs font-bold py-2.5 px-3 transition-all">
+                            <option value="">Semua Karyawan</option>
+                            <option v-for="user in (users || [])" :key="user.id" :value="user.id">
+                                {{ user.name }} {{ user.area ? `(${user.area.name})` : '' }}
+                            </option>
                         </select>
                     </div>
 
                     <!-- Area / Wilayah Filter -->
                     <div v-if="can('payroll_view_all') || can('payroll_view_area')">
-                        <label class="block text-xs font-bold text-gray-600 mb-1 flex items-center gap-1">
+                        <label class="block text-[11px] font-bold text-gray-600 mb-1 flex items-center gap-1">
                             <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                             Area / Wilayah
                         </label>
@@ -111,12 +192,68 @@
                             <option v-for="area in (areas || [])" :key="area.id" :value="area.id">{{ area.name }}</option>
                         </select>
                     </div>
+                </div>
 
-                    <!-- Pencarian Otomatis -->
+                <!-- Baris 2: Dimensi Transaksi (Tipe, Mode, Status, Kategori, Pencarian) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-2 border-t border-gray-50">
+                    <!-- Tipe Transaksi -->
                     <div>
-                        <label class="block text-xs font-bold text-gray-600 mb-1 flex items-center gap-1">
+                        <label class="block text-[11px] font-bold text-gray-600 mb-1 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+                            Tipe Transaksi
+                        </label>
+                        <select v-model="filter.type" class="block w-full border-gray-200 bg-gray-50/50 rounded-xl shadow-xs focus:ring-indigo-500 focus:border-indigo-500 text-xs font-bold py-2.5 px-3 transition-all">
+                            <option value="">Semua Tipe</option>
+                            <option value="insentif">Insentif (Bonus)</option>
+                            <option value="potongan">Potongan</option>
+                        </select>
+                    </div>
+
+                    <!-- Mode Transaksi -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-600 mb-1 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            Mode Transaksi
+                        </label>
+                        <select v-model="filter.mode" class="block w-full border-gray-200 bg-gray-50/50 rounded-xl shadow-xs focus:ring-indigo-500 focus:border-indigo-500 text-xs font-bold py-2.5 px-3 transition-all">
+                            <option value="">Semua Mode</option>
+                            <option value="auto">Otomatis (Sistem)</option>
+                            <option value="manual">Manual (Input Staf)</option>
+                        </select>
+                    </div>
+
+                    <!-- Status Pencairan -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-600 mb-1 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            Status Pencairan
+                        </label>
+                        <select v-model="filter.status" class="block w-full border-gray-200 bg-gray-50/50 rounded-xl shadow-xs focus:ring-indigo-500 focus:border-indigo-500 text-xs font-bold py-2.5 px-3 transition-all">
+                            <option value="">Semua Status</option>
+                            <option value="pending">Belum Cair (Pending)</option>
+                            <option value="disbursed">Sudah Dicairkan</option>
+                        </select>
+                    </div>
+
+                    <!-- Kategori / Komponen -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-600 mb-1 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+                            Kategori Komponen
+                        </label>
+                        <select v-model="filter.category" class="block w-full border-gray-200 bg-gray-50/50 rounded-xl shadow-xs focus:ring-indigo-500 focus:border-indigo-500 text-xs font-bold py-2.5 px-3 transition-all">
+                            <option value="">Semua Kategori</option>
+                            <option v-for="cat in (availableCategories || [])" :key="cat.id" :value="cat.id">
+                                {{ cat.name }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <!-- Pencarian Bebas -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-600 mb-1 flex items-center gap-1">
                             <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                            Pencarian
+                            Pencarian Bebas
                         </label>
                         <div class="relative">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -125,7 +262,7 @@
                             <input
                                 type="text"
                                 v-model="filter.search"
-                                placeholder="Cari karyawan / keterangan..."
+                                placeholder="Cari nama, CUS, ket..."
                                 class="block w-full pl-9 pr-8 border-gray-200 bg-gray-50/50 rounded-xl shadow-xs focus:ring-indigo-500 focus:border-indigo-500 text-xs font-medium py-2.5 transition-all"
                             >
                             <button
@@ -139,6 +276,33 @@
                             </button>
                         </div>
                     </div>
+                </div>
+
+                <!-- Active Filter Chips -->
+                <div v-if="activeFilterChips.length > 0" class="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100">
+                    <span class="text-[11px] font-bold text-gray-400 mr-1">Filter Terpasang:</span>
+                    <span
+                        v-for="chip in activeFilterChips"
+                        :key="chip.key"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs"
+                    >
+                        <span>{{ chip.label }}</span>
+                        <button
+                            type="button"
+                            @click="removeChip(chip.key)"
+                            class="text-indigo-400 hover:text-indigo-700 rounded p-0.5 hover:bg-indigo-100 transition cursor-pointer"
+                            title="Hapus filter ini"
+                        >
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </span>
+                    <button
+                        type="button"
+                        @click="resetFilters"
+                        class="text-[11px] text-rose-600 hover:text-rose-700 font-bold hover:underline ml-1 cursor-pointer"
+                    >
+                        Hapus Semua
+                    </button>
                 </div>
             </div>
 
@@ -164,6 +328,14 @@
                     <button @click="setTab('manual')" :class="[filter.tab === 'manual' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700', 'py-3 px-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap']">
                         <span>Manual</span>
                         <span class="px-2 py-0.5 rounded-full text-[10px] bg-teal-50 text-teal-700">{{ counts?.manual ?? 0 }}</span>
+                    </button>
+                    <button @click="setTab('pending')" :class="[filter.tab === 'pending' ? 'border-amber-600 text-amber-600' : 'border-transparent text-gray-500 hover:text-gray-700', 'py-3 px-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap']">
+                        <span>Belum Cair</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] bg-amber-50 text-amber-700 font-bold border border-amber-200">{{ counts?.pending ?? 0 }}</span>
+                    </button>
+                    <button @click="setTab('disbursed')" :class="[filter.tab === 'disbursed' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700', 'py-3 px-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap']">
+                        <span>Sudah Cair</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">{{ counts?.disbursed ?? 0 }}</span>
                     </button>
                 </nav>
             </div>
@@ -438,6 +610,7 @@ const props = defineProps({
     filters: Object,
     users: Array,
     payrollCategories: Array,
+    availableCategories: Array,
     areas: Array,
     counts: Object,
 });
@@ -447,13 +620,84 @@ const months = [
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
 
+const isCustomDateRange = ref(Boolean(props.filters?.start_date && props.filters?.end_date));
+
 const filter = reactive({
     tab: props.filters?.tab || 'semua',
     month: Number(props.filters?.month) || new Date().getMonth() + 1,
     year: Number(props.filters?.year) || new Date().getFullYear(),
     area_id: props.filters?.area_id || '',
+    user_id: props.filters?.user_id || '',
+    type: props.filters?.type || '',
+    mode: props.filters?.mode || '',
+    status: props.filters?.status || '',
+    category: props.filters?.category || '',
+    start_date: props.filters?.start_date || '',
+    end_date: props.filters?.end_date || '',
     search: props.filters?.search || '',
 });
+
+const toggleDateRangeMode = () => {
+    isCustomDateRange.value = !isCustomDateRange.value;
+    if (!isCustomDateRange.value) {
+        filter.start_date = '';
+        filter.end_date = '';
+        fetchData();
+    }
+};
+
+const activeFilterChips = computed(() => {
+    const chips = [];
+    
+    if (filter.user_id) {
+        const u = (props.users || []).find(x => String(x.id) === String(filter.user_id));
+        chips.push({ key: 'user_id', label: `Karyawan: ${u ? u.name : filter.user_id}` });
+    }
+    if (filter.area_id) {
+        const a = (props.areas || []).find(x => String(x.id) === String(filter.area_id));
+        chips.push({ key: 'area_id', label: `Area: ${a ? a.name : filter.area_id}` });
+    }
+    if (filter.type) {
+        const typeLabel = filter.type === 'insentif' ? 'Insentif' : 'Potongan';
+        chips.push({ key: 'type', label: `Tipe: ${typeLabel}` });
+    }
+    if (filter.mode) {
+        const modeLabel = filter.mode === 'auto' ? 'Otomatis' : 'Manual';
+        chips.push({ key: 'mode', label: `Mode: ${modeLabel}` });
+    }
+    if (filter.status) {
+        const statusLabel = filter.status === 'pending' ? 'Belum Cair' : 'Sudah Cair';
+        chips.push({ key: 'status', label: `Status: ${statusLabel}` });
+    }
+    if (filter.category) {
+        const c = (props.availableCategories || []).find(x => x.id === filter.category);
+        chips.push({ key: 'category', label: `Kategori: ${c ? c.name : filter.category}` });
+    }
+    if (isCustomDateRange.value && filter.start_date && filter.end_date) {
+        chips.push({ key: 'dates', label: `Tgl: ${formatDate(filter.start_date)} - ${formatDate(filter.end_date)}` });
+    }
+    if (filter.search && filter.search.trim()) {
+        chips.push({ key: 'search', label: `Cari: "${filter.search}"` });
+    }
+    
+    return chips;
+});
+
+const removeChip = (key) => {
+    if (key === 'user_id') filter.user_id = '';
+    if (key === 'area_id') filter.area_id = '';
+    if (key === 'type') { filter.type = ''; if (['insentif', 'potongan'].includes(filter.tab)) filter.tab = 'semua'; }
+    if (key === 'mode') { filter.mode = ''; if (['auto', 'manual'].includes(filter.tab)) filter.tab = 'semua'; }
+    if (key === 'status') { filter.status = ''; if (['pending', 'disbursed'].includes(filter.tab)) filter.tab = 'semua'; }
+    if (key === 'category') filter.category = '';
+    if (key === 'dates') {
+        filter.start_date = '';
+        filter.end_date = '';
+        isCustomDateRange.value = false;
+    }
+    if (key === 'search') filter.search = '';
+    fetchData();
+};
 
 const showManualModal = ref(false);
 const selectedIds = ref([]);
@@ -514,9 +758,16 @@ const formatDate = (dateString) => {
 const hasActiveFilters = computed(() => {
     return Boolean(
         filter.area_id !== '' ||
+        filter.user_id !== '' ||
+        filter.type !== '' ||
+        filter.mode !== '' ||
+        filter.status !== '' ||
+        filter.category !== '' ||
+        (isCustomDateRange.value && (filter.start_date !== '' || filter.end_date !== '')) ||
         filter.search.trim() !== '' ||
         Number(filter.month) !== (new Date().getMonth() + 1) ||
-        Number(filter.year) !== new Date().getFullYear()
+        Number(filter.year) !== new Date().getFullYear() ||
+        filter.tab !== 'semua'
     );
 });
 
@@ -524,7 +775,16 @@ const resetFilters = () => {
     filter.month = new Date().getMonth() + 1;
     filter.year = new Date().getFullYear();
     filter.area_id = '';
+    filter.user_id = '';
+    filter.type = '';
+    filter.mode = '';
+    filter.status = '';
+    filter.category = '';
+    filter.start_date = '';
+    filter.end_date = '';
     filter.search = '';
+    filter.tab = 'semua';
+    isCustomDateRange.value = false;
     fetchData();
 };
 
@@ -554,12 +814,44 @@ watch(() => filter.search, () => {
     applyFilter(false); // debounced 350ms
 });
 
-watch([() => filter.month, () => filter.year, () => filter.area_id], () => {
+watch([
+    () => filter.month, 
+    () => filter.year, 
+    () => filter.area_id,
+    () => filter.user_id,
+    () => filter.type,
+    () => filter.mode,
+    () => filter.status,
+    () => filter.category
+], () => {
     applyFilter(true); // immediate
+});
+
+watch([() => filter.start_date, () => filter.end_date], ([newStart, newEnd]) => {
+    if (isCustomDateRange.value && newStart && newEnd) {
+        applyFilter(true);
+    }
 });
 
 const setTab = (tab) => {
     filter.tab = tab;
+    if (tab === 'semua') {
+        filter.type = '';
+        filter.mode = '';
+        filter.status = '';
+    } else if (tab === 'insentif') {
+        filter.type = 'insentif';
+    } else if (tab === 'potongan') {
+        filter.type = 'potongan';
+    } else if (tab === 'auto') {
+        filter.mode = 'auto';
+    } else if (tab === 'manual') {
+        filter.mode = 'manual';
+    } else if (tab === 'pending') {
+        filter.status = 'pending';
+    } else if (tab === 'disbursed') {
+        filter.status = 'disbursed';
+    }
     fetchData();
 };
 

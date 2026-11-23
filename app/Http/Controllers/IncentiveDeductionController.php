@@ -21,21 +21,39 @@ class IncentiveDeductionController extends Controller
         $year = $request->query('year', now()->year);
         $search = $request->query('search', '');
         $areaId = $request->query('area_id', '');
+        $userId = $request->query('user_id', '');
+        $type = $request->query('type', '');         // 'insentif' | 'potongan'
+        $mode = $request->query('mode', '');         // 'auto' | 'manual'
+        $status = $request->query('status', '');     // 'pending' | 'disbursed'
+        $category = $request->query('category', ''); // 'psb', 'survey', 'booking', 'izin', etc.
+        $startDate = $request->query('start_date', '');
+        $endDate = $request->query('end_date', '');
         
         $authUser = auth()->user();
         $isSuperAdmin = $authUser && ($authUser->is_admin || $authUser->hasRole('admin'));
 
         $incentivesQuery = Incentive::with(['user.area'])
-            ->whereHas('user', fn($q) => $q->excludeTokoAndDemo())
-            ->whereMonth('incentive_date', $month)
-            ->whereYear('incentive_date', $year);
+            ->whereHas('user', fn($q) => $q->excludeTokoAndDemo());
             
         $deductionsQuery = Deduction::with(['user.area'])
-            ->whereHas('user', fn($q) => $q->excludeTokoAndDemo())
-            ->whereMonth('deduction_date', $month)
-            ->whereYear('deduction_date', $year);
+            ->whereHas('user', fn($q) => $q->excludeTokoAndDemo());
 
-        // Scope per karyawan jika bukan admin dan tidak memiliki payroll_view_all
+        // 1. Filter Tanggal (Rentang Spesifik atau Bulan/Tahun)
+        if (!empty($startDate) && !empty($endDate)) {
+            $incentivesQuery->whereBetween('incentive_date', [$startDate, $endDate]);
+            $deductionsQuery->whereBetween('deduction_date', [$startDate, $endDate]);
+        } else {
+            if ($month) {
+                $incentivesQuery->whereMonth('incentive_date', $month);
+                $deductionsQuery->whereMonth('deduction_date', $month);
+            }
+            if ($year) {
+                $incentivesQuery->whereYear('incentive_date', $year);
+                $deductionsQuery->whereYear('deduction_date', $year);
+            }
+        }
+
+        // 2. Scope per karyawan jika bukan admin dan tidak memiliki payroll_view_all
         if (!$isSuperAdmin && !$authUser->can('payroll_view_all')) {
             if ($authUser->can('payroll_view_area') && $authUser->area_id) {
                 $incentivesQuery->whereHas('user', fn($q) => $q->where('area_id', $authUser->area_id));
@@ -46,7 +64,14 @@ class IncentiveDeductionController extends Controller
             }
         }
 
-        if ($areaId) {
+        // 3. Filter Spesifik Karyawan
+        if (!empty($userId)) {
+            $incentivesQuery->where('user_id', $userId);
+            $deductionsQuery->where('user_id', $userId);
+        }
+
+        // 4. Filter Area / Wilayah
+        if (!empty($areaId)) {
             $incentivesQuery->whereHas('user', function($q) use ($areaId) {
                 $q->where('area_id', $areaId);
             });
@@ -55,6 +80,48 @@ class IncentiveDeductionController extends Controller
             });
         }
 
+        // 5. Filter Mode (Otomatis / Manual)
+        $effectiveMode = $mode ?: (in_array($tab, ['auto', 'manual']) ? $tab : '');
+        if (!empty($effectiveMode)) {
+            $incentivesQuery->where('type', strtolower($effectiveMode));
+            $deductionsQuery->where('type', strtolower($effectiveMode));
+        }
+
+        // 6. Filter Status Pencairan
+        $effectiveStatus = $status ?: (in_array($tab, ['pending', 'disbursed']) ? $tab : '');
+        if (!empty($effectiveStatus)) {
+            if ($effectiveStatus === 'pending') {
+                $incentivesQuery->where('status', 'pending');
+                $deductionsQuery->where(function($q) {
+                    $q->where('status', 'pending')->orWhereNull('status');
+                });
+            } elseif ($effectiveStatus === 'disbursed') {
+                $incentivesQuery->whereIn('status', ['disbursed', 'approved', 'paid']);
+                $deductionsQuery->whereIn('status', ['disbursed', 'approved', 'paid']);
+            }
+        }
+
+        // 7. Filter Kategori Biaya / Transaksi
+        if (!empty($category)) {
+            $catKeyword = match($category) {
+                'psb' => 'Fee Pasang',
+                'survey' => 'Fee Survey',
+                'booking' => 'Fee Booking',
+                'weekly' => 'UANG MINGGUAN',
+                'transport' => 'UANG TRANSPORT',
+                'izin' => 'Izin Tidak Masuk',
+                'sakit' => 'Sakit Tanpa Surat',
+                'late' => 'Terlambat',
+                'alpha' => 'Alpha',
+                'special' => 'TIM SERBU',
+                'kasbon' => 'Kasbon',
+                default => $category,
+            };
+            $incentivesQuery->where('description', 'like', "%{$catKeyword}%");
+            $deductionsQuery->where('description', 'like', "%{$catKeyword}%");
+        }
+
+        // 8. Pencarian Teks Bebas
         if ($search) {
             $incentivesQuery->where(function($query) use ($search) {
                 $query->whereHas('user', function($q) use ($search) {
@@ -78,6 +145,7 @@ class IncentiveDeductionController extends Controller
             return [
                 'id' => 'inc_' . $item->id,
                 'real_id' => $item->id,
+                'user_id' => $item->user_id,
                 'user_name' => $item->user->name ?? 'Unknown',
                 'area_name' => $item->user?->area?->name ?? 'Pusat / Semua Area',
                 'record_type' => 'Insentif',
@@ -95,6 +163,7 @@ class IncentiveDeductionController extends Controller
             return [
                 'id' => 'ded_' . $item->id,
                 'real_id' => $item->id,
+                'user_id' => $item->user_id,
                 'user_name' => $item->user->name ?? 'Unknown',
                 'area_name' => $item->user?->area?->name ?? 'Pusat / Semua Area',
                 'record_type' => 'Potongan',
@@ -107,26 +176,43 @@ class IncentiveDeductionController extends Controller
             ];
         });
 
+        // 9. Tab & Type Resolution
+        $effectiveType = $type ?: ($tab === 'insentif' ? 'insentif' : ($tab === 'potongan' ? 'potongan' : ''));
+
         $allRecords = collect();
-        if ($tab === 'semua') {
-            $allRecords = $incentives->concat($deductions);
-        } elseif ($tab === 'insentif') {
+        if ($effectiveType === 'insentif') {
             $allRecords = $incentives;
-        } elseif ($tab === 'potongan') {
+        } elseif ($effectiveType === 'potongan') {
             $allRecords = $deductions;
-        } elseif ($tab === 'auto') {
-            $allRecords = $incentives->where('mode', 'Auto')->concat($deductions->where('mode', 'Auto'));
+        } else {
+            $allRecords = $incentives->concat($deductions);
+        }
+
+        // Filter tab khusus jika tab auto / manual / pending / disbursed dipilih
+        if ($tab === 'auto') {
+            $allRecords = $allRecords->where('mode', 'Auto');
         } elseif ($tab === 'manual') {
-            $allRecords = $incentives->where('mode', 'Manual')->concat($deductions->where('mode', 'Manual'));
+            $allRecords = $allRecords->where('mode', 'Manual');
+        } elseif ($tab === 'pending') {
+            $allRecords = $allRecords->filter(fn($r) => $r['status'] === 'pending' || empty($r['status']));
+        } elseif ($tab === 'disbursed') {
+            $allRecords = $allRecords->filter(fn($r) => in_array($r['status'], ['disbursed', 'approved', 'paid']));
         }
 
         $allRecords = $allRecords->sortByDesc('created_at')->values();
 
-        // Calculate KPI
+        // 10. Calculate KPI & Counts
         $totalIncentive = $incentives->sum('amount');
         $totalDeduction = $deductions->sum('amount');
         $countAuto = $incentives->where('mode', 'Auto')->count() + $deductions->where('mode', 'Auto')->count();
         $countManual = $incentives->where('mode', 'Manual')->count() + $deductions->where('mode', 'Manual')->count();
+        
+        $countPending = $incentives->where('status', 'pending')->count() + $deductions->filter(fn($d) => $d['status'] === 'pending' || empty($d['status']))->count();
+        $countDisbursed = $incentives->filter(fn($i) => in_array($i['status'], ['disbursed', 'approved', 'paid']))->count()
+            + $deductions->filter(fn($d) => in_array($d['status'], ['disbursed', 'approved', 'paid']))->count();
+
+        $totalPendingIncentive = $incentives->where('status', 'pending')->sum('amount');
+        $totalDisbursedIncentive = $incentives->filter(fn($i) => in_array($i['status'], ['disbursed', 'approved', 'paid']))->sum('amount');
 
         $perPage = 15;
         $page = \Illuminate\Pagination\Paginator::resolveCurrentPage() ?: 1;
@@ -138,21 +224,28 @@ class IncentiveDeductionController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
+        $existingUserIds = Incentive::whereMonth('incentive_date', $month)->whereYear('incentive_date', $year)->pluck('user_id')
+            ->concat(Deduction::whereMonth('deduction_date', $month)->whereYear('deduction_date', $year)->pluck('user_id'))
+            ->unique()->filter()->values();
+
         $excludedRoles = ['customer', 'pelanggan', 'reseller', 'superadmin', 'super admin', 'toko', 'demo', 'affiliate', 'mitra', 'affiliator'];
         $usersQuery = User::forCurrentCompany()->with('area')->where('is_active', true)
             ->excludeTokoAndDemo()
-            ->whereNotIn('role', $excludedRoles)
-            ->whereDoesntHave('roles', function($q) use ($excludedRoles) {
-                $q->whereIn('name', $excludedRoles);
-            })
-            ->whereDoesntHave('customer')
-            ->whereDoesntHave('reseller')
-            ->where(function($q) {
-                // Role sales freelance / mitra tanpa gaji dan tanpa profil karyawan tidak masuk penggajian
-                $q->where('role', '!=', 'sales')
-                  ->orWhere('base_salary', '>', 0)
-                  ->orWhereHas('employee')
-                  ->orWhereHas('payrolls');
+            ->where(function($q) use ($excludedRoles, $existingUserIds) {
+                $q->where(function($sub) use ($excludedRoles) {
+                    $sub->whereNotIn('role', $excludedRoles)
+                        ->whereDoesntHave('roles', function($rq) use ($excludedRoles) {
+                            $rq->whereIn('name', $excludedRoles);
+                        })
+                        ->whereDoesntHave('customer')
+                        ->whereDoesntHave('reseller')
+                        ->where(function($sq) {
+                            $sq->where('role', '!=', 'sales')
+                              ->orWhere('base_salary', '>', 0)
+                              ->orWhereHas('employee')
+                              ->orWhereHas('payrolls');
+                        });
+                })->orWhereIn('id', $existingUserIds);
             })
             ->orderBy('name');
 
@@ -163,9 +256,23 @@ class IncentiveDeductionController extends Controller
                 $usersQuery->where('id', $authUser->id);
             }
         }
-        $users = $usersQuery->get(['id', 'name', 'area_id']);
+        $users = $usersQuery->get(['id', 'name', 'area_id', 'role']);
         $categories = \App\Models\PayrollCategory::where('is_active', true)->get();
         $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
+
+        $availableCategories = [
+            ['id' => 'psb', 'name' => 'Fee Pasang Pelanggan (PSB)'],
+            ['id' => 'survey', 'name' => 'Fee Survey Pelanggan'],
+            ['id' => 'booking', 'name' => 'Fee Booking Pelanggan'],
+            ['id' => 'weekly', 'name' => 'Uang Mingguan'],
+            ['id' => 'transport', 'name' => 'Uang Transport'],
+            ['id' => 'izin', 'name' => 'Potongan Izin Tidak Masuk'],
+            ['id' => 'sakit', 'name' => 'Potongan Sakit Tanpa Surat Dokter'],
+            ['id' => 'late', 'name' => 'Potongan Terlambat'],
+            ['id' => 'alpha', 'name' => 'Potongan Alpha / Mangkir'],
+            ['id' => 'special', 'name' => 'Potongan Absen Tim Khusus / Serbu'],
+            ['id' => 'kasbon', 'name' => 'Kasbon / Pinjaman'],
+        ];
 
         return Inertia::render('Payroll/IncentivesDeductions', [
             'records' => $paginated,
@@ -174,17 +281,27 @@ class IncentiveDeductionController extends Controller
                 'totalDeduction' => $totalDeduction,
                 'countAuto' => $countAuto,
                 'countManual' => $countManual,
+                'totalPendingIncentive' => $totalPendingIncentive,
+                'totalDisbursedIncentive' => $totalDisbursedIncentive,
+                'countPending' => $countPending,
+                'countDisbursed' => $countDisbursed,
             ],
             'counts' => [
-                'semua' => $incentives->count() + $deductions->count(),
-                'insentif' => $incentives->count(),
-                'potongan' => $deductions->count(),
+                'semua' => $countSemua,
+                'insentif' => $countInsentif,
+                'potongan' => $countPotongan,
                 'auto' => $countAuto,
                 'manual' => $countManual,
+                'pending' => $countPending,
+                'disbursed' => $countDisbursed,
             ],
-            'filters' => $request->only(['tab', 'month', 'year', 'search', 'area_id']),
+            'filters' => $request->only([
+                'tab', 'month', 'year', 'search', 'area_id', 'user_id', 
+                'type', 'mode', 'status', 'category', 'start_date', 'end_date'
+            ]),
             'users' => $users,
             'payrollCategories' => $categories,
+            'availableCategories' => $availableCategories,
             'areas' => $areas,
         ]);
     }
