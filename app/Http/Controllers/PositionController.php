@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Position;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Role;
 
 class PositionController extends Controller
@@ -16,11 +17,23 @@ class PositionController extends Controller
 
     public function index(Request $request)
     {
+        $activeCompanyId = (int) (session('active_company_id') ?: (auth()->user()?->company_id ?: 1));
+        if ($activeCompanyId !== 1 && Position::count() === 0) {
+            $holdingPositions = Position::withoutGlobalScopes()->where('company_id', 1)->get();
+            foreach ($holdingPositions as $hp) {
+                $cloned = $hp->replicate();
+                $cloned->company_id = $activeCompanyId;
+                $cloned->save();
+            }
+        }
+
         $query = Position::query();
 
         if ($request->search) {
-            $query->where('name', 'like', "%{$request->search}%")
+            $query->where(function ($q) use ($request) {
+                $q->where('name', 'like', "%{$request->search}%")
                   ->orWhere('department', 'like', "%{$request->search}%");
+            });
         }
 
         $positions = $query->orderBy('name')->paginate(15)->withQueryString();
@@ -33,11 +46,21 @@ class PositionController extends Controller
 
     public function store(Request $request)
     {
+        $activeCompanyId = (int) (session('active_company_id') ?: (auth()->user()?->company_id ?: 1));
+
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:positions,name',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('positions', 'name')->where('company_id', $activeCompanyId),
+            ],
             'department' => 'nullable|string|max:255',
             'description' => 'nullable|string',
         ]);
+
+        $validated['name'] = trim($validated['name']);
+        $validated['company_id'] = $activeCompanyId;
 
         $position = Position::create($validated);
 
@@ -50,11 +73,20 @@ class PositionController extends Controller
 
     public function update(Request $request, Position $position)
     {
+        $activeCompanyId = (int) ($position->company_id ?: (session('active_company_id') ?: (auth()->user()?->company_id ?: 1)));
+
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:positions,name,' . $position->id,
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('positions', 'name')->where('company_id', $activeCompanyId)->ignore($position->id),
+            ],
             'department' => 'nullable|string|max:255',
             'description' => 'nullable|string',
         ]);
+
+        $validated['name'] = trim($validated['name']);
 
         $oldName = strtolower(trim($position->name));
         $position->update($validated);
@@ -67,7 +99,8 @@ class PositionController extends Controller
 
             // Jika role lama bukan sistem role inti
             if (!in_array($oldName, self::PROTECTED_SYSTEM_ROLES)) {
-                $otherPositionExists = Position::where('id', '!=', $position->id)
+                $otherPositionExists = Position::withoutGlobalScopes()
+                    ->where('id', '!=', $position->id)
                     ->whereRaw('LOWER(TRIM(name)) = ?', [$oldName])
                     ->exists();
 
@@ -79,8 +112,9 @@ class PositionController extends Controller
                             $newRole->syncPermissions($oldRole->permissions);
                         }
 
-                        // Migrasikan user dari oldRole ke newRole
-                        foreach ($oldRole->users as $u) {
+                        // Migrasikan user dari oldRole ke newRole (hanya user pada company ini)
+                        $companyUsers = $oldRole->users()->where('company_id', $activeCompanyId)->get();
+                        foreach ($companyUsers as $u) {
                             $u->removeRole($oldRole);
                             $u->assignRole($newRole);
                             if (strtolower(trim($u->role)) === $oldName) {
@@ -89,7 +123,7 @@ class PositionController extends Controller
                             }
                         }
 
-                        // Hapus oldRole kustom yang sudah tidak dipakai
+                        // Hapus oldRole kustom jika sudah tidak dipakai sama sekali oleh user manapun
                         if ($oldRole->users()->count() === 0) {
                             $oldRole->delete();
                         }
@@ -108,7 +142,7 @@ class PositionController extends Controller
 
         // Jangan pernah hapus role sistem inti
         if (!in_array($oldName, self::PROTECTED_SYSTEM_ROLES)) {
-            $otherPositionExists = Position::whereRaw('LOWER(TRIM(name)) = ?', [$oldName])->exists();
+            $otherPositionExists = Position::withoutGlobalScopes()->whereRaw('LOWER(TRIM(name)) = ?', [$oldName])->exists();
             if (!$otherPositionExists) {
                 $role = Role::where('name', $oldName)->where('guard_name', 'web')->first();
                 if ($role && $role->users()->count() === 0) {
@@ -120,4 +154,3 @@ class PositionController extends Controller
         return redirect()->route('positions.index')->with('success', 'Posisi/Jabatan berhasil dihapus.');
     }
 }
-
