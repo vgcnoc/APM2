@@ -54,7 +54,11 @@ class IncomeCategoryController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
+        $activeId = session('active_company_id');
+        $companyId = ($activeId && $activeId !== 'all') ? (int) $activeId : (auth()->check() && auth()->user()->company_id ? (int) auth()->user()->company_id : 1);
+
         $created = IncomeCategory::create([
+            'company_id' => $companyId,
             'name' => $validated['name'],
             'code' => !empty($validated['code']) ? strtoupper(trim($validated['code'])) : null,
             'description' => $validated['description'] ?? null,
@@ -124,6 +128,9 @@ class IncomeCategoryController extends Controller
 
     protected function seedDefaults(): void
     {
+        $activeId = session('active_company_id');
+        $companyId = ($activeId && $activeId !== 'all') ? (int) $activeId : (auth()->check() && auth()->user()->company_id ? (int) auth()->user()->company_id : 1);
+
         $defaults = [
             ['code' => 'JSA', 'name' => 'Jasa Setting & Instalasi Khusus', 'description' => 'Penarikan kabel FO khusus, setting router/mikrotik, instalasi CCTV & hotspot', 'color' => 'emerald'],
             ['code' => 'BRG', 'name' => 'Penjualan Perangkat & Material', 'description' => 'Penjualan ONT/Router bekas atau baru, kabel sisa, patchcord, adaptor', 'color' => 'blue'],
@@ -136,7 +143,10 @@ class IncomeCategoryController extends Controller
         ];
 
         foreach ($defaults as $item) {
-            IncomeCategory::create(array_merge($item, ['is_active' => true]));
+            IncomeCategory::create(array_merge($item, [
+                'company_id' => $companyId,
+                'is_active' => true,
+            ]));
         }
     }
 }

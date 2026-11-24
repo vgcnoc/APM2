@@ -54,7 +54,11 @@ class ExpenseCategoryController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
+        $activeId = session('active_company_id');
+        $companyId = ($activeId && $activeId !== 'all') ? (int) $activeId : (auth()->check() && auth()->user()->company_id ? (int) auth()->user()->company_id : 1);
+
         $created = ExpenseCategory::create([
+            'company_id' => $companyId,
             'name' => $validated['name'],
             'code' => !empty($validated['code']) ? strtoupper(trim($validated['code'])) : null,
             'description' => $validated['description'] ?? null,
@@ -125,6 +129,9 @@ class ExpenseCategoryController extends Controller
 
     protected function seedDefaults(): void
     {
+        $activeId = session('active_company_id');
+        $companyId = ($activeId && $activeId !== 'all') ? (int) $activeId : (auth()->check() && auth()->user()->company_id ? (int) auth()->user()->company_id : 1);
+
         $defaults = [
             ['code' => 'OPR', 'name' => 'Operasional Lapangan', 'description' => 'BBM, konsumsi teknisi, transportasi, parkir, tol', 'color' => 'amber'],
             ['code' => 'MNT', 'name' => 'Maintenance Jaringan', 'description' => 'Perbaikan FO cut, penggantian adaptor/dropcore/fast connector', 'color' => 'rose'],
@@ -137,7 +144,10 @@ class ExpenseCategoryController extends Controller
         ];
 
         foreach ($defaults as $item) {
-            ExpenseCategory::create(array_merge($item, ['is_active' => true]));
+            ExpenseCategory::create(array_merge($item, [
+                'company_id' => $companyId,
+                'is_active' => true,
+            ]));
         }
     }
 }
