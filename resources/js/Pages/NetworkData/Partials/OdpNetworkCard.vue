@@ -121,34 +121,55 @@
 
                 <div class="flex items-center justify-between text-[11px] mt-2 pt-1.5 border-t border-slate-200/60 font-medium">
                     <span class="text-emerald-700 font-bold flex items-center gap-1">
-                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                        {{ availablePortsCount }} Port Siap Pakai
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span><strong>{{ availablePortsCount }}</strong> Port Kosong (Siap Pakai)</span>
                     </span>
-                    <span class="text-slate-500 font-mono text-[10px]">
-                        Total {{ odp.total_ports }} Port Fisik
+                    <span class="text-indigo-800 font-bold flex items-center gap-1">
+                        <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+                        <span><strong>{{ usedPortsCount }}</strong> Port Terisi</span>
                     </span>
                 </div>
             </div>
 
             <!-- Hardware Socket Matrix Bar (Visual LED Matrix at a Glance) -->
             <div class="mb-3.5 pb-3 border-b border-slate-100">
-                <div class="flex items-center justify-between mb-1.5">
-                    <span class="text-[10px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                        <span>⚡ Status Socket Port</span>
+                <div class="flex items-center justify-between mb-2 flex-wrap gap-1">
+                    <span class="text-[10px] font-black uppercase tracking-wider text-slate-600 flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        <span>Status Socket Port Fisik</span>
                     </span>
-                    <span class="text-[9px] text-slate-400 font-medium">Klik socket untuk melihat</span>
+
+                    <!-- Smart Legend -->
+                    <div class="flex items-center gap-1.5 text-[9px] font-bold">
+                        <span class="inline-flex items-center gap-1 text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded shadow-2xs">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            Kosong ({{ availablePortsCount }})
+                        </span>
+                        <span class="inline-flex items-center gap-1 text-indigo-800 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded shadow-2xs">
+                            <span class="w-1.5 h-1.5 rounded-full bg-indigo-600"></span>
+                            Terisi ({{ usedPortsCount }})
+                        </span>
+                        <span v-if="odpCbpCount > 0" class="inline-flex items-center gap-1 text-rose-800 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded animate-pulse shadow-2xs">
+                            <span class="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
+                            CBP ({{ odpCbpCount }})
+                        </span>
+                    </div>
                 </div>
-                <div class="flex items-center gap-1 flex-wrap">
-                    <div
+
+                <!-- Socket Grid with Click-to-Scroll -->
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    <button
+                        type="button"
                         v-for="portNum in Number(odp.total_ports || 0)"
                         :key="'matrix-' + portNum"
-                        class="w-7 h-7 rounded-lg flex flex-col items-center justify-center border transition-all text-center select-none"
+                        @click="scrollToPort(portNum)"
+                        class="w-7 h-7 rounded-lg flex flex-col items-center justify-center border transition-all text-center select-none group/socket cursor-pointer"
                         :class="getSocketBoxClass(portNum)"
                         :title="getSocketTooltip(portNum)"
                     >
-                        <span class="text-[9px] font-mono font-bold leading-none">{{ portNum }}</span>
-                        <span class="w-1.5 h-1.5 rounded-full mt-0.5" :class="getSocketLedClass(portNum)"></span>
-                    </div>
+                        <span class="text-[9px] font-mono font-black leading-none">{{ portNum }}</span>
+                        <span class="w-1.5 h-1.5 rounded-full mt-0.5 transition-transform group-hover/socket:scale-125" :class="getSocketLedClass(portNum)"></span>
+                    </button>
                 </div>
             </div>
 
@@ -213,24 +234,94 @@
                 <span v-else class="text-[10px] text-slate-400 italic">Tidak ada VLAN diset pada OLT</span>
             </div>
 
+            <!-- Header List Port with Smart Filter Tabs -->
+            <div class="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-slate-100 flex-wrap">
+                <span class="text-[10px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                    <span>📋 Daftar Port Fisik ({{ totalPortsCount }})</span>
+                </span>
+
+                <div class="flex items-center gap-1 text-[10px]">
+                    <button
+                        type="button"
+                        @click="activePortFilter = 'all'"
+                        class="px-2 py-0.5 rounded-md font-bold transition-all border text-[9px] cursor-pointer"
+                        :class="activePortFilter === 'all' ? 'bg-slate-800 text-white border-slate-800 shadow-2xs' : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'"
+                    >
+                        Semua ({{ totalPortsCount }})
+                    </button>
+                    <button
+                        type="button"
+                        @click="activePortFilter = 'empty'"
+                        class="px-2 py-0.5 rounded-md font-bold transition-all border text-[9px] cursor-pointer"
+                        :class="activePortFilter === 'empty' ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'"
+                    >
+                        🟢 Kosong ({{ availablePortsCount }})
+                    </button>
+                    <button
+                        type="button"
+                        @click="activePortFilter = 'occupied'"
+                        class="px-2 py-0.5 rounded-md font-bold transition-all border text-[9px] cursor-pointer"
+                        :class="activePortFilter === 'occupied' ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs' : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'"
+                    >
+                        🔵 Terisi ({{ usedPortsCount }})
+                    </button>
+                </div>
+            </div>
+
+            <!-- Empty State if filtered has no items -->
+            <div v-if="filteredPortNumbers.length === 0" class="py-4 text-center">
+                <div v-if="activePortFilter === 'empty'" class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+                    🚫 Tidak ada port kosong. ODP ini telah terisi penuh 100%.
+                </div>
+                <div v-else class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
+                    ✨ Belum ada port yang terisi. Semua {{ totalPortsCount }} port masih tersedia.
+                </div>
+            </div>
+
             <!-- Ports List: Clean, Unrestricted for <=8 Ports, Custom Scroll for >8 Ports -->
             <div
-                class="space-y-1.5 mb-4 flex-1 text-xs"
+                v-else
+                class="space-y-2 mb-4 flex-1 text-xs"
                 :class="Number(odp.total_ports || 0) > 8 ? 'max-h-[380px] overflow-y-auto pr-1 custom-scrollbar' : 'max-h-none'"
             >
                 <div
-                    v-for="portNum in Number(odp.total_ports || 0)"
+                    v-for="portNum in filteredPortNumbers"
                     :key="portNum"
                     :id="`odp-${odp.id}-port-${portNum}`"
-                    class="transition-colors"
+                    class="transition-all duration-300"
                 >
-                    <!-- Port Row Item -->
+                    <!-- Port Row Item: OCCUPIED / TERISI -->
                     <template v-if="getPortData(portNum)">
-                        <div class="flex flex-col py-2 px-2.5 rounded-xl bg-slate-50 border border-slate-200/90 hover:bg-white hover:border-indigo-300 hover:shadow-xs transition-all">
+                        <div
+                            class="flex flex-col py-2.5 px-3 rounded-xl border-l-4 transition-all shadow-2xs hover:shadow-xs"
+                            :class="[
+                                highlightedPort === portNum
+                                    ? 'ring-2 ring-indigo-500 shadow-md scale-[1.01]'
+                                    : '',
+                                getCbpForCustomer(getPortData(portNum).customer)
+                                    ? 'border-l-rose-500 bg-gradient-to-r from-rose-50/90 via-white to-rose-50/30 border-t border-r border-b border-rose-200'
+                                    : getPortData(portNum).customer?.status === 'suspended'
+                                        ? 'border-l-amber-500 bg-gradient-to-r from-amber-50/90 via-white to-amber-50/30 border-t border-r border-b border-amber-200'
+                                        : getPortData(portNum).is_reservation
+                                            ? 'border-l-cyan-500 bg-gradient-to-r from-cyan-50/90 via-white to-cyan-50/30 border-t border-r border-b border-cyan-200'
+                                            : 'border-l-indigo-600 bg-gradient-to-r from-indigo-50/60 via-slate-50/40 to-white border-t border-r border-b border-slate-200/90 hover:border-indigo-300'
+                            ]"
+                        >
                             <!-- Upper line: Port number, status pill, customer info -->
                             <div class="flex items-center justify-between gap-2 flex-wrap">
                                 <div class="flex items-center gap-2 min-w-0 flex-1">
-                                    <span class="w-6 h-6 rounded-md bg-slate-200 text-slate-800 text-[10px] font-mono font-black flex items-center justify-center shrink-0 border border-slate-300">
+                                    <span
+                                        class="w-7 h-7 rounded-lg text-white text-[11px] font-mono font-black flex items-center justify-center shrink-0 shadow-xs border"
+                                        :class="[
+                                            getCbpForCustomer(getPortData(portNum).customer)
+                                                ? 'bg-rose-600 border-rose-700'
+                                                : getPortData(portNum).customer?.status === 'suspended'
+                                                    ? 'bg-amber-600 border-amber-700'
+                                                    : getPortData(portNum).is_reservation
+                                                        ? 'bg-cyan-600 border-cyan-700'
+                                                        : 'bg-indigo-600 border-indigo-700'
+                                        ]"
+                                    >
                                         {{ String(portNum).padStart(2, '0') }}
                                     </span>
 
@@ -260,20 +351,35 @@
                                             {{ getPortData(portNum).customer.customer_code }} - {{ getPortData(portNum).customer.name }}
                                         </a>
                                     </div>
-                                    <span v-else class="font-medium text-slate-400 italic text-xs">ONT Inventori</span>
+                                    <span v-else class="font-medium text-slate-500 italic text-xs">ONT Inventori (Tanpa Pelanggan)</span>
                                 </div>
 
-                                <!-- Gratis Pill if Applicable -->
-                                <span
-                                    v-if="getPortData(portNum).customer?.service_status === 'gratis'"
-                                    class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs"
-                                >
-                                    🎁 Gratis
-                                </span>
+                                <!-- Terisi indicator badge on the right -->
+                                <div class="flex items-center gap-1.5 shrink-0">
+                                    <span
+                                        v-if="getPortData(portNum).customer?.service_status === 'gratis'"
+                                        class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs"
+                                    >
+                                        🎁 Gratis
+                                    </span>
+
+                                    <span
+                                        class="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border shadow-2xs"
+                                        :class="[
+                                            getCbpForCustomer(getPortData(portNum).customer)
+                                                ? 'bg-rose-100 text-rose-800 border-rose-300'
+                                                : getPortData(portNum).customer?.status === 'suspended'
+                                                    ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                                    : 'bg-indigo-100 text-indigo-800 border-indigo-200'
+                                        ]"
+                                    >
+                                        ● TERISI
+                                    </span>
+                                </div>
                             </div>
 
                             <!-- Lower line: Date & VLAN & Device info -->
-                            <div class="flex items-center gap-2 mt-1.5 pl-8 flex-wrap text-[10px] text-slate-500">
+                            <div class="flex items-center gap-2 mt-1.5 pl-9 flex-wrap text-[10px] text-slate-500">
                                 <span v-if="getPortData(portNum).customer?.activation_date">
                                     Aktif: <strong>{{ getPortData(portNum).customer.activation_date }}</strong>
                                 </span>
@@ -297,7 +403,7 @@
                             </div>
 
                             <!-- CBP Alert Banner (if CBP Active) -->
-                            <div v-if="getCbpForCustomer(getPortData(portNum).customer)" class="mt-2 ml-8 p-2 rounded-xl bg-rose-50 border border-rose-200 text-[10px] space-y-1">
+                            <div v-if="getCbpForCustomer(getPortData(portNum).customer)" class="mt-2 ml-9 p-2 rounded-xl bg-rose-50 border border-rose-200 text-[10px] space-y-1">
                                 <div class="flex items-center justify-between text-rose-900 font-black">
                                     <span class="flex items-center gap-1">
                                         <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
@@ -315,18 +421,35 @@
                         </div>
                     </template>
 
-                    <!-- Available / Free Port -->
+                    <!-- Port Row Item: KOSONG / READY -->
                     <template v-else>
-                        <div class="flex items-center justify-between py-1.5 px-2.5 rounded-xl bg-emerald-50/50 border border-emerald-100 hover:bg-emerald-50 hover:border-emerald-300 transition-colors">
-                            <div class="flex items-center gap-2">
-                                <span class="w-6 h-6 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-mono font-black flex items-center justify-center border border-emerald-200">
+                        <div
+                            class="flex items-center justify-between py-2 px-3 rounded-xl border-2 border-dashed transition-all"
+                            :class="[
+                                highlightedPort === portNum
+                                    ? 'bg-emerald-100 border-emerald-500 ring-2 ring-emerald-400 shadow-md scale-[1.01]'
+                                    : 'bg-gradient-to-r from-emerald-50/90 via-teal-50/50 to-emerald-50/30 border-emerald-300/90 hover:bg-emerald-50 hover:border-emerald-400 shadow-2xs'
+                            ]"
+                        >
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <span class="w-7 h-7 rounded-lg bg-emerald-600 text-white text-[11px] font-mono font-black flex items-center justify-center shrink-0 shadow-xs border border-emerald-700">
                                     {{ String(portNum).padStart(2, '0') }}
                                 </span>
-                                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                                <span class="text-xs font-semibold text-emerald-900">Port Kosong / Siap Pakai</span>
+
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <span class="relative flex h-2.5 w-2.5 shrink-0">
+                                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                                    </span>
+                                    <div class="flex flex-col">
+                                        <span class="text-xs font-black text-emerald-900 leading-tight">Port Kosong</span>
+                                        <span class="text-[10px] text-emerald-700 font-medium">Siap dialokasikan untuk pelanggan baru</span>
+                                    </div>
+                                </div>
                             </div>
-                            <span class="text-[10px] font-mono font-bold text-emerald-600 bg-emerald-100/70 px-2 py-0.5 rounded-full">
-                                AVAILABLE
+
+                            <span class="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-emerald-800 bg-white border border-emerald-300 px-2.5 py-0.5 rounded-full shadow-2xs shrink-0">
+                                ⚡ SIAP PAKAI
                             </span>
                         </div>
                     </template>
@@ -373,7 +496,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { Link } from '@inertiajs/vue3';
 
 const props = defineProps({
@@ -531,31 +654,87 @@ const portDataMap = computed(() => {
 
 const getPortData = (portNum) => portDataMap.value.get(Number(portNum)) || null;
 
+const activePortFilter = ref('all');
+const highlightedPort = ref(null);
+
+const filteredPortNumbers = computed(() => {
+    const total = Number(props.odp?.total_ports || 0);
+    const nums = [];
+    for (let i = 1; i <= total; i++) {
+        const data = getPortData(i);
+        if (activePortFilter.value === 'empty' && data) continue;
+        if (activePortFilter.value === 'occupied' && !data) continue;
+        nums.push(i);
+    }
+    return nums;
+});
+
+const scrollToPort = (portNum) => {
+    activePortFilter.value = 'all';
+    highlightedPort.value = portNum;
+    setTimeout(() => {
+        const el = document.getElementById(`odp-${props.odp.id}-port-${portNum}`);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }, 50);
+    setTimeout(() => {
+        if (highlightedPort.value === portNum) {
+            highlightedPort.value = null;
+        }
+    }, 2500);
+};
+
 const getSocketBoxClass = (portNum) => {
     const data = getPortData(portNum);
-    if (!data) return 'bg-emerald-50/70 border-emerald-200 text-emerald-800 hover:bg-emerald-100';
-    if (getCbpForCustomer(data.customer)) return 'bg-rose-100 border-rose-300 text-rose-800 animate-pulse';
-    if (data.customer?.status === 'active') return 'bg-slate-100 border-indigo-200 text-indigo-900';
-    if (data.customer?.status === 'suspended') return 'bg-orange-100 border-orange-300 text-orange-900';
-    return 'bg-amber-100 border-amber-300 text-amber-900';
+    // Port Kosong / Ready (Hijau Lembut + Border Putus-putus)
+    if (!data) {
+        return 'bg-emerald-50 hover:bg-emerald-100 border-2 border-dashed border-emerald-400 text-emerald-800 shadow-2xs hover:scale-110';
+    }
+    // Port Terisi - CBP (Merah Pulse)
+    if (getCbpForCustomer(data.customer)) {
+        return 'bg-gradient-to-br from-rose-600 to-rose-700 border-rose-800 text-white font-black shadow-xs animate-pulse hover:scale-110';
+    }
+    // Port Terisi - Isolir / Suspended (Oranye / Amber)
+    if (data.customer?.status === 'suspended') {
+        return 'bg-gradient-to-br from-amber-500 to-amber-600 border-amber-700 text-white font-black shadow-xs hover:scale-110';
+    }
+    // Port Terisi - Reservasi / Pasang Baru (Cyan)
+    if (data.is_reservation) {
+        return 'bg-gradient-to-br from-cyan-600 to-cyan-700 border-cyan-800 text-white font-black shadow-xs hover:scale-110';
+    }
+    // Port Terisi - Aktif (Biru Indigo Solid)
+    if (data.customer?.status === 'active') {
+        return 'bg-gradient-to-br from-indigo-600 to-blue-700 border-indigo-800 text-white font-black shadow-xs hover:scale-110';
+    }
+    // Port Terisi - ONT Inventori
+    return 'bg-gradient-to-br from-slate-700 to-slate-800 border-slate-900 text-slate-100 font-black shadow-xs hover:scale-110';
 };
 
 const getSocketLedClass = (portNum) => {
     const data = getPortData(portNum);
-    if (!data) return 'bg-emerald-400';
-    if (getCbpForCustomer(data.customer)) return 'bg-rose-500 animate-pulse';
-    if (data.customer?.status === 'active') return 'bg-emerald-500';
-    if (data.customer?.status === 'suspended') return 'bg-orange-500';
-    return 'bg-amber-500';
+    // Port Kosong -> Glowing Green Beacon
+    if (!data) return 'bg-emerald-400 ring-2 ring-emerald-200';
+    // Port Terisi - CBP -> Pulsing Ping Dot
+    if (getCbpForCustomer(data.customer)) return 'bg-white animate-ping';
+    // Port Terisi - Isolir -> Amber Warning Dot
+    if (data.customer?.status === 'suspended') return 'bg-amber-100 ring-1 ring-white';
+    // Port Terisi - Reservasi -> Cyan Pulse
+    if (data.is_reservation) return 'bg-cyan-200 animate-pulse';
+    // Port Terisi - Aktif -> Cyan Laser Glow
+    if (data.customer?.status === 'active') return 'bg-cyan-300 ring-1 ring-white/90 shadow-2xs';
+    // Port Terisi - ONT Tanpa Pelanggan
+    return 'bg-slate-300';
 };
 
 const getSocketTooltip = (portNum) => {
     const data = getPortData(portNum);
-    if (!data) return `Port ${portNum}: Tersedia / Siap Pakai`;
+    if (!data) return `Port ${portNum}: 🟢 KOSONG / SIAP PAKAI (Klik untuk lihat detail)`;
     const snInfo = data.serial_number ? ` | SN: ${data.serial_number}` : '';
     const phoneInfo = data.customer?.phone ? ` | HP: ${data.customer.phone}` : '';
-    if (getCbpForCustomer(data.customer)) return `Port ${portNum}: ⏳ Proses CBP (${data.customer?.name}${snInfo})`;
-    return `Port ${portNum}: ${data.customer?.status || 'Terpakai'} - ${data.customer?.name || 'Customer'}${snInfo}${phoneInfo}`;
+    if (getCbpForCustomer(data.customer)) return `Port ${portNum}: 🔴 PROSES CBP (${data.customer?.name}${snInfo}) (Klik untuk lihat detail)`;
+    if (data.customer?.status === 'suspended') return `Port ${portNum}: 🟠 ISOLIR (${data.customer?.name}${snInfo}) (Klik untuk lihat detail)`;
+    return `Port ${portNum}: 🔵 TERISI (${data.customer?.name || 'Customer'}${snInfo}${phoneInfo}) (Klik untuk lihat detail)`;
 };
 
 const pendingInstallations = computed(() => {
