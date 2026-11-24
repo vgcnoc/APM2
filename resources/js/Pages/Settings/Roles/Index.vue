@@ -763,9 +763,21 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import Swal from 'sweetalert2';
 import AppLayout from '@/Layouts/AppLayout.vue';
+
+const page = usePage();
+const isHolding = computed(() => Boolean(page.props?.current_company?.is_holding));
+
+const holdingOnlyGroupNames = ['Data Migration Center', 'Privasi & Target Omset'];
+const holdingOnlyPermissionNames = [
+    'menu_data_migration',
+    'data_migration_template_download',
+    'data_migration_dry_run',
+    'data_migration_execute',
+    'menu_data_masking',
+];
 
 const props = defineProps({
     roles: Array,
@@ -903,10 +915,23 @@ const categoryMap = {
     ],
 };
 
+// ── Available Permission Groups (Filtered for Mitra) ─────────
+const availablePermissionGroups = computed(() => {
+    let groups = props.permissionGroups || [];
+    if (!isHolding.value) {
+        groups = groups.filter(g => !holdingOnlyGroupNames.includes(g.group) && !['menu_data_migration', 'menu_data_masking'].includes(g.menu_parent));
+        groups = groups.map(g => ({
+            ...g,
+            permissions: (g.permissions || []).filter(p => !holdingOnlyPermissionNames.includes(p.name))
+        }));
+    }
+    return groups;
+});
+
 // ── Computed Properties ────────────────────────────
 const allPermissionNames = computed(() => {
     const names = [];
-    props.permissionGroups.forEach(g => {
+    availablePermissionGroups.value.forEach(g => {
         g.permissions.forEach(p => names.push(p.name));
     });
     return names;
@@ -954,7 +979,7 @@ const categoryTabs = computed(() => {
 
 const countPermissionsByCategory = (catKey) => {
     const targetGroups = categoryMap[catKey] || [];
-    return props.permissionGroups
+    return availablePermissionGroups.value
         .filter(g => targetGroups.includes(g.group) || g.category === catKey)
         .reduce((sum, g) => sum + g.permissions.length, 0);
 };
@@ -967,7 +992,7 @@ const typeCounts = computed(() => {
         res[t] = { total: 0, checked: 0 };
     });
 
-    props.permissionGroups.forEach(g => {
+    availablePermissionGroups.value.forEach(g => {
         g.permissions.forEach(p => {
             const t = p.type || 'button';
             if (res[t]) {
@@ -984,7 +1009,7 @@ const typeCounts = computed(() => {
 
 // Filtered Groups based on search, category, type, and status
 const filteredGroups = computed(() => {
-    let groups = props.permissionGroups;
+    let groups = availablePermissionGroups.value;
 
     // 1. Filter by category
     if (selectedCategory.value !== 'all') {
@@ -1037,8 +1062,12 @@ const selectRole = (role) => {
         }
     }
     selectedRole.value = role;
-    selectedPermissions.value = [...(role.permissions || [])];
-    openGroups.value = props.permissionGroups.map(g => g.group);
+    let perms = [...(role.permissions || [])];
+    if (!isHolding.value) {
+        perms = perms.filter(p => !holdingOnlyPermissionNames.includes(p));
+    }
+    selectedPermissions.value = perms;
+    openGroups.value = availablePermissionGroups.value.map(g => g.group);
 };
 
 const isGroupOpen = (groupName) => openGroups.value.includes(groupName);
@@ -1050,7 +1079,7 @@ const toggleGroup = (groupName) => {
 };
 
 const expandAll = () => {
-    openGroups.value = props.permissionGroups.map(g => g.group);
+    openGroups.value = availablePermissionGroups.value.map(g => g.group);
 };
 
 const collapseAll = () => {
@@ -1373,15 +1402,19 @@ const resetFilters = () => {
 const savePermissions = () => {
     if (!selectedRole.value || selectedRole.value.name === 'admin') return;
     isSaving.value = true;
+    let permsToSave = [...selectedPermissions.value];
+    if (!isHolding.value) {
+        permsToSave = permsToSave.filter(p => !holdingOnlyPermissionNames.includes(p));
+    }
     router.post(`/settings/roles/${selectedRole.value.id}/update`, {
         name: selectedRole.value.name,
-        permissions: selectedPermissions.value,
+        permissions: permsToSave,
     }, {
         preserveScroll: true,
         onSuccess: () => {
             selectedRole.value = {
                 ...selectedRole.value,
-                permissions: [...selectedPermissions.value],
+                permissions: permsToSave,
             };
             Swal.fire({
                 icon: 'success',

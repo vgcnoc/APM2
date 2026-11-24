@@ -11,10 +11,31 @@ use Spatie\Permission\Models\Role;
 class DataMaskingController extends Controller
 {
     /**
+     * Memastikan hanya Super Admin Holding (Pusat) yang dapat mengakses
+     */
+    protected function ensureHoldingAccess(): void
+    {
+        $user = auth()->user();
+        if (!$user) {
+            abort(401);
+        }
+        $cId = \App\Models\Role::resolveActiveCompanyId();
+        $company = \App\Models\Company::find($cId);
+        $isHolding = $cId === 1 || ($company && $company->is_holding);
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : (in_array(strtolower($user->role ?? ''), ['admin', 'super admin', 'superadmin'], true) || $user->hasRole('admin'));
+
+        if (!$isHolding || !$isSuperAdmin) {
+            abort(403, 'Fitur Privasi & Target Omset hanya dapat diakses oleh Super Admin Holding (Pusat).');
+        }
+    }
+
+    /**
      * Show Data Masking Settings Page
      */
     public function index()
     {
+        $this->ensureHoldingAccess();
+
         $settings = DataPrivacyMaskingService::getSettings();
         
         $roles = Role::orderBy('name')->pluck('name')->toArray();
@@ -35,6 +56,8 @@ class DataMaskingController extends Controller
      */
     public function update(Request $request)
     {
+        $this->ensureHoldingAccess();
+
         $validated = $request->validate([
             'enabled' => 'required|boolean',
             'mode' => 'required|in:omset,customer_count',
@@ -61,6 +84,8 @@ class DataMaskingController extends Controller
      */
     public function simulate(Request $request)
     {
+        $this->ensureHoldingAccess();
+
         $params = [
             'mode' => $request->get('mode', 'omset'),
             'target_omset' => $request->get('target_omset', 100000000),
@@ -81,6 +106,8 @@ class DataMaskingController extends Controller
      */
     public function togglePreview(Request $request)
     {
+        $this->ensureHoldingAccess();
+
         $user = auth()->user();
         if (!DataPrivacyMaskingService::isSuperAdmin($user)) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 403);

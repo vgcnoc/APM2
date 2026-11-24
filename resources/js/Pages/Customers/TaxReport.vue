@@ -408,10 +408,11 @@
 
                 <!-- Modal Footer -->
                 <div class="p-5 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-3">
-                    <Link href="/settings/data-masking" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                    <Link v-if="$page.props.current_company?.is_holding && ['admin', 'super admin', 'superadmin'].includes(String($page.props.auth?.user?.role || '').toLowerCase())" href="/settings/data-masking" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
                         <span>⚙️ Buka Pengaturan Lengkap</span>
                         <span>&rarr;</span>
                     </Link>
+                    <div v-else></div>
                     <div class="flex items-center gap-2">
                         <button type="button" @click="showMaskingModal = false" class="px-4 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-100">
                             Batal

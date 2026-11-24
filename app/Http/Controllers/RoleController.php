@@ -10,13 +10,45 @@ use Illuminate\Validation\Rule;
 
 class RoleController extends Controller
 {
+    public static array $holdingOnlyPermissions = [
+        'menu_data_migration',
+        'data_migration_template_download',
+        'data_migration_dry_run',
+        'data_migration_execute',
+        'menu_data_masking',
+    ];
+
     /**
      * Master list of all permissions grouped by module.
      * Categorized by 5 types: menu, card, tab, filter, button, feature.
      */
-    public static function getPermissionRegistry(): array
+    public static function getPermissionRegistry(bool $isMitra = false): array
     {
-        return \App\Support\PermissionRegistry::get();
+        $groups = \App\Support\PermissionRegistry::get();
+        if ($isMitra) {
+            $holdingOnlyGroups = ['Data Migration Center', 'Privasi & Target Omset'];
+            $holdingOnlyPermissions = self::$holdingOnlyPermissions;
+
+            $groups = array_values(array_filter($groups, function ($group) use ($holdingOnlyGroups) {
+                if (in_array($group['group'] ?? '', $holdingOnlyGroups, true)) {
+                    return false;
+                }
+                if (in_array($group['menu_parent'] ?? '', ['menu_data_migration', 'menu_data_masking'], true)) {
+                    return false;
+                }
+                return true;
+            }));
+
+            foreach ($groups as &$grp) {
+                if (!empty($grp['permissions'])) {
+                    $grp['permissions'] = array_values(array_filter($grp['permissions'], function ($p) use ($holdingOnlyPermissions) {
+                        return !in_array($p['name'] ?? '', $holdingOnlyPermissions, true);
+                    }));
+                }
+            }
+            unset($grp);
+        }
+        return $groups;
     }
 
     /**
@@ -64,6 +96,8 @@ class RoleController extends Controller
         $this->syncPermissionsToDb();
 
         $cId = Role::resolveActiveCompanyId();
+        $activeComp = \App\Models\Company::find($cId);
+        $isMitra = $cId > 1 || ($activeComp && !$activeComp->is_holding);
 
         // Jika perusahaan aktif adalah Mitra (bukan Holding 1), pastikan seluruh role standar sudah ada
         if ($cId > 1) {
@@ -81,8 +115,24 @@ class RoleController extends Controller
                         'guard_name' => $hr->guard_name ?: 'web',
                     ]);
                     if ($hr->permissions->isNotEmpty()) {
-                        $newRole->syncPermissions($hr->permissions->pluck('name')->toArray());
+                        $perms = $hr->permissions->pluck('name')->toArray();
+                        if ($isMitra) {
+                            $perms = array_values(array_diff($perms, self::$holdingOnlyPermissions));
+                        }
+                        $newRole->syncPermissions($perms);
                     }
+                }
+            }
+
+            // Sanitasi: Pastikan role mitra di database bersih dari izin khusus holding
+            if ($isMitra) {
+                $mitraRoleIds = Role::where('company_id', $cId)->pluck('id');
+                if ($mitraRoleIds->isNotEmpty()) {
+                    \Illuminate\Support\Facades\DB::table('role_has_permissions')
+                        ->join('permissions', 'permissions.id', '=', 'role_has_permissions.permission_id')
+                        ->whereIn('role_has_permissions.role_id', $mitraRoleIds)
+                        ->whereIn('permissions.name', self::$holdingOnlyPermissions)
+                        ->delete();
                 }
             }
         }
@@ -91,11 +141,15 @@ class RoleController extends Controller
             ->with('permissions')
             ->orderBy('name')
             ->get()
-            ->map(function ($role) use ($cId) {
+            ->map(function ($role) use ($cId, $isMitra) {
+                $perms = $role->permissions->pluck('name')->toArray();
+                if ($isMitra) {
+                    $perms = array_values(array_diff($perms, self::$holdingOnlyPermissions));
+                }
                 return [
                     'id' => $role->id,
                     'name' => $role->name,
-                    'permissions' => $role->permissions->pluck('name')->toArray(),
+                    'permissions' => $perms,
                     'users_count' => $role->users()->where(function ($uq) use ($cId) {
                         if ($cId === 1) {
                             $uq->where('users.company_id', 1)->orWhereNull('users.company_id');
@@ -108,7 +162,7 @@ class RoleController extends Controller
 
         return Inertia::render('Settings/Roles/Index', [
             'roles' => $roles,
-            'permissionGroups' => $this->getPermissionRegistry(),
+            'permissionGroups' => $this->getPermissionRegistry($isMitra),
             'rolePresets' => \App\Support\PermissionRegistry::getDefaultRolePresets(),
             'positions' => \App\Models\Position::orderBy('name')->get(),
         ]);
@@ -119,6 +173,8 @@ class RoleController extends Controller
         $this->syncPermissionsToDb();
         $request->merge(['name' => strtolower(trim($request->name))]);
         $cId = Role::resolveActiveCompanyId();
+        $activeComp = \App\Models\Company::find($cId);
+        $isMitra = $cId > 1 || ($activeComp && !$activeComp->is_holding);
 
         $request->validate([
             'name' => [
@@ -143,7 +199,11 @@ class RoleController extends Controller
         ]);
 
         if ($request->has('permissions') && is_array($request->permissions)) {
-            $role->syncPermissions($request->permissions);
+            $perms = $request->permissions;
+            if ($isMitra) {
+                $perms = array_values(array_diff($perms, self::$holdingOnlyPermissions));
+            }
+            $role->syncPermissions($perms);
         }
         $this->markRoleCustomized($role);
 
@@ -158,6 +218,8 @@ class RoleController extends Controller
         $this->syncPermissionsToDb();
         $request->merge(['name' => strtolower(trim($request->name))]);
         $cId = Role::resolveActiveCompanyId();
+        $activeComp = \App\Models\Company::find($cId);
+        $isMitra = $cId > 1 || ($activeComp && !$activeComp->is_holding);
 
         // Validasi kepemilikan role
         if ($cId === 1) {
@@ -190,7 +252,11 @@ class RoleController extends Controller
             if ($request->name !== 'admin') {
                 return redirect()->back()->with('error', 'Nama role Admin tidak dapat diubah.');
             }
-            $role->syncPermissions(Permission::where('guard_name', 'web')->get());
+            $allPerms = Permission::where('guard_name', 'web')->pluck('name')->toArray();
+            if ($isMitra) {
+                $allPerms = array_values(array_diff($allPerms, self::$holdingOnlyPermissions));
+            }
+            $role->syncPermissions($allPerms);
             app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
             \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);
             return redirect()->back()->with('success', "Role Admin terkunci permanen dengan akses penuh.");
@@ -200,7 +266,11 @@ class RoleController extends Controller
 
         // PENTING: hanya sinkronkan izin jika payload benar-benar mengirim daftar izin.
         if ($request->exists('permissions') && is_array($request->input('permissions'))) {
-            $role->syncPermissions($request->input('permissions'));
+            $perms = $request->input('permissions');
+            if ($isMitra) {
+                $perms = array_values(array_diff($perms, self::$holdingOnlyPermissions));
+            }
+            $role->syncPermissions($perms);
             $this->markRoleCustomized($role);
         }
 
@@ -219,6 +289,8 @@ class RoleController extends Controller
 
         $targetName = strtolower(trim($request->name));
         $cId = Role::resolveActiveCompanyId();
+        $activeComp = \App\Models\Company::find($cId);
+        $isMitra = $cId > 1 || ($activeComp && !$activeComp->is_holding);
 
         if ($targetName === strtolower($role->name)) {
             return redirect()->back()->with('error', "Nama role tujuan tidak boleh sama persis dengan role sumber.");
@@ -234,6 +306,10 @@ class RoleController extends Controller
             $sourcePermissions = \App\Support\PermissionRegistry::allNames();
         } else {
             $sourcePermissions = $role->permissions->pluck('name')->toArray();
+        }
+
+        if ($isMitra) {
+            $sourcePermissions = array_values(array_diff($sourcePermissions, self::$holdingOnlyPermissions));
         }
 
         $existingRole = Role::where(function ($q) use ($cId) {
@@ -297,10 +373,20 @@ class RoleController extends Controller
             return redirect()->back()->with('error', "Template preset untuk '{$presetKey}' tidak ditemukan.");
         }
 
+        $activeComp = \App\Models\Company::find($cId);
+        $isMitra = $cId > 1 || ($activeComp && !$activeComp->is_holding);
+
         $permissions = $presets[$presetKey];
         if (in_array(strtolower($role->name), ['admin', 'super admin', 'superadmin'], true)) {
-            $role->syncPermissions(\Spatie\Permission\Models\Permission::all());
+            $allPerms = Permission::where('guard_name', 'web')->pluck('name')->toArray();
+            if ($isMitra) {
+                $allPerms = array_values(array_diff($allPerms, self::$holdingOnlyPermissions));
+            }
+            $role->syncPermissions($allPerms);
         } else {
+            if ($isMitra) {
+                $permissions = array_values(array_diff($permissions, self::$holdingOnlyPermissions));
+            }
             $role->syncPermissions($permissions);
             $this->markRoleCustomized($role);
 

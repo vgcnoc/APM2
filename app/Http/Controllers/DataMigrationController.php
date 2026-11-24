@@ -26,10 +26,31 @@ class DataMigrationController extends Controller
     }
 
     /**
+     * Memastikan hanya Super Admin Holding (Pusat) yang dapat mengakses
+     */
+    protected function ensureHoldingAccess(): void
+    {
+        $user = auth()->user();
+        if (!$user) {
+            abort(401);
+        }
+        $cId = \App\Models\Role::resolveActiveCompanyId();
+        $company = \App\Models\Company::find($cId);
+        $isHolding = $cId === 1 || ($company && $company->is_holding);
+        $isSuperAdmin = method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : (in_array(strtolower($user->role ?? ''), ['admin', 'super admin', 'superadmin'], true) || $user->hasRole('admin'));
+
+        if (!$isHolding || !$isSuperAdmin) {
+            abort(403, 'Fitur Data Migration Center hanya dapat diakses oleh Super Admin Holding (Pusat).');
+        }
+    }
+
+    /**
      * Tampilan Antarmuka Data Migration Center
      */
     public function index(Request $request): Response
     {
+        $this->ensureHoldingAccess();
+
         if (!auth()->user()->can('menu_data_migration') && !auth()->user()->hasRole('admin')) {
             abort(403, 'Anda tidak memiliki hak akses ke Data Migration Center.');
         }
@@ -79,6 +100,8 @@ class DataMigrationController extends Controller
      */
     public function downloadTemplate(string $category): StreamedResponse
     {
+        $this->ensureHoldingAccess();
+
         if (!auth()->user()->can('data_migration_template_download') && !auth()->user()->hasRole('admin')) {
             abort(403, 'Anda tidak memiliki hak akses untuk mengunduh template.');
         }
@@ -99,6 +122,8 @@ class DataMigrationController extends Controller
      */
     public function dryRun(Request $request): JsonResponse
     {
+        $this->ensureHoldingAccess();
+
         if (!auth()->user()->can('data_migration_dry_run') && !auth()->user()->hasRole('admin')) {
             return response()->json(['error' => 'Akses ditolak.'], 403);
         }
@@ -146,6 +171,8 @@ class DataMigrationController extends Controller
      */
     public function execute(Request $request): JsonResponse
     {
+        $this->ensureHoldingAccess();
+
         if (!auth()->user()->can('data_migration_execute') && !auth()->user()->hasRole('admin')) {
             return response()->json(['error' => 'Akses ditolak untuk eksekusi impor.'], 403);
         }
@@ -174,6 +201,8 @@ class DataMigrationController extends Controller
      */
     public function downloadErrorReport(Request $request): StreamedResponse
     {
+        $this->ensureHoldingAccess();
+
         $rows = $request->input('errors', []);
         $category = $request->input('category', 'data');
         $fileName = "laporan_error_migrasi_{$category}_" . date('YmdHis') . ".csv";
