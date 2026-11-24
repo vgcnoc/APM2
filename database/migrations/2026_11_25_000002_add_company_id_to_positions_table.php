@@ -55,7 +55,6 @@ return new class extends Migration
                                 'company_id' => $mitraId,
                                 'name' => $pos->name,
                                 'department' => $pos->department,
-                                'base_salary' => $pos->base_salary ?? 0,
                                 'description' => $pos->description,
                                 'created_at' => now(),
                                 'updated_at' => now(),
