@@ -308,7 +308,8 @@ class User extends Authenticatable
 
     public function isTeknisi(): bool
     {
-        return $this->role === 'teknisi';
+        return in_array($this->role, ['teknisi', 'teknisi-2', 'teknisi tim serbu', 'tim serbu'], true) ||
+               (method_exists($this, 'hasAnyRole') && $this->hasAnyRole(['teknisi', 'teknisi-2', 'teknisi tim serbu', 'tim serbu']));
     }
 
     public function isNoc(): bool

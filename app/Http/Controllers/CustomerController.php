@@ -1637,7 +1637,7 @@ class CustomerController extends Controller
                             })
                             ->orWhere('sales_id', auth()->id());
                     });
-                } elseif (auth()->user()->can('customers_survey_view_assigned') || auth()->user()->hasRole('teknisi')) {
+                } elseif (auth()->user()->can('customers_survey_view_assigned') || auth()->user()->hasAnyRole(['teknisi', 'teknisi-2'])) {
                     $q->where(function($sub) {
                         $sub->whereHas('technicianSchedules', function($sq) {
                             $sq->where('technician_id', auth()->id())->where('type', 'survey');
@@ -1783,7 +1783,7 @@ class CustomerController extends Controller
                                 $sq->where('surveyor_id', auth()->id());
                             });
                     });
-                } elseif (auth()->user()->can('customers_survey_view_assigned') || auth()->user()->hasRole('teknisi')) {
+                } elseif (auth()->user()->can('customers_survey_view_assigned') || auth()->user()->hasAnyRole(['teknisi', 'teknisi-2'])) {
                     $openCustomerQuery->where(function($sub) {
                         $sub->whereHas('technicianSchedules', function($sq) {
                             $sq->where('technician_id', auth()->id())->where('type', 'survey');
@@ -1830,7 +1830,7 @@ class CustomerController extends Controller
                         })
                         ->orWhere('sales_id', auth()->id());
                 });
-            } elseif (auth()->user()->can('customers_installed_view_assigned') || auth()->user()->hasRole('teknisi')) {
+            } elseif (auth()->user()->can('customers_installed_view_assigned') || auth()->user()->hasAnyRole(['teknisi', 'teknisi-2'])) {
                 $baseQuery->whereHas('technicianSchedules', function ($sq) {
                     $sq->where('technician_id', auth()->id())->where('type', 'installation');
                 });
@@ -2658,7 +2658,7 @@ class CustomerController extends Controller
         $userRole = strtolower(trim($user?->role ?? ''));
         $isInternalStaff = in_array($userRole, [
             'admin', 'super admin', 'superadmin', 'super-admin', 
-            'cs', 'admin cs', 'manager', 'noc', 'kepala teknisi', 'teknisi', 'maintenance', 'dispatcher', 'finance', 'hrd'
+            'cs', 'admin cs', 'manager', 'noc', 'kepala teknisi', 'teknisi', 'teknisi-2', 'maintenance', 'dispatcher', 'finance', 'hrd'
         ]) || ($user && method_exists($user, 'hasRole') && $user->hasRole('admin'));
 
         $isAffiliate = $isAffiliatePortal || (!$isInternalStaff && ($userRole === 'affiliate' || $userRole === 'reseller'));
@@ -2698,7 +2698,7 @@ class CustomerController extends Controller
         $userRole = strtolower(trim($user?->role ?? ''));
         $isInternalStaff = in_array($userRole, [
             'admin', 'super admin', 'superadmin', 'super-admin', 
-            'cs', 'admin cs', 'manager', 'noc', 'kepala teknisi', 'teknisi', 'maintenance', 'dispatcher', 'finance', 'hrd'
+            'cs', 'admin cs', 'manager', 'noc', 'kepala teknisi', 'teknisi', 'teknisi-2', 'maintenance', 'dispatcher', 'finance', 'hrd'
         ]) || ($user && method_exists($user, 'hasRole') && $user->hasRole('admin'));
 
         $isAffiliate = !$isInternalStaff && ($userRole === 'affiliate' || $userRole === 'reseller');
@@ -2823,7 +2823,7 @@ class CustomerController extends Controller
         $userRole = strtolower(trim($user?->role ?? ''));
         $isInternalStaff = in_array($userRole, [
             'admin', 'super admin', 'superadmin', 'super-admin', 
-            'cs', 'admin cs', 'manager', 'noc', 'kepala teknisi', 'teknisi', 'maintenance', 'dispatcher', 'finance', 'hrd'
+            'cs', 'admin cs', 'manager', 'noc', 'kepala teknisi', 'teknisi', 'teknisi-2', 'maintenance', 'dispatcher', 'finance', 'hrd'
         ]) || ($user && method_exists($user, 'hasRole') && $user->hasRole('admin'));
 
         $isAffiliate = !$isInternalStaff && ($userRole === 'affiliate' || $userRole === 'reseller');
@@ -3404,7 +3404,7 @@ class CustomerController extends Controller
         $userRole = strtolower(trim($user?->role ?? ''));
         $isInternalStaff = in_array($userRole, [
             'admin', 'super admin', 'superadmin', 'super-admin', 
-            'cs', 'admin cs', 'manager', 'noc', 'kepala teknisi', 'teknisi', 'maintenance', 'dispatcher', 'finance', 'hrd'
+            'cs', 'admin cs', 'manager', 'noc', 'kepala teknisi', 'teknisi', 'teknisi-2', 'maintenance', 'dispatcher', 'finance', 'hrd'
         ]) || ($user && method_exists($user, 'hasRole') && $user->hasRole('admin'));
 
         $isAffiliate = !$isInternalStaff && ($userRole === 'affiliate' || $userRole === 'reseller');
@@ -3556,7 +3556,7 @@ class CustomerController extends Controller
         $userRole = strtolower(trim($user?->role ?? ''));
         $isInternalStaff = in_array($userRole, [
             'admin', 'super admin', 'superadmin', 'super-admin', 
-            'cs', 'admin cs', 'manager', 'noc', 'kepala teknisi', 'teknisi', 'maintenance', 'dispatcher', 'finance', 'hrd'
+            'cs', 'admin cs', 'manager', 'noc', 'kepala teknisi', 'teknisi', 'teknisi-2', 'maintenance', 'dispatcher', 'finance', 'hrd'
         ]) || ($user && method_exists($user, 'hasRole') && $user->hasRole('admin'));
 
         $isAffiliate = !$isInternalStaff && ($userRole === 'affiliate' || $userRole === 'reseller');

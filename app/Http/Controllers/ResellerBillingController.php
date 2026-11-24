@@ -426,7 +426,7 @@ class ResellerBillingController extends Controller
         $collectors = \App\Models\User::forAssignment()
             ->where('is_active', true)
             ->where(function($q) {
-                $q->whereHas('roles', fn($rq) => $rq->whereIn('name', ['penagih', 'admin', 'super admin', 'biller', 'teknisi']))
+                $q->whereHas('roles', fn($rq) => $rq->whereIn('name', ['penagih', 'admin', 'super admin', 'biller', 'teknisi', 'teknisi-2']))
                   ->orWhereIn('id', Payment::select('collected_by')->whereNotNull('collected_by'));
             })
             ->orderBy('name')

@@ -69,7 +69,7 @@ class ResellerSettingController extends Controller
                   ->orWhereHas('customer');
             })->where('role', '!=', 'reseller');
         } elseif ($roleFilter === 'staff') {
-            $query->whereIn('role', ['admin', 'superadmin', 'cs', 'teknisi', 'noc', 'karyawan', 'finance']);
+            $query->whereIn('role', ['admin', 'superadmin', 'cs', 'teknisi', 'teknisi-2', 'noc', 'karyawan', 'finance']);
         }
 
         // Pencarian nama, email, phone, atau customer code

@@ -44,8 +44,8 @@ class DashboardController extends Controller
     {
         $currentUser = auth()->user();
         if ($currentUser && (
-            in_array($currentUser->role, ['teknisi', 'maintenance', 'teknisi tim serbu', 'maintenance-1']) ||
-            (method_exists($currentUser, 'hasAnyRole') && $currentUser->hasAnyRole(['teknisi', 'maintenance', 'teknisi tim serbu', 'Maintenance-1', 'maintenance-1']))
+            in_array($currentUser->role, ['teknisi', 'teknisi-2', 'maintenance', 'teknisi tim serbu', 'maintenance-1']) ||
+            (method_exists($currentUser, 'hasAnyRole') && $currentUser->hasAnyRole(['teknisi', 'teknisi-2', 'maintenance', 'teknisi tim serbu', 'Maintenance-1', 'maintenance-1']))
         )) {
             return $this->teknisiDashboard($request);
         }
@@ -55,7 +55,7 @@ class DashboardController extends Controller
         }
 
         $isAdminOrStaff = auth()->check() && (
-            in_array(strtolower(trim((string) auth()->user()->role)), ['admin', 'superadmin', 'super admin', 'super-admin', 'noc', 'teknisi', 'cs', 'finance', 'manager']) ||
+            in_array(strtolower(trim((string) auth()->user()->role)), ['admin', 'superadmin', 'super admin', 'super-admin', 'noc', 'teknisi', 'teknisi-2', 'cs', 'finance', 'manager']) ||
             (method_exists(auth()->user(), 'hasRole') && (
                 auth()->user()->hasRole('admin') || 
                 auth()->user()->hasRole('super admin') || 

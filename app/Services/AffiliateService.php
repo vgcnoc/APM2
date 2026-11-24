@@ -239,7 +239,7 @@ class AffiliateService
         }
 
         // Role internal operasional / kantor
-        $internalRoles = ['admin', 'teknisi', 'noc', 'cs', 'admin cs', 'dispatcher', 'auditor', 'aktivator', 'staff', 'karyawan', 'superadmin', 'maintenance', 'kepala teknisi', 'manager', 'finance', 'hrd'];
+        $internalRoles = ['admin', 'teknisi', 'teknisi-2', 'noc', 'cs', 'admin cs', 'dispatcher', 'auditor', 'aktivator', 'staff', 'karyawan', 'superadmin', 'maintenance', 'kepala teknisi', 'manager', 'finance', 'hrd'];
         if (in_array($role, $internalRoles, true) || $user->hasAnyRole($internalRoles)) {
             return true;
         }

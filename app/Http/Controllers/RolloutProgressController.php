@@ -31,7 +31,7 @@ class RolloutProgressController extends Controller
         $indonesianDayDate = $this->formatIndonesianDayDate($carbonDate);
 
         $user = Auth::user();
-        if ($user && $user->hasRole(['teknisi tim serbu', 'tim serbu', 'teknisi'])) {
+        if ($user && $user->hasRole(['teknisi tim serbu', 'tim serbu', 'teknisi', 'teknisi-2'])) {
             abort(403, 'Akses terbatas. Menu Progress Rollout tidak tersedia untuk akun Teknisi Tim Serbu.');
         }
 
@@ -462,7 +462,7 @@ class RolloutProgressController extends Controller
     public function sendWa(Request $request)
     {
         $user = Auth::user();
-        if ($user && $user->hasRole(['teknisi tim serbu', 'tim serbu', 'teknisi'])) {
+        if ($user && $user->hasRole(['teknisi tim serbu', 'tim serbu', 'teknisi', 'teknisi-2'])) {
             abort(403, 'Akses terbatas. Fitur kirim broadcast WhatsApp Rollout tidak tersedia untuk akun Teknisi Tim Serbu.');
         }
 

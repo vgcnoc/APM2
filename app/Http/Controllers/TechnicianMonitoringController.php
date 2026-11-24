@@ -25,7 +25,7 @@ class TechnicianMonitoringController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-        $isTeknisiOnly = ($user->role === 'teknisi' && !$user->hasAnyRole(['admin', 'Super Admin', 'noc', 'kepala teknisi', 'Dispatcher', 'manager', 'cs']));
+        $isTeknisiOnly = (in_array($user->role, ['teknisi', 'teknisi-2'], true) || (method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['teknisi', 'teknisi-2']))) && !$user->hasAnyRole(['admin', 'Super Admin', 'noc', 'kepala teknisi', 'Dispatcher', 'manager', 'cs']);
 
         // Filter Periode Tanggal
         $period = $request->input('period', 'this_month');
@@ -43,8 +43,10 @@ class TechnicianMonitoringController extends Controller
         // Ambil Daftar Teknisi
         $technicianQuery = User::forAssignment()->where(function ($q) {
             $q->whereHas('roles', function ($r) {
-                $r->whereIn('name', ['teknisi', 'kepala teknisi', 'maintenance', 'teknisi lapangan']);
-            })->orWhereIn('role', ['teknisi', 'kepala teknisi', 'maintenance']);
+                $r->whereIn('name', ['teknisi', 'teknisi-2', 'kepala teknisi', 'maintenance', 'teknisi lapangan'])
+                  ->orWhere('name', 'like', '%teknisi%');
+            })->orWhereIn('role', ['teknisi', 'teknisi-2', 'kepala teknisi', 'maintenance'])
+              ->orWhere('role', 'like', '%teknisi%');
         });
 
         $scopeLevel = \App\Services\DataScopeService::getScopeLevel($user, 'monitoring_teknisi');
