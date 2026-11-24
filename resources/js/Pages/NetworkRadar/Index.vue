@@ -421,7 +421,7 @@ const nearbyOdpsList = computed(() => {
         const lng = parseFloat(item.longitude);
         if (isNaN(lat) || isNaN(lng) || !isFinite(lat) || !isFinite(lng)) return null;
 
-        const dist = item.distance_meters !== undefined
+        const dist = (item.distance_meters !== undefined && item.distance_meters !== null)
             ? item.distance_meters
             : Math.round(calculateDistanceMeters(myLocation.value.lat, myLocation.value.lng, lat, lng));
 
@@ -454,7 +454,7 @@ const nearbyOdpsList = computed(() => {
         if (searchRadiusMeters.value && item.distance_meters > searchRadiusMeters.value) return false;
         return true;
     })
-    .sort((a, b) => a.distance_meters - b.distance_meters);
+    .sort((a, b) => (a.distance_meters ?? 0) - (b.distance_meters ?? 0));
 });
 
 const nearbyOdcsList = computed(() => {
@@ -468,7 +468,7 @@ const nearbyOdcsList = computed(() => {
         const lng = parseFloat(item.longitude);
         if (isNaN(lat) || isNaN(lng) || !isFinite(lat) || !isFinite(lng)) return null;
 
-        const dist = item.distance_meters !== undefined
+        const dist = (item.distance_meters !== undefined && item.distance_meters !== null)
             ? item.distance_meters
             : Math.round(calculateDistanceMeters(myLocation.value.lat, myLocation.value.lng, lat, lng));
 
@@ -491,7 +491,7 @@ const nearbyOdcsList = computed(() => {
         if (searchRadiusMeters.value && item.distance_meters > searchRadiusMeters.value) return false;
         return true;
     })
-    .sort((a, b) => a.distance_meters - b.distance_meters);
+    .sort((a, b) => (a.distance_meters ?? 0) - (b.distance_meters ?? 0));
 });
 
 const nearbyCustomersList = computed(() => {
@@ -505,7 +505,7 @@ const nearbyCustomersList = computed(() => {
         const lng = parseFloat(item.longitude);
         if (isNaN(lat) || isNaN(lng) || !isFinite(lat) || !isFinite(lng)) return null;
 
-        const dist = item.distance_meters !== undefined
+        const dist = (item.distance_meters !== undefined && item.distance_meters !== null)
             ? item.distance_meters
             : Math.round(calculateDistanceMeters(myLocation.value.lat, myLocation.value.lng, lat, lng));
 
@@ -561,7 +561,7 @@ const nearbyCustomersList = computed(() => {
         if (searchRadiusMeters.value && item.distance_meters > searchRadiusMeters.value) return false;
         return true;
     })
-    .sort((a, b) => a.distance_meters - b.distance_meters);
+    .sort((a, b) => (a.distance_meters ?? 0) - (b.distance_meters ?? 0));
 });
 
 // Unpaid count among nearby customers
@@ -1355,19 +1355,70 @@ watch(onlyUnpaidCustomers, (val) => {
     }
 });
 
-// Auto-switch resultActiveTab if the selected category is disabled
-watch([checkOdp, checkOdc, checkPelanggan], () => {
-    if (resultActiveTab.value === 'odp' && !checkOdp.value) {
-        if (checkOdc.value) resultActiveTab.value = 'odc';
-        else if (checkPelanggan.value) resultActiveTab.value = 'customer';
+// Helper untuk memilih tab hasil & otomatis mengaktifkan kategori yang sesuai
+const selectResultCategory = (cat) => {
+    resultActiveTab.value = cat;
+    if (cat === 'odp' && !checkOdp.value) checkOdp.value = true;
+    if (cat === 'odc' && !checkOdc.value) checkOdc.value = true;
+    if (cat === 'customer' && !checkPelanggan.value) checkPelanggan.value = true;
+    if (cat === 'all') {
+        checkOdp.value = true;
+        checkOdc.value = true;
+        checkPelanggan.value = true;
+    }
+};
+
+// Preset cepat pilihan target (Semua, Pelanggan Saja, ODP Saja, ODC Saja)
+const setTargetCategoryPreset = (preset) => {
+    if (preset === 'all') {
+        checkOdc.value = true;
+        checkOdp.value = true;
+        checkPelanggan.value = true;
+        resultActiveTab.value = 'all';
+    } else if (preset === 'customer') {
+        checkOdc.value = false;
+        checkOdp.value = false;
+        checkPelanggan.value = true;
+        resultActiveTab.value = 'customer';
+    } else if (preset === 'odp') {
+        checkOdc.value = false;
+        checkOdp.value = true;
+        checkPelanggan.value = false;
+        resultActiveTab.value = 'odp';
+    } else if (preset === 'odc') {
+        checkOdc.value = true;
+        checkOdp.value = false;
+        checkPelanggan.value = false;
+        resultActiveTab.value = 'odc';
+    }
+    handleSearchNearby();
+};
+
+// Auto-switch resultActiveTab if the selected category is disabled, and prevent all 3 from being false
+watch([checkOdp, checkOdc, checkPelanggan], ([newOdp, newOdc, newCust]) => {
+    // Pengaman: Jika seluruh kategori dicentang mati, otomatis kembalikan ke aktif semua agar tidak kosong
+    if (!newOdp && !newOdc && !newCust) {
+        nextTick(() => {
+            checkOdp.value = true;
+            checkOdc.value = true;
+            checkPelanggan.value = true;
+            resultActiveTab.value = 'all';
+            handleSearchNearby();
+        });
+        return;
+    }
+
+    if (resultActiveTab.value === 'odp' && !newOdp) {
+        if (newCust) resultActiveTab.value = 'customer';
+        else if (newOdc) resultActiveTab.value = 'odc';
         else resultActiveTab.value = 'all';
-    } else if (resultActiveTab.value === 'odc' && !checkOdc.value) {
-        if (checkOdp.value) resultActiveTab.value = 'odp';
-        else if (checkPelanggan.value) resultActiveTab.value = 'customer';
+    } else if (resultActiveTab.value === 'odc' && !newOdc) {
+        if (newCust) resultActiveTab.value = 'customer';
+        else if (newOdp) resultActiveTab.value = 'odp';
         else resultActiveTab.value = 'all';
-    } else if (resultActiveTab.value === 'customer' && !checkPelanggan.value) {
-        if (checkOdp.value) resultActiveTab.value = 'odp';
-        else if (checkOdc.value) resultActiveTab.value = 'odc';
+    } else if (resultActiveTab.value === 'customer' && !newCust) {
+        if (newOdp) resultActiveTab.value = 'odp';
+        else if (newOdc) resultActiveTab.value = 'odc';
         else resultActiveTab.value = 'all';
     }
 });
@@ -1664,13 +1715,11 @@ onMounted(async () => {
         setLocationCoordinates(e.latlng.lat, e.latlng.lng, true);
     });
 
-    // If initial query params provided, trigger search nearby immediately
+    // Initial auto-search: jalankan pencarian radar awal agar kartu terdekat langsung tampil siap pakai
     if (props.initLat && props.initLng) {
         map.setView([defaultLat, defaultLng], 14);
-        handleSearchNearby();
-    } else {
-        refreshMapMarkers();
     }
+    handleSearchNearby();
 
     // Resize observer
     const resizeObserver = new ResizeObserver(() => {
@@ -1916,7 +1965,62 @@ onUnmounted(() => {
 
                 <!-- Apa yang ingin dicek? -->
                 <div class="mb-4">
-                    <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-2">Apa yang ingin dicek?</label>
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300">Apa yang ingin dicek?</label>
+                        <!-- Quick Target Presets -->
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <span class="text-[10px] font-bold text-gray-400 dark:text-slate-500 mr-0.5">Preset:</span>
+                            <button
+                                type="button"
+                                @click="setTargetCategoryPreset('all')"
+                                :class="[
+                                    'px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer',
+                                    (checkOdc && checkOdp && checkPelanggan)
+                                        ? 'bg-blue-900 text-white shadow-2xs'
+                                        : 'bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-200'
+                                ]"
+                            >
+                                Semua
+                            </button>
+                            <button
+                                type="button"
+                                @click="setTargetCategoryPreset('customer')"
+                                :class="[
+                                    'px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer',
+                                    (!checkOdc && !checkOdp && checkPelanggan)
+                                        ? 'bg-purple-700 text-white shadow-2xs'
+                                        : 'bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-200'
+                                ]"
+                            >
+                                Pelanggan Saja
+                            </button>
+                            <button
+                                type="button"
+                                @click="setTargetCategoryPreset('odp')"
+                                :class="[
+                                    'px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer',
+                                    (!checkOdc && checkOdp && !checkPelanggan)
+                                        ? 'bg-emerald-700 text-white shadow-2xs'
+                                        : 'bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-200'
+                                ]"
+                            >
+                                ODP Saja
+                            </button>
+                            <button
+                                type="button"
+                                @click="setTargetCategoryPreset('odc')"
+                                :class="[
+                                    'px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer',
+                                    (checkOdc && !checkOdp && !checkPelanggan)
+                                        ? 'bg-blue-700 text-white shadow-2xs'
+                                        : 'bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-200'
+                                ]"
+                            >
+                                ODC Saja
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- Row 1: ODC, ODP, Pelanggan, Hanya Belum Lunas -->
                     <div class="flex flex-wrap items-center gap-3 sm:gap-4 mb-2.5">
                         <label class="inline-flex items-center gap-2 cursor-pointer select-none">
@@ -1997,10 +2101,10 @@ onUnmounted(() => {
                 <!-- Header Card & Category Filter Tabs -->
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-slate-800">
                     <div>
-                        <h3 class="text-sm font-bold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
-                            <span class="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse"></span>
-                            <span>Hasil Radar Terdekat</span>
-                            <span class="text-[11px] font-medium text-gray-500 dark:text-slate-400">
+                        <h3 class="text-sm font-extrabold text-slate-900 dark:text-white flex flex-wrap items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse shrink-0"></span>
+                            <span class="font-extrabold text-slate-900 dark:text-white">Hasil Radar Terdekat</span>
+                            <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">
                                 (Radius: {{ formatDistance(searchRadiusMeters) }})
                             </span>
                             <span v-if="selectedAreaInfo" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
@@ -2021,7 +2125,7 @@ onUnmounted(() => {
                     <div class="inline-flex p-1 bg-gray-100 dark:bg-slate-800 rounded-xl text-xs font-semibold">
                         <button
                             type="button"
-                            @click="resultActiveTab = 'odp'"
+                            @click="selectResultCategory('odp')"
                             :class="[
                                 'px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer',
                                 resultActiveTab === 'odp'
@@ -2037,7 +2141,7 @@ onUnmounted(() => {
                         </button>
                         <button
                             type="button"
-                            @click="resultActiveTab = 'odc'"
+                            @click="selectResultCategory('odc')"
                             :class="[
                                 'px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer',
                                 resultActiveTab === 'odc'
@@ -2053,7 +2157,7 @@ onUnmounted(() => {
                         </button>
                         <button
                             type="button"
-                            @click="resultActiveTab = 'customer'"
+                            @click="selectResultCategory('customer')"
                             :class="[
                                 'px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer',
                                 resultActiveTab === 'customer'
@@ -2072,7 +2176,7 @@ onUnmounted(() => {
                         </button>
                         <button
                             type="button"
-                            @click="resultActiveTab = 'all'"
+                            @click="selectResultCategory('all')"
                             :class="[
                                 'px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer',
                                 resultActiveTab === 'all'
@@ -2406,25 +2510,50 @@ onUnmounted(() => {
                         </svg>
                         <div class="text-xs">
                             <strong class="font-bold">
-                                Tidak ada {{ resultActiveTab === 'odp' ? 'ODP' : resultActiveTab === 'odc' ? 'ODC' : resultActiveTab === 'customer' ? 'Pelanggan' : 'data' }} dalam radius {{ formatDistance(searchRadiusMeters) }}.
+                                Tidak ada {{ resultActiveTab === 'odp' ? 'ODP' : resultActiveTab === 'odc' ? 'ODC' : resultActiveTab === 'customer' ? 'Pelanggan' : 'titik data' }} dalam radius {{ formatDistance(searchRadiusMeters) }}.
                             </strong>
-                            <span class="text-amber-700 dark:text-amber-300 ml-1">Silakan perbesar nilai radius pencarian atau sesuaikan filter Cabang.</span>
+                            <span class="text-amber-700 dark:text-amber-300 ml-1">Silakan perbesar nilai radius pencarian atau sesuaikan filter Cabang / Kategori.</span>
                         </div>
                     </div>
                     <div class="flex flex-wrap items-center gap-2 mt-3 pl-8">
                         <button
+                            v-if="searchRadiusMeters < 5000"
                             type="button"
-                            @click="searchRadiusMeters = 1000; handleSearchNearby()"
-                            class="px-3 py-1 bg-amber-200 dark:bg-amber-900/60 hover:bg-amber-300 text-amber-900 dark:text-amber-200 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                            @click="searchRadiusMeters = 5000; handleSearchNearby()"
+                            class="px-3 py-1.5 bg-amber-200 dark:bg-amber-900/60 hover:bg-amber-300 text-amber-900 dark:text-amber-200 text-xs font-bold rounded-lg transition-colors cursor-pointer"
                         >
-                            Perbesar ke 1.000 Meter (1 KM)
+                            Perbesar ke 5.000 Meter (5 KM)
+                        </button>
+                        <button
+                            v-if="searchRadiusMeters < 10000"
+                            type="button"
+                            @click="searchRadiusMeters = 10000; handleSearchNearby()"
+                            class="px-3 py-1.5 bg-amber-200 dark:bg-amber-900/60 hover:bg-amber-300 text-amber-900 dark:text-amber-200 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                        >
+                            Perbesar ke 10.000 Meter (10 KM)
+                        </button>
+                        <button
+                            v-if="searchRadiusMeters < 25000"
+                            type="button"
+                            @click="searchRadiusMeters = 25000; handleSearchNearby()"
+                            class="px-3 py-1.5 bg-amber-200 dark:bg-amber-900/60 hover:bg-amber-300 text-amber-900 dark:text-amber-200 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                        >
+                            Perbesar ke 25.000 Meter (25 KM)
                         </button>
                         <button
                             type="button"
-                            @click="searchRadiusMeters = 5000; handleSearchNearby()"
-                            class="px-3 py-1 bg-amber-200 dark:bg-amber-900/60 hover:bg-amber-300 text-amber-900 dark:text-amber-200 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                            @click="setTargetCategoryPreset('all')"
+                            class="px-3 py-1.5 bg-blue-100 dark:bg-blue-900/60 hover:bg-blue-200 text-blue-900 dark:text-blue-200 text-xs font-bold rounded-lg transition-colors cursor-pointer"
                         >
-                            Perbesar ke 5.000 Meter (5 KM)
+                            🔄 Tampilkan Semua Kategori
+                        </button>
+                        <button
+                            v-if="filterCabang || filterOdc || filterOdp || filterStatusPelanggan || onlyUnpaidCustomers"
+                            type="button"
+                            @click="resetAllFilters"
+                            class="px-3 py-1.5 bg-rose-100 dark:bg-rose-900/60 hover:bg-rose-200 text-rose-900 dark:text-rose-200 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                        >
+                            ✕ Hapus Semua Filter
                         </button>
                     </div>
                 </div>
