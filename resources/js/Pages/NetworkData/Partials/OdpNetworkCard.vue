@@ -17,7 +17,7 @@
         <!-- Split Relationship Banner (if Split) -->
         <div
             v-if="splitInfo?.isSplit"
-            class="px-4 py-2 border-b text-[10px] flex flex-col gap-1"
+            class="px-4 py-2 border-b text-[10px] flex flex-col justify-center min-h-[58px] gap-1"
             :class="[
                 splitInfo.role === 'induk'
                     ? 'bg-gradient-to-r from-emerald-50 via-teal-50/70 to-white border-emerald-200/80 text-emerald-950'
@@ -54,23 +54,30 @@
             </div>
 
             <div
-                v-if="odp.start_point || odp.end_point || odp.cable_pull"
                 class="flex items-center gap-1.5 text-[9px] font-medium opacity-85 truncate mt-0.5"
             >
-                <svg class="w-3 h-3 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
-                <span class="truncate">
-                    Rute: <strong>{{ odp.start_point || splitInfo.partnerLabel || 'Sumber' }}</strong> &rarr; <strong>{{ odp.end_point || odp.name }}</strong>
-                </span>
-                <span v-if="odp.cable_pull" class="ml-auto px-1.5 py-0.2 rounded bg-white/80 border border-current/20 font-bold shrink-0 font-mono">
-                    {{ odp.cable_pull }}
-                </span>
+                <template v-if="odp.start_point || odp.end_point || odp.cable_pull">
+                    <svg class="w-3 h-3 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                    <span class="truncate">
+                        Rute: <strong>{{ odp.start_point || splitInfo.partnerLabel || 'Sumber' }}</strong> &rarr; <strong>{{ odp.end_point || odp.name }}</strong>
+                    </span>
+                    <span v-if="odp.cable_pull" class="ml-auto px-1.5 py-0.2 rounded bg-white/80 border border-current/20 font-bold shrink-0 font-mono">
+                        {{ odp.cable_pull }}
+                    </span>
+                </template>
+                <template v-else-if="splitInfo.partnerLabel">
+                    <svg class="w-3 h-3 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                    <span class="truncate">
+                        Jalur Pasif: <strong>{{ splitInfo.role === 'induk' ? odp.name : splitInfo.partnerLabel }}</strong> &rarr; <strong>{{ splitInfo.role === 'induk' ? splitInfo.partnerLabel : odp.name }}</strong>
+                    </span>
+                </template>
             </div>
         </div>
 
         <!-- Main Card Body -->
         <div class="p-4 md:p-5 flex-1 flex flex-col">
             <!-- Header: Name, Code, and Status Badge -->
-            <div class="flex justify-between items-start gap-2 mb-3">
+            <div class="flex justify-between items-start gap-2 mb-3 min-h-[46px]">
                 <div class="min-w-0">
                     <h4 class="font-extrabold text-slate-900 text-lg leading-tight break-words group-hover:text-indigo-600 transition-colors">
                         {{ odp.name }}
@@ -146,7 +153,7 @@
             </div>
 
             <!-- Address & Location Row -->
-            <div class="flex flex-wrap items-center gap-1.5 mb-3 text-xs">
+            <div class="flex flex-wrap items-center gap-1.5 mb-3 text-xs min-h-[28px]">
                 <div v-if="odp.address && odp.address !== '-'" class="bg-slate-50 border border-slate-200 text-slate-700 text-[10px] px-2 py-1 rounded-md flex items-center gap-1 max-w-full" :title="odp.address">
                     <svg class="w-3 h-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
                     <span class="truncate max-w-[180px]">{{ odp.address }}</span>
@@ -171,10 +178,15 @@
                 <div v-if="odpGratisCount > 0" class="bg-emerald-50 border border-emerald-300 text-emerald-800 font-black text-[10px] px-2 py-1 rounded-md flex items-center gap-1 shadow-2xs" title="Terdapat pelanggan gratis pada ODP ini">
                     <span>🎁 {{ odpGratisCount }} Gratis</span>
                 </div>
+
+                <div v-if="!(odp.address && odp.address !== '-') && !(odp.latitude && odp.longitude) && odpCbpCount === 0 && odpGratisCount === 0" class="text-slate-400 text-[10px] italic flex items-center gap-1 py-0.5">
+                    <svg class="w-3 h-3 text-slate-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    <span>Belum ada titik koordinat / alamat</span>
+                </div>
             </div>
 
             <!-- VLAN Sinkron OLT PON Header Banner -->
-            <div class="mb-3.5 p-2.5 bg-gradient-to-r from-indigo-50/80 via-purple-50/40 to-indigo-50/80 rounded-xl border border-indigo-100">
+            <div class="mb-3.5 p-2.5 bg-gradient-to-r from-indigo-50/80 via-purple-50/40 to-indigo-50/80 rounded-xl border border-indigo-100 min-h-[58px] flex flex-col justify-center">
                 <div class="flex items-center justify-between mb-1.5">
                     <span class="text-[10px] font-extrabold text-indigo-950 uppercase tracking-wider flex items-center gap-1.5">
                         <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>

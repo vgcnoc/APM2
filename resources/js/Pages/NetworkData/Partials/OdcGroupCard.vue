@@ -127,7 +127,7 @@
                     <!-- CONNECTED ODP SPLIT 2 PAIR FRAME (Berdampingan Induk <-> Lanjutan) -->
                     <div
                         v-if="odpUnit.isSplitPair"
-                        class="col-span-full rounded-2xl border-2 border-indigo-200/80 bg-white p-3.5 md:p-4 shadow-xs space-y-3.5"
+                        class="odp-split-pair col-span-full rounded-2xl border-2 border-indigo-200/80 bg-white p-3.5 md:p-5 shadow-xs space-y-4"
                     >
                         <SplitConnectionHeader
                             kind="ODP"
@@ -143,7 +143,7 @@
                             </span>
                         </SplitConnectionHeader>
 
-                        <div class="split-odp-cards">
+                        <div class="split-odp-cards grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-5 items-stretch">
                             <OdpNetworkCard
                                 v-for="item in odpUnit.items"
                                 :key="item.odp.id"
@@ -290,10 +290,20 @@ const getPairTotalPorts = (items) => {
     align-items: stretch;
 }
 
+.odp-split-pair {
+    container: odp-split / inline-size;
+}
+
 .split-odp-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 16px;
     align-items: stretch;
+}
+
+@container odp-split (min-width: 640px) {
+    .split-odp-cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 </style>

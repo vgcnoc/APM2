@@ -101,6 +101,21 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Optical Connection Bridge Badge (Visible on desktop md+ between the 2 cards) -->
+            <div
+                v-if="nodes.length === 2"
+                class="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 items-center justify-center pointer-events-none"
+            >
+                <div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 backdrop-blur-xs border-2 border-indigo-200 text-indigo-700 shadow-md font-black text-[10px] tracking-wide whitespace-nowrap">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-indigo-600"></span>
+                    </span>
+                    <span>Passive Split 1:2</span>
+                    <svg class="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                </div>
+            </div>
         </div>
     </div>
 </template>
