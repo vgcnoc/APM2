@@ -459,11 +459,26 @@ class CustomerBillingController extends Controller
             'is_direct_payment' => 'nullable|boolean'
         ]);
 
-        if ($validated['amount'] > $invoice->remaining) {
-            return back()->with('error', 'Nominal melebihi sisa tagihan.');
-        }
+        $verifiedPaid = (float) $invoice->payments()->where('status', 'verified')->sum('amount');
+        $pendingPaid = (float) $invoice->payments()->where('status', 'pending')->sum('amount');
+        $effectiveRemaining = max(0, (float) $invoice->amount - $verifiedPaid - $pendingPaid);
+        $totalRemaining = max(0, (float) $invoice->amount - $verifiedPaid);
 
         $isDirect = !empty($validated['is_direct_payment']);
+
+        if ($isDirect) {
+            if ($validated['amount'] > $totalRemaining) {
+                return back()->with('error', 'Nominal melebihi sisa tagihan (Rp ' . number_format($totalRemaining, 0, ',', '.') . ').');
+            }
+        } else {
+            if ($validated['amount'] > $effectiveRemaining) {
+                $msg = 'Nominal melebihi sisa tagihan yang dapat diterima (Rp ' . number_format($effectiveRemaining, 0, ',', '.') . ').';
+                if ($pendingPaid > 0) {
+                    $msg .= ' Ada setoran pending sebesar Rp ' . number_format($pendingPaid, 0, ',', '.') . ' yang menunggu validasi.';
+                }
+                return back()->with('error', $msg);
+            }
+        }
 
         DB::beginTransaction();
         try {
@@ -481,15 +496,34 @@ class CustomerBillingController extends Controller
             if ($isDirect) {
                 // If it's a direct payment at the office, settle immediately
                 $totalPaid = $invoice->payments()->where('status', 'verified')->sum('amount');
+                $newStatus = $totalPaid >= $invoice->amount ? 'paid' : 'partial';
+                $oldStatus = $invoice->status;
+
                 if ($totalPaid >= $invoice->amount) {
                     $invoice->update(['status' => 'paid']);
                     if ($invoice->customer) app(\App\Services\BillingIsolationService::class)->releaseAfterPayment($invoice->customer);
                 } elseif ($totalPaid > 0) {
                     $invoice->update(['status' => 'partial']);
                 }
+
+                \App\Models\AuditLog::createLog(
+                    'Pelunasan Tagihan Langsung (' . ($newStatus === 'paid' ? 'Lunas' : 'Sebagian') . ')',
+                    $invoice,
+                    $oldStatus,
+                    $newStatus,
+                    "Penerimaan pembayaran tagihan #{$invoice->invoice_number} sebesar Rp " . number_format($validated['amount'], 0, ',', '.') . " secara langsung oleh " . (auth()->user()?->name ?? 'Petugas') . ($validated['notes'] ? " ({$validated['notes']})" : "")
+                );
                 
                 DB::commit();
                 return back()->with('success', 'Pembayaran langsung dikantor berhasil diproses dan invoice diupdate.');
+            } else {
+                \App\Models\AuditLog::createLog(
+                    'Penerimaan Setoran Tagihan (Pending)',
+                    $invoice,
+                    $invoice->status,
+                    $invoice->status,
+                    "Penerimaan uang tagihan #{$invoice->invoice_number} sebesar Rp " . number_format($validated['amount'], 0, ',', '.') . " dicatat oleh " . (auth()->user()?->name ?? 'Petugas') . " (Menunggu Validasi Kasir/Admin)"
+                );
             }
 
             DB::commit();
@@ -646,9 +680,10 @@ class CustomerBillingController extends Controller
 
             // AUTO INCENTIVE GENERATION
             // Jika penagih (collector) memiliki incentive_rate > 0, berikan insentif
-            if ($payment->collector && $payment->collector->incentive_rate > 0) {
+            $collectorId = $payment->collected_by ?? $payment->collector?->id;
+            if ($payment->collector && $payment->collector->incentive_rate > 0 && $collectorId) {
                 \App\Models\Incentive::create([
-                    'user_id' => $payment->collector_id,
+                    'user_id' => $collectorId,
                     'amount' => $payment->collector->incentive_rate,
                     'type' => 'auto',
                     'description' => 'Insentif penagihan Invoice: ' . $invoice->invoice_number,

@@ -762,7 +762,14 @@ class DataScopeService
         }
 
         // Level: 'own' (Hanya setoran/tagihan kolektor bersangkutan)
-        return $query->where('collector_id', $user->id);
+        $table = $query->getModel()->getTable();
+        if ($table === 'payments') {
+            return $query->where('collected_by', $user->id);
+        }
+
+        return $query->where(function ($sub) use ($user) {
+            $sub->whereHas('payments', fn($pq) => $pq->where('collected_by', $user->id));
+        });
     }
 
     /**
