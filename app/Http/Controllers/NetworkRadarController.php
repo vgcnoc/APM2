@@ -188,72 +188,11 @@ class NetworkRadarController extends Controller
                 ];
             });
 
-        // Aktivitas Karyawan (Absensi GPS & Tugas Luar Hari Ini / Terkini)
-        $employeeActivities = collect();
-        try {
-            if (\Illuminate\Support\Facades\Schema::hasTable('attendances')) {
-                $attendances = \App\Models\Attendance::with(['employee:id,name,position,branch'])
-                    ->whereDate('date', now()->toDateString())
-                    ->where(function ($q) {
-                        $q->whereNotNull('lat_in')->whereNotNull('lng_in')
-                          ->orWhereNotNull('lat_out')->whereNotNull('lng_out');
-                    })
-                    ->latest()
-                    ->get()
-                    ->map(function ($att) {
-                        return [
-                            'id' => 'att-' . $att->id,
-                            'name' => $att->employee?->name ?? 'Karyawan',
-                            'position' => $att->employee?->position ?? '-',
-                            'branch' => $att->employee?->branch ?? '-',
-                            'time' => $att->clock_in ?? $att->clock_out,
-                            'latitude' => (float) ($att->lat_in ?? $att->lat_out),
-                            'longitude' => (float) ($att->lng_in ?? $att->lng_out),
-                            'status' => $att->status,
-                            'photo' => $att->photo_in ?? $att->photo_out,
-                            'type' => 'attendance',
-                            'notes' => $att->notes ?? 'Absensi Reguler'
-                        ];
-                    });
-                $employeeActivities = $employeeActivities->concat($attendances);
-            }
-
-            if (\Illuminate\Support\Facades\Schema::hasTable('field_duties')) {
-                $fieldDuties = \App\Models\FieldDuty::with(['employee:id,name,position,branch'])
-                    ->whereDate('date', now()->toDateString())
-                    ->where(function ($q) {
-                        $q->whereNotNull('lat_in')->whereNotNull('lng_in')
-                          ->orWhereNotNull('lat_out')->whereNotNull('lng_out');
-                    })
-                    ->latest()
-                    ->get()
-                    ->map(function ($duty) {
-                        return [
-                            'id' => 'duty-' . $duty->id,
-                            'name' => $duty->employee?->name ?? 'Karyawan',
-                            'position' => $duty->employee?->position ?? '-',
-                            'branch' => $duty->employee?->branch ?? '-',
-                            'time' => $duty->check_in_time ?? $duty->check_out_time ?? $duty->scheduled_start_time,
-                            'latitude' => (float) ($duty->lat_in ?? $duty->lat_out),
-                            'longitude' => (float) ($duty->lng_in ?? $duty->lng_out),
-                            'status' => $duty->status,
-                            'photo' => $duty->check_in_photo ?? $duty->check_out_photo,
-                            'type' => 'field_duty',
-                            'notes' => $duty->purpose ?? $duty->destination_location ?? 'Tugas Lapangan'
-                        ];
-                    });
-                $employeeActivities = $employeeActivities->concat($fieldDuties);
-            }
-        } catch (\Throwable $e) {
-            // fallback gracefully
-        }
-
         return Inertia::render('NetworkRadar/Index', [
             'odcs' => $odcs,
             'odps' => $odps,
             'customers' => $customers,
             'areas' => $areas,
-            'employeeActivities' => $employeeActivities->values(),
             'initLat' => request()->query('lat'),
             'initLng' => request()->query('lng'),
         ]);

@@ -9,7 +9,6 @@ const props = defineProps({
     odps: { type: Array, default: () => [] },
     customers: { type: Array, default: () => [] },
     areas: { type: Array, default: () => [] },
-    employeeActivities: { type: Array, default: () => [] },
     initLat: [String, Number],
     initLng: [String, Number],
 });
@@ -22,9 +21,6 @@ const goBack = () => {
         window.location.href = '/dashboard';
     }
 };
-
-// Tabs: 'radar' | 'karyawan'
-const activeTab = ref('radar');
 
 // Form state
 const inputLat = ref('');
@@ -398,17 +394,6 @@ const visibleCustomers = computed(() => {
     });
 });
 
-const visibleEmployees = computed(() => {
-    return props.employeeActivities.filter(item => {
-        if (!item.latitude || !item.longitude) return false;
-        if (myLocation.value) {
-            const dist = calculateDistanceMeters(myLocation.value.lat, myLocation.value.lng, parseFloat(item.latitude), parseFloat(item.longitude));
-            if (dist > searchRadiusMeters.value) return false;
-        }
-        return true;
-    });
-});
-
 // ─── DAFTAR PERANGKAT & PELANGGAN TERDEKAT (SORTED BY DISTANCE) ───
 const nearbyOdpsList = computed(() => {
     if (!myLocation.value || !checkOdp.value) return [];
@@ -628,9 +613,6 @@ const stats = computed(() => {
 });
 
 const totalVisiblePoints = computed(() => {
-    if (activeTab.value === 'karyawan') {
-        return visibleEmployees.value.length;
-    }
     return visibleOdcs.value.length + visibleOdps.value.length + visibleCustomers.value.length;
 });
 
@@ -1033,7 +1015,7 @@ const updateConnections = () => {
     if (!map || !L || !connectionsLayerGroup) return;
     connectionsLayerGroup.clearLayers();
 
-    if (!showConnections.value || activeTab.value !== 'radar') return;
+    if (!showConnections.value) return;
 
     // 1. Line ODC to ODP
     const odcMap = new Map();
@@ -1092,42 +1074,6 @@ const refreshMapMarkers = () => {
 
     clusterGroup.clearLayers();
     markersMap.clear();
-
-    if (activeTab.value === 'karyawan') {
-        // Plot Employees
-        visibleEmployees.value.forEach(emp => {
-            const lat = parseFloat(emp.latitude);
-            const lng = parseFloat(emp.longitude);
-            if (isNaN(lat) || isNaN(lng) || !isFinite(lat) || !isFinite(lng)) return;
-
-            const marker = L.marker([lat, lng], {
-                icon: createDotIcon('#ec4899', 14),
-            });
-
-            marker.bindPopup(`
-                <div class="font-sans text-xs min-w-[190px]">
-                    <div class="flex items-center justify-between mb-1.5">
-                        <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-pink-100 dark:bg-pink-950/70 text-pink-700 dark:text-pink-300">
-                            ${emp.type === 'field_duty' ? 'Tugas Lapangan' : 'Absensi GPS'}
-                        </span>
-                        <span class="text-[10px] text-gray-500 dark:text-slate-400 font-medium">${emp.time || '-'}</span>
-                    </div>
-                    <div class="font-bold text-gray-900 dark:text-white text-sm mb-0.5">${emp.name}</div>
-                    <div class="text-[11px] text-gray-500 dark:text-slate-400 mb-1">${emp.position} • ${emp.branch}</div>
-                    <div class="text-xs bg-gray-50 dark:bg-slate-800/80 p-1.5 rounded border border-gray-100 dark:border-slate-700 mb-2">
-                        <div class="text-gray-600 dark:text-slate-300">${emp.notes || '-'}</div>
-                        <div class="text-[10px] text-gray-400 dark:text-slate-500 mt-0.5 font-mono">📍 ${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
-                    </div>
-                    <a href="${getGoogleMapsUrl(lat, lng)}" target="_blank" class="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
-                        🗺️ Google Maps →
-                    </a>
-                </div>
-            `);
-            clusterGroup.addLayer(marker);
-            markersMap.set(`emp-${emp.id}`, marker);
-        });
-        return;
-    }
 
     // 1. Plot ODCs (Blue dot #2563eb)
     visibleOdcs.value.forEach(odc => {
@@ -1345,7 +1291,7 @@ const refreshMapMarkers = () => {
 };
 
 // Watchers
-watch([checkOdc, checkOdp, checkPelanggan, onlyUnpaidCustomers, filterOdp, filterStatusPelanggan, activeTab], () => {
+watch([checkOdc, checkOdp, checkPelanggan, onlyUnpaidCustomers, filterOdp, filterStatusPelanggan], () => {
     refreshMapMarkers();
 });
 
@@ -1780,34 +1726,6 @@ onUnmounted(() => {
                 </div>
             </div>
 
-            <!-- ═══ TAB SWITCHER ═══ -->
-            <div class="inline-flex p-1 bg-gray-100 dark:bg-slate-800/80 rounded-xl">
-                <button
-                    type="button"
-                    @click="activeTab = 'radar'"
-                    :class="activeTab === 'radar' ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-xs font-bold' : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 font-medium'"
-                    class="px-5 py-1.5 rounded-lg text-xs flex items-center gap-2 transition-all cursor-pointer"
-                >
-                    <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="9" stroke-width="2"/>
-                        <circle cx="12" cy="12" r="5" stroke-width="2"/>
-                        <circle cx="12" cy="12" r="1" stroke-width="2"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v3m0 12v3m-9-9h3m12 0h3"/>
-                    </svg>
-                    <span>Radar</span>
-                </button>
-                <button
-                    type="button"
-                    @click="activeTab = 'karyawan'"
-                    :class="activeTab === 'karyawan' ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-xs font-bold' : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 font-medium'"
-                    class="px-5 py-1.5 rounded-lg text-xs flex items-center gap-2 transition-all cursor-pointer"
-                >
-                    <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                    <span>Aktivitas Karyawan</span>
-                </button>
-            </div>
 
             <!-- ═══ CARD 1: PENGATURAN PENCARIAN ═══ -->
             <div class="bg-white dark:bg-slate-900/90 rounded-2xl border border-gray-200/80 dark:border-slate-800 p-5 shadow-xs">
@@ -2697,7 +2615,7 @@ onUnmounted(() => {
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                         </svg>
                         <h3 class="text-sm font-bold text-gray-800 dark:text-slate-200">
-                            {{ activeTab === 'karyawan' ? 'Peta Aktivitas Karyawan' : 'Peta Radar' }}
+                            Peta Radar
                         </h3>
                         <span class="px-2.5 py-0.5 text-xs font-semibold text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 rounded-full">
                             {{ totalVisiblePoints }} titik
@@ -2732,70 +2650,62 @@ onUnmounted(() => {
                         <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
                         <span class="font-semibold text-gray-800 dark:text-white">Anda</span>
                     </div>
-                    <template v-if="activeTab === 'radar'">
-                        <div class="flex items-center gap-1.5">
-                            <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
-                            <span>ODC</span>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                            <span>ODP</span>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            <span class="w-2.5 h-2.5 rounded-full bg-rose-600 animate-pulse"></span>
-                            <span class="font-bold text-rose-600 dark:text-rose-400">Belum Lunas</span>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            <span class="w-2.5 h-2.5 rounded-full bg-red-600"></span>
-                            <span>Lewat JT</span>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            <span class="w-2.5 h-2.5 rounded-full bg-amber-600"></span>
-                            <span>Janji Bayar</span>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            <span class="w-2.5 h-2.5 rounded-full bg-green-600"></span>
-                            <span>Lunas</span>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            <span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
-                            <span>Isolir</span>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
-                            <span>Booking</span>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            <span class="w-2.5 h-2.5 rounded-full bg-cyan-500"></span>
-                            <span>Gratis</span>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            <span class="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
-                            <span>Freehome</span>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            <span class="w-2.5 h-2.5 rounded-full bg-gray-800 dark:bg-gray-400"></span>
-                            <span>Stop Permanen</span>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            <span class="w-4 h-0.5 border-t-2 border-blue-600 border-dashed inline-block"></span>
-                            <span>Feeder ODC-ODP</span>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            <span class="w-4 h-0.5 border-t-2 border-emerald-500 border-dashed inline-block"></span>
-                            <span>Drop Pelanggan</span>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            <span class="w-3.5 h-0.5 bg-gray-500 dark:bg-slate-400 inline-block"></span>
-                            <span>Rute Jalan</span>
-                        </div>
-                    </template>
-                    <template v-else>
-                        <div class="flex items-center gap-1.5">
-                            <span class="w-2.5 h-2.5 rounded-full bg-pink-500"></span>
-                            <span>Posisi Karyawan (GPS / Lapangan)</span>
-                        </div>
-                    </template>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+                        <span>ODC</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                        <span>ODP</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-rose-600 animate-pulse"></span>
+                        <span class="font-bold text-rose-600 dark:text-rose-400">Belum Lunas</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-red-600"></span>
+                        <span>Lewat JT</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-600"></span>
+                        <span>Janji Bayar</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-green-600"></span>
+                        <span>Lunas</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
+                        <span>Isolir</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                        <span>Booking</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-cyan-500"></span>
+                        <span>Gratis</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
+                        <span>Freehome</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-gray-800 dark:bg-gray-400"></span>
+                        <span>Stop Permanen</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-4 h-0.5 border-t-2 border-blue-600 border-dashed inline-block"></span>
+                        <span>Feeder ODC-ODP</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-4 h-0.5 border-t-2 border-emerald-500 border-dashed inline-block"></span>
+                        <span>Drop Pelanggan</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-3.5 h-0.5 bg-gray-500 dark:bg-slate-400 inline-block"></span>
+                        <span>Rute Jalan</span>
+                    </div>
                 </div>
 
                 <!-- Leaflet Map Container with Floating HUD Legend & Map Type Switcher -->
@@ -2906,8 +2816,8 @@ onUnmounted(() => {
                                 </button>
                             </div>
 
-                            <!-- Legend Content by Mode -->
-                            <div v-if="activeTab === 'radar'" class="space-y-3">
+                            <!-- Legend Content -->
+                            <div class="space-y-3">
                                 <!-- 1. Perangkat Jaringan -->
                                 <div>
                                     <div class="text-[10px] uppercase font-bold text-gray-400 dark:text-slate-400 tracking-wider mb-1.5">Titik & Perangkat</div>
@@ -3008,22 +2918,6 @@ onUnmounted(() => {
                                         <div class="flex items-center gap-2">
                                             <span class="w-5 h-0.5 border-t-2 border-red-500 border-dashed inline-block shrink-0"></span>
                                             <span class="text-[11px] text-gray-700 dark:text-gray-300">Lingkaran Radius</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Tab Karyawan Mode -->
-                            <div v-else class="space-y-3">
-                                <div>
-                                    <div class="text-[10px] uppercase font-bold text-gray-400 dark:text-slate-400 tracking-wider mb-1.5">Aktivitas Karyawan</div>
-                                    <div class="space-y-2 pl-1">
-                                        <div class="flex items-center gap-2">
-                                            <span class="w-3 hand-3 rounded-full bg-pink-500 border border-white shadow-xs inline-block shrink-0"></span>
-                                            <div>
-                                                <div class="text-[11px] font-bold text-gray-800 dark:text-gray-200">Posisi Karyawan</div>
-                                                <div class="text-[10px] text-gray-400 dark:text-slate-400">Absensi GPS & Tugas Lapangan Hari Ini</div>
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
