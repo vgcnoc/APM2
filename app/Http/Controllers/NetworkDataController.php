@@ -8,6 +8,7 @@ use App\Models\Odp;
 use App\Models\Ont;
 use App\Models\Area;
 use App\Models\Customer;
+use App\Models\User;
 use App\Services\DataScopeService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -592,22 +593,234 @@ class NetworkDataController extends Controller
         }
 
         $search = $request->input('search');
-        
-        $query = Customer::where('status', 'terminated')->with(['ont.odp.area', 'ont.odp.odc.olt', 'latestCbpRequest.technicians']);
-        
-        if ($search) {
+        $statusCbp = $request->input('status_cbp', 'all');
+        $portStatus = $request->input('port_status', 'all');
+        $areaId = $request->input('area_id');
+        $odcId = $request->input('odc_id');
+        $odpId = $request->input('odp_id');
+        $technicianId = $request->input('technician_id');
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        $dateType = $request->input('date_type', 'updated');
+        $sortBy = $request->input('sort_by', 'latest');
+        $perPage = (int) $request->input('per_page', 20);
+        if (!in_array($perPage, [15, 20, 25, 50, 100])) {
+            $perPage = 20;
+        }
+
+        // Base Query with Data Scope
+        $baseQuery = Customer::where('status', 'terminated');
+        DataScopeService::applyCustomerScope($baseQuery, $user, 'network_data');
+
+        // Global KPI Counts for Quick Filter Cards
+        $countsQuery = clone $baseQuery;
+        $totalTerminated = (clone $countsQuery)->count();
+
+        $portOccupied = (clone $countsQuery)->whereHas('ont')->where(function ($q) {
+            $q->whereDoesntHave('cbpRequests')
+              ->orWhereHas('latestCbpRequest', function ($cq) {
+                  $cq->where('status', '!=', 'completed');
+              });
+        })->count();
+
+        $noCbp = (clone $countsQuery)->whereDoesntHave('cbpRequests')->count();
+
+        $cbpInProcess = (clone $countsQuery)->whereHas('latestCbpRequest', function ($cq) {
+            $cq->whereIn('status', ['pending', 'assigned']);
+        })->count();
+
+        $cbpCompleted = (clone $countsQuery)->whereHas('latestCbpRequest', function ($cq) {
+            $cq->where('status', 'completed');
+        })->count();
+
+        $noOnt = (clone $countsQuery)->whereDoesntHave('ont')->count();
+
+        $counts = [
+            'total' => $totalTerminated,
+            'port_occupied' => $portOccupied,
+            'no_cbp' => $noCbp,
+            'in_process' => $cbpInProcess,
+            'completed' => $cbpCompleted,
+            'no_ont' => $noOnt,
+        ];
+
+        // Filtered Query
+        $query = clone $baseQuery;
+        $query->with([
+            'ont.odp.area',
+            'ont.odp.odc.olt',
+            'areaModel',
+            'latestCbpRequest.technicians'
+        ]);
+
+        // 1. Smart Search
+        if (!empty($search)) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('customer_code', 'like', "%{$search}%")
-                  ->orWhere('address', 'like', "%{$search}%");
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhere('address', 'like', "%{$search}%")
+                  ->orWhereHas('ont', function ($oq) use ($search) {
+                      $oq->where('sn', 'like', "%{$search}%")
+                         ->orWhereHas('odp', function ($odpq) use ($search) {
+                             $odpq->where('name', 'like', "%{$search}%");
+                         });
+                  })
+                  ->orWhereHas('latestCbpRequest', function ($cq) use ($search) {
+                      $cq->where('cbp_number', 'like', "%{$search}%");
+                  });
             });
         }
-        
-        $customers = $query->latest('updated_at')->paginate(20)->withQueryString();
+
+        // 2. Filter Status CBP
+        if ($statusCbp === 'no_request') {
+            $query->whereDoesntHave('cbpRequests');
+        } elseif ($statusCbp === 'in_process') {
+            $query->whereHas('latestCbpRequest', function ($cq) {
+                $cq->whereIn('status', ['pending', 'assigned']);
+            });
+        } elseif (in_array($statusCbp, ['pending', 'assigned', 'completed', 'canceled'])) {
+            $query->whereHas('latestCbpRequest', function ($cq) use ($statusCbp) {
+                $cq->where('status', $statusCbp);
+            });
+        }
+
+        // 3. Filter Port Status
+        if ($portStatus === 'occupied') {
+            $query->whereHas('ont')->where(function ($q) {
+                $q->whereDoesntHave('cbpRequests')
+                  ->orWhereHas('latestCbpRequest', function ($cq) {
+                      $cq->where('status', '!=', 'completed');
+                  });
+            });
+        } elseif ($portStatus === 'freed') {
+            $query->whereHas('latestCbpRequest', function ($cq) {
+                $cq->where('status', 'completed');
+            });
+        } elseif ($portStatus === 'no_ont') {
+            $query->whereDoesntHave('ont');
+        }
+
+        // 4. Filter Area
+        if (!empty($areaId)) {
+            $query->where(function ($q) use ($areaId) {
+                $q->where('area_id', $areaId)
+                  ->orWhereHas('ont.odp', function ($odpq) use ($areaId) {
+                      $odpq->where('area_id', $areaId);
+                  });
+            });
+        }
+
+        // 5. Filter ODC
+        if (!empty($odcId)) {
+            $query->whereHas('ont.odp', function ($odpq) use ($odcId) {
+                $odpq->where('odc_id', $odcId);
+            });
+        }
+
+        // 6. Filter ODP
+        if (!empty($odpId)) {
+            $query->whereHas('ont', function ($oq) use ($odpId) {
+                $oq->where('odp_id', $odpId);
+            });
+        }
+
+        // 7. Filter Technician
+        if (!empty($technicianId)) {
+            $query->whereHas('latestCbpRequest.technicians', function ($tq) use ($technicianId) {
+                $tq->where('users.id', $technicianId);
+            });
+        }
+
+        // 8. Filter Date Range
+        if (!empty($dateFrom) || !empty($dateTo)) {
+            if ($dateType === 'scheduled') {
+                $query->whereHas('latestCbpRequest', function ($cq) use ($dateFrom, $dateTo) {
+                    if (!empty($dateFrom)) $cq->whereDate('scheduled_date', '>=', $dateFrom);
+                    if (!empty($dateTo)) $cq->whereDate('scheduled_date', '<=', $dateTo);
+                });
+            } elseif ($dateType === 'completed') {
+                $query->whereHas('latestCbpRequest', function ($cq) use ($dateFrom, $dateTo) {
+                    if (!empty($dateFrom)) $cq->whereDate('completed_at', '>=', $dateFrom);
+                    if (!empty($dateTo)) $cq->whereDate('completed_at', '<=', $dateTo);
+                });
+            } else {
+                if (!empty($dateFrom)) $query->whereDate('customers.updated_at', '>=', $dateFrom);
+                if (!empty($dateTo)) $query->whereDate('customers.updated_at', '<=', $dateTo);
+            }
+        }
+
+        // 9. Sorting
+        switch ($sortBy) {
+            case 'oldest':
+                $query->oldest('customers.updated_at');
+                break;
+            case 'name_asc':
+                $query->orderBy('customers.name', 'asc');
+                break;
+            case 'name_desc':
+                $query->orderBy('customers.name', 'desc');
+                break;
+            case 'code_asc':
+                $query->orderBy('customers.customer_code', 'asc');
+                break;
+            case 'odp_name':
+                $query->leftJoin('onts', 'onts.customer_id', '=', 'customers.id')
+                      ->leftJoin('odps', 'odps.id', '=', 'onts.odp_id')
+                      ->orderBy('odps.name', 'asc')
+                      ->select('customers.*');
+                break;
+            case 'latest':
+            default:
+                $query->latest('customers.updated_at');
+                break;
+        }
+
+        $customers = $query->paginate($perPage)->withQueryString();
+
+        // Auxiliary Master Data for Dropdowns
+        $areas = DataScopeService::getScopedAreas($user, 'network_data');
+
+        $odcQuery = Odc::select(['id', 'name', 'area_id'])->orderBy('name');
+        DataScopeService::applyOdcScope($odcQuery, $user);
+        $odcs = $odcQuery->get();
+
+        $odpQuery = Odp::select(['id', 'name', 'odc_id', 'area_id'])->orderBy('name');
+        DataScopeService::applyOdpScope($odpQuery, $user);
+        $odps = $odpQuery->get();
+
+        $technicians = User::forAssignment()->where(function ($query) {
+            $query->whereHas('roles', function ($q) {
+                $q->whereIn('name', ['teknisi', 'kepala teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance', 'teknisi-2', 'maintenance-1'])
+                  ->orWhere('name', 'like', '%teknisi%')
+                  ->orWhere('name', 'like', '%serbu%');
+            })
+            ->orWhereIn('role', ['teknisi', 'kepala teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance', 'teknisi-2', 'maintenance-1'])
+            ->orWhere('role', 'like', '%teknisi%')
+            ->orWhere('role', 'like', '%serbu%');
+        })->select(['id', 'name', 'role'])->orderBy('name')->get();
 
         return Inertia::render('NetworkData/Terminated', [
             'customers' => $customers,
-            'filters' => $request->only(['search']),
+            'counts' => $counts,
+            'areas' => $areas,
+            'odcs' => $odcs,
+            'odps' => $odps,
+            'technicians' => $technicians,
+            'filters' => [
+                'search' => $search ?? '',
+                'status_cbp' => $statusCbp,
+                'port_status' => $portStatus,
+                'area_id' => $areaId ? (int)$areaId : '',
+                'odc_id' => $odcId ? (int)$odcId : '',
+                'odp_id' => $odpId ? (int)$odpId : '',
+                'technician_id' => $technicianId ? (int)$technicianId : '',
+                'date_from' => $dateFrom ?? '',
+                'date_to' => $dateTo ?? '',
+                'date_type' => $dateType,
+                'sort_by' => $sortBy,
+                'per_page' => $perPage,
+            ],
         ]);
     }
 }
