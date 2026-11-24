@@ -172,6 +172,12 @@ const selectKpiCard = (type) => {
     applyFilter();
 };
 
+// Area Shortcut
+const selectArea = (id) => {
+    form.area_id = form.area_id === String(id || '') ? '' : String(id || '');
+    applyFilter();
+};
+
 // Reset All Filters
 const resetFilters = () => {
     form.search = '';
@@ -468,6 +474,20 @@ const printTable = () => {
                             </button>
                         </div>
 
+                        <!-- Filter Wilayah / Cabang (Langsung di Bar Utama) -->
+                        <div class="w-full sm:w-auto min-w-[170px]">
+                            <select
+                                v-model="form.area_id"
+                                @change="applyFilter"
+                                class="w-full py-2.5 px-3 bg-gray-50/70 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700/80 rounded-xl text-xs font-semibold text-gray-800 dark:text-slate-200 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all cursor-pointer"
+                            >
+                                <option value="">🌐 Semua Wilayah / Area</option>
+                                <option v-for="area in areas" :key="area.id" :value="String(area.id)">
+                                    📍 {{ area.name }}
+                                </option>
+                            </select>
+                        </div>
+
                         <!-- Filter Status Port ODP -->
                         <div class="w-full sm:w-auto min-w-[170px]">
                             <select
@@ -527,26 +547,45 @@ const printTable = () => {
                         </button>
                     </div>
 
+                    <!-- Quick Area Pills (Bisa sekali klik langsung pindah area) -->
+                    <div v-if="areas.length > 0" class="pt-2 border-t border-gray-100 dark:border-slate-800/80 flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs no-scrollbar">
+                        <span class="text-[11px] font-bold text-gray-500 dark:text-slate-400 shrink-0 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            Wilayah:
+                        </span>
+                        <button
+                            type="button"
+                            @click="selectArea('')"
+                            :class="[
+                                'px-2.5 py-1 rounded-lg text-xs font-semibold transition-all shrink-0 cursor-pointer',
+                                !form.area_id
+                                    ? 'bg-rose-600 text-white font-bold shadow-xs'
+                                    : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'
+                            ]"
+                        >
+                            Semua Area
+                        </button>
+                        <button
+                            v-for="area in areas"
+                            :key="area.id"
+                            type="button"
+                            @click="selectArea(area.id)"
+                            :class="[
+                                'px-2.5 py-1 rounded-lg text-xs font-semibold transition-all shrink-0 cursor-pointer',
+                                String(form.area_id) === String(area.id)
+                                    ? 'bg-rose-600 text-white font-bold shadow-xs'
+                                    : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'
+                            ]"
+                        >
+                            {{ area.name }}
+                        </button>
+                    </div>
+
                     <!-- ═══ 4. PANEL FILTER LANJUTAN (ACCORDION CANGGIH) ═══ -->
                     <div
                         v-show="showAdvancedFilter"
-                        class="pt-3.5 border-t border-gray-100 dark:border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 animate-in fade-in slide-in-from-top-1"
+                        class="pt-3.5 border-t border-gray-100 dark:border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 animate-in fade-in slide-in-from-top-1"
                     >
-                        <!-- Filter Wilayah / Cabang -->
-                        <div>
-                            <label class="block text-[11px] font-bold text-gray-700 dark:text-slate-300 mb-1">Wilayah / Cabang</label>
-                            <select
-                                v-model="form.area_id"
-                                @change="applyFilter"
-                                class="w-full py-2 px-2.5 bg-gray-50/70 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700/80 rounded-xl text-xs text-gray-800 dark:text-slate-200 focus:bg-white dark:focus:bg-slate-800 focus:ring-1 focus:ring-rose-500 transition cursor-pointer"
-                            >
-                                <option value="">Semua Wilayah</option>
-                                <option v-for="area in areas" :key="area.id" :value="String(area.id)">
-                                    {{ area.name }}
-                                </option>
-                            </select>
-                        </div>
-
                         <!-- Filter ODC -->
                         <div>
                             <label class="block text-[11px] font-bold text-gray-700 dark:text-slate-300 mb-1">ODC (Distribusi)</label>
