@@ -21,12 +21,24 @@ class ShiftController extends Controller
             abort(403, 'Anda tidak memiliki hak akses untuk membuka Master Shift Kerja.');
         }
 
+        $activeCompanyId = (int) (session('active_company_id') ?: (auth()->user()?->company_id ?: 1));
+        if ($activeCompanyId !== 1 && Shift::count() === 0) {
+            $holdingShifts = Shift::withoutGlobalScopes()->where('company_id', 1)->get();
+            foreach ($holdingShifts as $hs) {
+                $cloned = $hs->replicate();
+                $cloned->company_id = $activeCompanyId;
+                $cloned->save();
+            }
+        }
+
         $query = Shift::withCount('employees');
 
         if ($request->filled('search')) {
             $s = $request->search;
-            $query->where('name', 'like', "%{$s}%")
+            $query->where(function ($q) use ($s) {
+                $q->where('name', 'like', "%{$s}%")
                   ->orWhere('description', 'like', "%{$s}%");
+            });
         }
 
         if ($request->filled('status')) {
@@ -66,6 +78,8 @@ class ShiftController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        $activeCompanyId = (int) (session('active_company_id') ?: (auth()->user()?->company_id ?: 1));
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'start_time' => 'required|string|max:10',
@@ -83,6 +97,8 @@ class ShiftController extends Controller
         $start = substr($validated['start_time'], 0, 5);
         $end = substr($validated['end_time'], 0, 5);
 
+        $validated['name'] = trim($validated['name']);
+        $validated['company_id'] = $activeCompanyId;
         $validated['start_time'] = $start;
         $validated['end_time'] = $end;
         $validated['is_night_shift'] = $end < $start;
@@ -116,6 +132,7 @@ class ShiftController extends Controller
         $start = substr($validated['start_time'], 0, 5);
         $end = substr($validated['end_time'], 0, 5);
 
+        $validated['name'] = trim($validated['name']);
         $validated['start_time'] = $start;
         $validated['end_time'] = $end;
         $validated['is_night_shift'] = $end < $start;
