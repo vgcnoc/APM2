@@ -802,7 +802,8 @@ class WorkScheduleController extends Controller
         $startDate = $targetMonth->copy()->startOfMonth()->format('Y-m-d');
         $endDate = $targetMonth->copy()->endOfMonth()->format('Y-m-d');
 
-        $query = WorkSchedule::query();
+        $activeCompanyId = (int) (session('active_company_id') ?: (auth()->user()?->company_id ?: 1));
+        $query = WorkSchedule::query()->where('company_id', $activeCompanyId);
         $scope = $request->input('scope', 'all');
 
         $scopeLevel = \App\Services\DataScopeService::getScopeLevel($user, 'work_schedules');
@@ -871,6 +872,8 @@ class WorkScheduleController extends Controller
             'description' => 'nullable|string',
         ]);
 
+        $activeCompanyId = (int) (session('active_company_id') ?: (auth()->user()?->company_id ?: 1));
+        $validated['company_id'] = $activeCompanyId;
         RosterPattern::create($validated);
 
         return back()->with('success', 'Pola roster baru berhasil disimpan!');
