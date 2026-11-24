@@ -57,9 +57,9 @@ const checkMobile = () => {
 };
 
 // Canvas Pan & Zoom
-const scale = ref(1);
-const translateX = ref(0);
-const translateY = ref(40);
+const scale = ref(0.75);
+const translateX = ref(40);
+const translateY = ref(30);
 const isDragging = ref(false);
 const startX = ref(0);
 const startY = ref(0);
@@ -78,7 +78,7 @@ const handleWheel = (e) => {
 
 const handleMouseDown = (e) => {
     if (isMobile.value) return;
-    if (e.target.closest('.node-card') || e.target.closest('button') || e.target.closest('input') || e.target.closest('select')) return;
+    if (e.target.closest('.node-card') || e.target.closest('button') || e.target.closest('input') || e.target.closest('select') || e.target.closest('a')) return;
     
     isDragging.value = true;
     startX.value = e.clientX - translateX.value;
@@ -95,10 +95,25 @@ const handleMouseUp = () => {
     isDragging.value = false;
 };
 
+const fitToScreen = () => {
+    const total = props.olts?.length || 1;
+    if (total <= 2) {
+        scale.value = 1;
+        translateX.value = 40;
+        translateY.value = 30;
+    } else if (total <= 4) {
+        scale.value = 0.85;
+        translateX.value = 40;
+        translateY.value = 30;
+    } else {
+        scale.value = 0.7;
+        translateX.value = 40;
+        translateY.value = 30;
+    }
+};
+
 const centerMap = () => {
-    scale.value = 1;
-    translateX.value = 0;
-    translateY.value = 40;
+    fitToScreen();
 };
 
 const zoomIn = () => {
@@ -110,9 +125,7 @@ const zoomOut = () => {
 };
 
 const resetZoom = () => {
-    scale.value = 1;
-    translateX.value = 0;
-    translateY.value = 40;
+    fitToScreen();
 };
 
 const toggleFullscreen = () => {
@@ -698,14 +711,14 @@ onUnmounted(() => {
                 </div>
             </transition>
 
-            <!-- FLOATING HUD TOOLBAR -->
-            <div class="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-white/95 backdrop-blur-md border border-slate-300/80 px-3 py-1.5 rounded-2xl shadow-xl">
+            <!-- FLOATING HUD TOOLBAR (Bottom Right to avoid blocking nodes) -->
+            <div class="absolute bottom-5 right-5 z-20 flex flex-wrap items-center gap-1.5 bg-white/95 backdrop-blur-md border border-slate-300/80 px-3 py-1.5 rounded-2xl shadow-xl">
                 <!-- Zoom Out -->
                 <button @click="zoomOut" class="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-xl transition-colors" title="Zoom Out (-)">
                     <MinusIcon class="w-4 h-4" />
                 </button>
                 <!-- Scale Percentage Badge / Reset -->
-                <button @click="resetZoom" class="px-2 py-1 text-xs font-bold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors" title="Klik untuk Reset Zoom (100%)">
+                <button @click="resetZoom" class="px-2 py-1 text-xs font-bold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors" title="Klik untuk Reset / Fit Tampilan">
                     {{ Math.round(scale * 100) }}%
                 </button>
                 <!-- Zoom In -->
@@ -716,7 +729,7 @@ onUnmounted(() => {
                 <div class="w-[1px] h-5 bg-slate-200 mx-1"></div>
 
                 <!-- Center / Fit Map -->
-                <button @click="centerMap" class="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-xl transition-colors" title="Tengahkan Kanvas">
+                <button @click="fitToScreen" class="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-xl transition-colors flex items-center gap-1" title="Tengahkan & Rapikan Kanvas">
                     <ArrowPathIcon class="w-4 h-4" />
                 </button>
 
@@ -755,6 +768,15 @@ onUnmounted(() => {
                     <option value="high_usage">⚠️ Utilisasi Tinggi (&ge;70%)</option>
                     <option value="offline">🔴 Node Bermasalah</option>
                 </select>
+            </div>
+
+            <!-- Canvas Navigation Hint (Bottom Left) -->
+            <div class="absolute bottom-5 left-5 z-20 hidden sm:flex items-center gap-2 bg-slate-900/80 backdrop-blur-md text-white px-3 py-1.5 rounded-xl text-[11px] shadow-lg pointer-events-none">
+                <span>✋ Drag kanvas untuk geser</span>
+                <span class="text-slate-500">&bull;</span>
+                <span>🔍 Scroll untuk zoom</span>
+                <span class="text-slate-500">&bull;</span>
+                <span class="text-amber-300 font-bold">{{ olts.length }} OLT Terdaftar</span>
             </div>
 
             <!-- LEGEND MODAL / POPUP -->
@@ -809,7 +831,7 @@ onUnmounted(() => {
 
             <!-- MAIN TOPOLOGY CANVAS -->
             <div 
-                class="flex-1 relative overflow-auto md:overflow-hidden select-none cursor-grab active:cursor-grabbing"
+                class="flex-1 relative overflow-auto select-none cursor-grab active:cursor-grabbing scroll-smooth"
                 :style="{
                     backgroundColor: '#f8fafc',
                     backgroundImage: 'radial-gradient(#cbd5e1 1.2px, transparent 1.2px)',
@@ -822,10 +844,10 @@ onUnmounted(() => {
                 @mouseleave="handleMouseUp"
             >
                 <div 
-                    class="p-6 md:p-12 transition-transform duration-75 ease-out origin-top min-w-max flex justify-center"
-                    :style="!isMobile ? { transform: `translate(${translateX}px, ${translateY}px) scale(${scale})` } : {}"
+                    class="p-6 md:p-10 pb-48 transition-transform duration-75 ease-out origin-top-left min-w-max flex justify-start items-start"
+                    :style="!isMobile ? { transformOrigin: '0 0', transform: `translate(${translateX}px, ${translateY}px) scale(${scale})` } : {}"
                 >
-                    <div :class="[isMobile ? 'flex flex-col gap-8' : 'flex flex-row justify-center gap-12 min-w-max']">
+                    <div :class="[isMobile ? 'flex flex-col gap-8' : 'flex flex-row justify-start gap-10 min-w-max items-start']">
                         <!-- OLT Level -->
                         <div 
                             v-for="olt in olts" 
@@ -836,7 +858,7 @@ onUnmounted(() => {
                         >
                             <!-- OLT Card -->
                             <div 
-                                class="node-card bg-white border-2 rounded-2xl shadow-md p-4 w-72 cursor-pointer hover:shadow-xl transition-all relative group"
+                                class="node-card bg-white border-2 rounded-2xl shadow-md p-4 w-80 cursor-pointer hover:shadow-xl transition-all relative group"
                                 :class="[
                                     isNodeInPath('olt', olt.id) ? 'border-indigo-600 ring-4 ring-indigo-100' : 'border-slate-200/90 hover:border-indigo-400'
                                 ]"
@@ -845,38 +867,38 @@ onUnmounted(() => {
                                 <!-- Top Accent Bar -->
                                 <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-indigo-600 to-blue-500 rounded-t-xl"></div>
                                 
-                                <div class="flex items-start justify-between gap-3 mb-2.5 pt-1">
-                                    <div class="flex items-center gap-2.5 min-w-0">
+                                <div class="flex items-start justify-between gap-2.5 mb-2.5 pt-1">
+                                    <div class="flex items-center gap-2.5 min-w-0 flex-1">
                                         <div class="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100 shrink-0">
                                             <ServerIcon class="w-6 h-6" />
                                         </div>
-                                        <div class="min-w-0">
+                                        <div class="min-w-0 flex-1">
                                             <div class="flex items-center gap-1.5">
                                                 <span class="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700">OLT</span>
-                                                <span v-if="olt.brand" class="text-[9px] font-bold text-slate-500">{{ olt.brand }}</span>
+                                                <span v-if="olt.brand" class="text-[9px] font-bold text-slate-500 truncate max-w-[100px]">{{ olt.brand }}</span>
                                             </div>
                                             <h3 class="font-extrabold text-slate-900 text-sm truncate" :title="olt.name">{{ olt.name }}</h3>
                                         </div>
                                     </div>
-                                    <span class="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0" :class="getStatusBadgeClass(olt.status)">
+                                    <span class="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 whitespace-nowrap" :class="getStatusBadgeClass(olt.status)">
                                         <span class="w-1.5 h-1.5 rounded-full animate-pulse" :class="getStatusColor(olt.status)"></span>
                                         {{ getStatusText(olt.status) }}
                                     </span>
                                 </div>
 
                                 <!-- OLT Metadata -->
-                                <div class="bg-slate-50 rounded-xl p-2.5 border border-slate-100 mb-3 space-y-1 text-xs">
-                                    <div class="flex justify-between text-slate-600">
-                                        <span class="text-slate-400 font-medium">IP Address:</span>
-                                        <span class="font-mono font-bold text-slate-800">{{ olt.ip_address || '-' }}</span>
+                                <div class="bg-slate-50 rounded-xl p-2.5 border border-slate-100 mb-3 space-y-1.5 text-xs">
+                                    <div class="flex items-center justify-between text-slate-600 gap-1.5">
+                                        <span class="text-slate-400 font-medium shrink-0">IP Address:</span>
+                                        <span class="font-mono font-bold text-slate-800 text-[11px] truncate max-w-[190px] text-right" :title="olt.ip_address">{{ olt.ip_address || '-' }}</span>
                                     </div>
-                                    <div class="flex justify-between text-slate-600">
-                                        <span class="text-slate-400 font-medium">Wilayah Area:</span>
-                                        <span class="font-medium text-slate-700 truncate max-w-[140px]">{{ olt.area?.name || 'Semua Area' }}</span>
+                                    <div class="flex items-center justify-between text-slate-600 gap-1.5">
+                                        <span class="text-slate-400 font-medium shrink-0">Wilayah Area:</span>
+                                        <span class="font-medium text-slate-700 truncate max-w-[170px] text-right" :title="olt.area?.name || 'Semua Area'">{{ olt.area?.name || 'Semua Area' }}</span>
                                     </div>
-                                    <div class="flex justify-between text-slate-600">
-                                        <span class="text-slate-400 font-medium">Kapasitas PON:</span>
-                                        <span class="font-bold text-indigo-600">{{ olt.pons?.length || 0 }} Port Terpasang</span>
+                                    <div class="flex items-center justify-between text-slate-600 gap-1.5">
+                                        <span class="text-slate-400 font-medium shrink-0">Kapasitas PON:</span>
+                                        <span class="font-bold text-indigo-600 shrink-0">{{ olt.pons?.length || 0 }} Port Terpasang</span>
                                     </div>
                                 </div>
 
@@ -913,7 +935,7 @@ onUnmounted(() => {
                                 :class="[isMobile ? 'flex-col pl-6 mt-3 border-l-2 border-slate-300 ml-6' : 'flex-row justify-center']"
                             >
                                 <!-- Horizontal & Vertical Bus Connectors -->
-                                <div v-if="!isMobile && olt.pons?.length > 1" class="absolute top-[-32px] left-1/2 w-[calc(100%-14rem)] h-[2px] bg-indigo-300 -translate-x-1/2"></div>
+                                <div v-if="!isMobile && olt.pons?.length > 1" class="absolute top-[-32px] left-1/2 w-[calc(100%-16rem)] h-[2px] bg-indigo-300 -translate-x-1/2"></div>
                                 <div v-if="!isMobile && olt.pons?.length" class="absolute top-[-32px] left-1/2 w-[2px] h-[32px] bg-indigo-300 -translate-x-1/2"></div>
 
                                 <div 
@@ -927,7 +949,7 @@ onUnmounted(() => {
 
                                     <!-- PON Node Card -->
                                     <div 
-                                        class="node-card bg-white border-2 rounded-2xl shadow-sm p-3.5 w-60 cursor-pointer hover:shadow-md transition-all relative group"
+                                        class="node-card bg-white border-2 rounded-2xl shadow-sm p-3.5 w-64 cursor-pointer hover:shadow-md transition-all relative group"
                                         :class="[isNodeInPath('pon', pon.id) ? 'border-purple-600 ring-4 ring-purple-100' : 'border-slate-200 hover:border-purple-400']"
                                         @click="selectNode('pon', pon, [{type: 'olt', id: olt.id}, {type: 'pon', id: pon.id}])"
                                     >
