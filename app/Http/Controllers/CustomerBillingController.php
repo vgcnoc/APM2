@@ -464,7 +464,13 @@ class CustomerBillingController extends Controller
         $effectiveRemaining = max(0, (float) $invoice->amount - $verifiedPaid - $pendingPaid);
         $totalRemaining = max(0, (float) $invoice->amount - $verifiedPaid);
 
-        $isDirect = !empty($validated['is_direct_payment']);
+        $user = auth()->user();
+        $userRole = strtolower($user->role ?? '');
+        $isAdmin = in_array($userRole, ['admin', 'superadmin', 'super admin', 'super-admin', 'finance', 'manager', 'management'])
+            || ($user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'super admin', 'finance', 'manager', 'management']));
+
+        // Pelunasan langsung tanpa validasi (is_direct_payment) hanya diizinkan untuk Admin/Finance/Kasir
+        $isDirect = !empty($validated['is_direct_payment']) && $isAdmin;
 
         if ($isDirect) {
             if ($validated['amount'] > $totalRemaining) {

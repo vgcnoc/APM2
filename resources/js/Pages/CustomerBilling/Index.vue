@@ -868,14 +868,21 @@
                             <label class="block text-sm font-medium text-gray-700">Catatan</label>
                             <textarea v-model="form.notes" rows="2" class="mt-1 block w-full border-gray-300 rounded-xl"></textarea>
                         </div>
-                        <div class="flex items-start bg-indigo-50 p-3 rounded-xl border border-indigo-100">
+                        <!-- Khusus Admin/Kasir: opsi pembayaran langsung di kantor -->
+                        <div v-if="is_admin" class="flex items-start bg-indigo-50 p-3 rounded-xl border border-indigo-100">
                             <div class="flex items-center h-5">
                                 <input id="direct" v-model="form.is_direct_payment" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
                             </div>
                             <div class="ml-3 text-sm">
-                                <label for="direct" class="font-medium text-indigo-900">Pembayaran Langsung di Kantor</label>
-                                <p class="text-indigo-700 text-xs mt-0.5">Mencentang ini akan langsung melunaskan tagihan (bypass verifikasi admin). Gunakan jika uang sudah ada di kasir.</p>
+                                <label for="direct" class="font-medium text-indigo-900">Pembayaran Langsung di Kantor (Kasir/Admin)</label>
+                                <p class="text-indigo-700 text-xs mt-0.5">Mencentang ini akan langsung melunaskan tagihan (khusus kasir/admin saat uang tunai sudah diterima di kantor).</p>
                             </div>
+                        </div>
+
+                        <!-- Info untuk Teknisi / Kolektor Lapangan -->
+                        <div v-else class="flex items-start bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs text-amber-800">
+                            <span class="mr-2 text-sm">ℹ️</span>
+                            <p>Setoran lapangan yang Anda catat akan berstatus <strong>Pending (Menunggu Validasi)</strong>. Tagihan pelanggan akan resmi lunas setelah setoran disetujui oleh Admin / Kasir kantor.</p>
                         </div>
                     </form>
                 </div>
@@ -1290,6 +1297,7 @@ const openModal = (inv) => {
     paymentType.value = 'full';
     form.amount = inv.effective_remaining;
     form.notes = 'Terima dana tagihan pelanggan';
+    form.is_direct_payment = false;
     showModal.value = true;
 };
 
