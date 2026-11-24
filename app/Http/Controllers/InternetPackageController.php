@@ -180,6 +180,10 @@ class InternetPackageController extends Controller
 
         $validated = $this->cleanAreaInstallationFees($validated);
 
+        $activeId = session('active_company_id');
+        $companyId = ($activeId && $activeId !== 'all') ? (int) $activeId : (auth()->check() && auth()->user()->company_id ? (int) auth()->user()->company_id : 1);
+        $validated['company_id'] = $companyId;
+
         $package = InternetPackage::create($validated);
 
         try {
@@ -193,6 +197,12 @@ class InternetPackageController extends Controller
 
     public function update(Request $request, InternetPackage $internetPackage)
     {
+        $activeId = session('active_company_id');
+        $companyId = ($activeId && $activeId !== 'all') ? (int) $activeId : (auth()->check() && auth()->user()->company_id ? (int) auth()->user()->company_id : 1);
+        if ($internetPackage->company_id && (int) $internetPackage->company_id !== (int) $companyId) {
+            abort(403, 'Anda tidak memiliki hak untuk mengubah paket milik perusahaan lain.');
+        }
+
         $validated = $request->validate($this->getValidationRules());
         
         $effectivePrice = (!empty($validated['is_promo']) && isset($validated['promo_price']) && is_numeric($validated['promo_price']))
@@ -218,6 +228,12 @@ class InternetPackageController extends Controller
 
     public function destroy(InternetPackage $internetPackage)
     {
+        $activeId = session('active_company_id');
+        $companyId = ($activeId && $activeId !== 'all') ? (int) $activeId : (auth()->check() && auth()->user()->company_id ? (int) auth()->user()->company_id : 1);
+        if ($internetPackage->company_id && (int) $internetPackage->company_id !== (int) $companyId) {
+            abort(403, 'Anda tidak memiliki hak untuk menghapus paket milik perusahaan lain.');
+        }
+
         if ($internetPackage->customers()->count() > 0) {
             return redirect()->back()->with('error', 'Paket internet tidak dapat dihapus karena masih digunakan oleh pelanggan.');
         }

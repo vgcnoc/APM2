@@ -18,7 +18,14 @@ class CompanyScope implements Scope
         if (app()->has('forced_company_id')) {
             $forcedId = (int) app('forced_company_id');
             if ($forcedId > 0) {
-                $builder->where($model->qualifyColumn('company_id'), $forcedId);
+                if ($forcedId === 1) {
+                    $builder->where(function ($q) use ($model) {
+                        $q->where($model->qualifyColumn('company_id'), 1)
+                          ->orWhereNull($model->qualifyColumn('company_id'));
+                    });
+                } else {
+                    $builder->where($model->qualifyColumn('company_id'), $forcedId);
+                }
             }
             return;
         }
@@ -37,16 +44,39 @@ class CompanyScope implements Scope
             if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
                 $switchCompanyId = session('active_company_id');
                 if ($switchCompanyId && $switchCompanyId !== 'all') {
-                    $builder->where($model->qualifyColumn('company_id'), (int) $switchCompanyId);
+                    $cId = (int) $switchCompanyId;
+                    if ($cId === 1) {
+                        $builder->where(function ($q) use ($model) {
+                            $q->where($model->qualifyColumn('company_id'), 1)
+                              ->orWhereNull($model->qualifyColumn('company_id'));
+                        });
+                    } else {
+                        $builder->where($model->qualifyColumn('company_id'), $cId);
+                    }
+                    return;
                 }
-                // Jika 'all' atau belum memilih, Super Admin Pusat leluasa melihat data holding & konsolidasi
+
+                // Default tampilan Pusat (belum memilih switch atau login biasa di Pusat):
+                // Pastikan data milik Pusat terisolasi dari data Mitra (company_id = 1 atau null)
+                // agar paket internet, tarif, dan master data mitra TIDAK bocor/masuk ke Pusat
+                $builder->where(function ($q) use ($model) {
+                    $q->where($model->qualifyColumn('company_id'), 1)
+                      ->orWhereNull($model->qualifyColumn('company_id'));
+                });
                 return;
             }
 
             // Untuk akun Mitra / Karyawan Mitra:
             // Secara mutlak & otomatis hanya dapat melihat data perusahaannya sendiri
             $companyId = (int) ($user->company_id ?: 1);
-            $builder->where($model->qualifyColumn('company_id'), $companyId);
+            if ($companyId === 1) {
+                $builder->where(function ($q) use ($model) {
+                    $q->where($model->qualifyColumn('company_id'), 1)
+                      ->orWhereNull($model->qualifyColumn('company_id'));
+                });
+            } else {
+                $builder->where($model->qualifyColumn('company_id'), $companyId);
+            }
         }
     }
 }
