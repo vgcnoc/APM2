@@ -578,6 +578,12 @@
                                         ? 'Ketik nama role baru sesuai kebutuhan organisasi. Format otomatis huruf kecil.' 
                                         : 'Nama role dihubungkan dengan data Jabatan operasional. Izin dapat diatur segera setelah role dibuat.' }}
                                 </p>
+
+                                <!-- Error Message if any -->
+                                <div v-if="formError" class="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 font-semibold flex items-center gap-2">
+                                    <svg class="w-4 h-4 shrink-0 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <span>{{ formError }}</span>
+                                </div>
                             </div>
                         </div>
                         <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-2.5">
@@ -612,8 +618,14 @@
                                 <input v-model="cloneFormName" required type="text" placeholder="Contoh: koordinator-teknisi"
                                     class="w-full rounded-xl border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-sm" />
 
-                                <!-- Notice if target role exists -->
-                                <div v-if="isTargetRoleExisting" class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-start gap-2">
+                                <!-- Warning if target is Admin -->
+                                <div v-if="isTargetAdmin" class="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-bold flex items-center gap-2">
+                                    <span class="text-base leading-none">⛔</span>
+                                    <span>Role Super Admin terkunci permanen dan tidak dapat ditimpa melalui duplikasi!</span>
+                                </div>
+
+                                <!-- Notice if target role exists and not admin -->
+                                <div v-else-if="isTargetRoleExisting" class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-start gap-2">
                                     <span class="text-base leading-none">ℹ️</span>
                                     <div>
                                         <p class="font-bold">Role "{{ cloneFormName }}" sudah ada di daftar role.</p>
@@ -631,11 +643,12 @@
                         </div>
                         <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-2.5">
                             <button type="button" @click="showCloneModal = false" class="px-4 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">Batal</button>
-                            <button type="submit" :disabled="isSubmitting" :class="[
+                            <button type="submit" :disabled="isSubmitting || isTargetAdmin" :class="[
                                 'px-5 py-2 text-xs font-bold text-white rounded-xl transition-all shadow-sm disabled:opacity-50',
+                                isTargetAdmin ? 'bg-gray-400 cursor-not-allowed' :
                                 isTargetRoleExisting ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'
                             ]">
-                                {{ isSubmitting ? 'Memproses...' : (isTargetRoleExisting ? 'Salin & Timpa Izin Sekarang' : 'Duplikasi Sekarang') }}
+                                {{ isSubmitting ? 'Memproses...' : isTargetAdmin ? 'Terkunci (Super Admin)' : (isTargetRoleExisting ? 'Salin & Timpa Izin Sekarang' : 'Duplikasi Sekarang') }}
                             </button>
                         </div>
                     </form>
@@ -689,10 +702,21 @@
                         </button>
                     </div>
 
+                    <!-- Search input in preset modal -->
+                    <div class="px-5 pt-3 pb-1">
+                        <div class="relative">
+                            <input v-model="presetSearch" type="text" placeholder="Cari template standar (misal: teknisi, sales, finance, hrd, marketing)..."
+                                class="w-full pl-8 pr-3 py-2 text-xs rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 placeholder-gray-400" />
+                            <svg class="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                        </div>
+                    </div>
+
                     <!-- Modal Body / Presets Grid -->
                     <div class="p-5 overflow-y-auto space-y-3 flex-1">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div v-for="preset in availablePresets" :key="preset.key"
+                            <div v-for="preset in filteredPresets" :key="preset.key"
                                 @click="applySelectedPreset(preset.key)"
                                 class="p-3.5 rounded-xl border border-gray-200 hover:border-indigo-400 hover:bg-indigo-50/30 transition-all cursor-pointer group flex flex-col justify-between">
                                 <div>
@@ -717,6 +741,11 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Empty preset search -->
+                        <div v-if="filteredPresets.length === 0" class="py-10 text-center text-xs text-gray-400">
+                            Template tidak ditemukan untuk "{{ presetSearch }}"
+                        </div>
                     </div>
 
                     <!-- Modal Footer -->
@@ -733,7 +762,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import Swal from 'sweetalert2';
 import AppLayout from '@/Layouts/AppLayout.vue';
@@ -754,6 +783,7 @@ const selectedPermissions = ref([]);
 const openGroups = ref([]);
 const isSaving = ref(false);
 const categoryTabsContainer = ref(null);
+const pendingSelectRoleName = ref('');
 
 const scrollTabs = (direction) => {
     if (!categoryTabsContainer.value) return;
@@ -773,17 +803,24 @@ const showModal = ref(false);
 const isEditing = ref(false);
 const editingId = ref(null);
 const formName = ref('');
+const formError = ref('');
 const isCustomRoleName = ref(false);
 const isSubmitting = ref(false);
 
 // Preset Modal State
 const showPresetModal = ref(false);
+const presetSearch = ref('');
 
 // Clone Modal State
 const showCloneModal = ref(false);
 const roleToClone = ref(null);
 const cloneFormName = ref('');
 const cloneError = ref('');
+
+const isTargetAdmin = computed(() => {
+    const name = (cloneFormName.value || '').trim().toLowerCase();
+    return ['admin', 'super admin', 'superadmin'].includes(name);
+});
 
 const isTargetRoleExisting = computed(() => {
     const name = (cloneFormName.value || '').trim().toLowerCase();
@@ -1090,6 +1127,10 @@ const toggleGroupAll = (group) => {
                 selectedPermissions.value.push(p.name);
             }
         });
+        // Pastikan parent menu ikut aktif agar modul dapat dibuka di navigasi
+        if (group.menu_parent && !selectedPermissions.value.includes(group.menu_parent)) {
+            selectedPermissions.value.push(group.menu_parent);
+        }
     }
 };
 
@@ -1202,7 +1243,41 @@ const availablePresets = [
         title: 'Mitra Reseller / Agen',
         desc: 'Pembuatan dan cetak voucher internet hotspot, serta monitoring pelanggan voucher.',
     },
+    {
+        key: 'affiliate',
+        emoji: '🤝',
+        title: 'Marketing Afiliasi & Komisi',
+        desc: 'Monitoring pendaftaran mitra afiliasi, komisi referral, pencairan komisi, dan promosi.',
+    },
+    {
+        key: 'kolektor',
+        emoji: '💵',
+        title: 'Kolektor & Penagih Lapangan',
+        desc: 'Akses penagihan lapangan, terima setoran tunai pelanggan, dan cetak bukti kuitansi setoran.',
+    },
+    {
+        key: 'staff administrasi',
+        emoji: '📑',
+        title: 'Staff Administrasi Operasional',
+        desc: 'Akses data pelanggan, booking PSB, invoice billing, surat jalan, dan tiket kendala harian.',
+    },
+    {
+        key: 'hrd & finance',
+        emoji: '💼',
+        title: 'HRD & Keuangan Terpadu',
+        desc: 'Supervisi kepegawaian HRD, presensi, penggajian payroll terpadu, invoice kas & perpajakan.',
+    },
 ];
+
+const filteredPresets = computed(() => {
+    if (!presetSearch.value.trim()) return availablePresets;
+    const q = presetSearch.value.toLowerCase().trim();
+    return availablePresets.filter(p => 
+        p.title.toLowerCase().includes(q) || 
+        p.desc.toLowerCase().includes(q) || 
+        p.key.toLowerCase().includes(q)
+    );
+});
 
 const isPresetRecommended = (presetKey) => {
     if (!selectedRole.value) return false;
@@ -1304,11 +1379,10 @@ const savePermissions = () => {
     }, {
         preserveScroll: true,
         onSuccess: () => {
-            const role = props.roles.find(r => r.id === selectedRole.value.id);
-            if (role) {
-                role.permissions = [...selectedPermissions.value];
-                selectedRole.value = { ...role };
-            }
+            selectedRole.value = {
+                ...selectedRole.value,
+                permissions: [...selectedPermissions.value],
+            };
             Swal.fire({
                 icon: 'success',
                 title: 'Berhasil Disimpan!',
@@ -1363,6 +1437,7 @@ const openCreateModal = () => {
     isEditing.value = false;
     editingId.value = null;
     formName.value = '';
+    formError.value = '';
     isCustomRoleName.value = false;
     showModal.value = true;
 };
@@ -1371,12 +1446,14 @@ const openEditModal = (role) => {
     isEditing.value = true;
     editingId.value = role.id;
     formName.value = role.name;
+    formError.value = '';
     const isStandard = props.positions && props.positions.some(p => p.name.toLowerCase() === role.name.toLowerCase());
     isCustomRoleName.value = !isStandard;
     showModal.value = true;
 };
 
 const submitForm = () => {
+    formError.value = '';
     isSubmitting.value = true;
     const cleanName = formName.value.trim().toLowerCase();
     if (isEditing.value) {
@@ -1388,15 +1465,25 @@ const submitForm = () => {
             onSuccess: () => {
                 showModal.value = false;
                 if (selectedRole.value?.id === editingId.value) {
-                    selectedRole.value.name = cleanName;
+                    selectedRole.value = { ...selectedRole.value, name: cleanName };
                 }
+            },
+            onError: (err) => {
+                formError.value = err.name || Object.values(err || {})[0] || 'Gagal mengubah nama role.';
             },
             onFinish: () => isSubmitting.value = false,
         });
     } else {
+        pendingSelectRoleName.value = cleanName;
         router.post('/settings/roles', { name: cleanName, permissions: [] }, {
             preserveScroll: true,
-            onSuccess: () => showModal.value = false,
+            onSuccess: () => {
+                showModal.value = false;
+            },
+            onError: (err) => {
+                pendingSelectRoleName.value = '';
+                formError.value = err.name || Object.values(err || {})[0] || 'Gagal menambahkan role baru.';
+            },
             onFinish: () => isSubmitting.value = false,
         });
     }
@@ -1412,9 +1499,14 @@ const openCloneModal = (role) => {
 
 const submitCloneForm = () => {
     if (!roleToClone.value) return;
+    const target = cloneFormName.value.trim().toLowerCase();
+    if (['admin', 'super admin', 'superadmin'].includes(target)) {
+        cloneError.value = 'Role Super Admin tidak dapat ditimpa.';
+        return;
+    }
     cloneError.value = '';
     isSubmitting.value = true;
-    const target = cloneFormName.value.trim().toLowerCase();
+    pendingSelectRoleName.value = target;
     router.post(`/settings/roles/${roleToClone.value.id}/clone`, {
         name: target,
     }, {
@@ -1433,7 +1525,8 @@ const submitCloneForm = () => {
             });
         },
         onError: (err) => {
-            cloneError.value = err.name || Object.values(err)[0] || 'Gagal menduplikasi role.';
+            pendingSelectRoleName.value = '';
+            cloneError.value = err.name || Object.values(err || {})[0] || 'Gagal menduplikasi role.';
         },
         onFinish: () => isSubmitting.value = false,
     });
@@ -1557,6 +1650,28 @@ const iconPaths = {
     tag: 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z',
     'clipboard-list': 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
 };
+
+// Reaktif: Sinkronisasi role jika props.roles diperbarui oleh Inertia
+watch(() => props.roles, (newRoles) => {
+    if (!newRoles || !newRoles.length) return;
+    if (pendingSelectRoleName.value) {
+        const newlyCreated = newRoles.find(r => r.name.toLowerCase() === pendingSelectRoleName.value.toLowerCase());
+        if (newlyCreated) {
+            selectRole(newlyCreated);
+            pendingSelectRoleName.value = '';
+            return;
+        }
+    }
+    if (selectedRole.value) {
+        const current = newRoles.find(r => r.id === selectedRole.value.id);
+        if (current) {
+            selectedRole.value = current;
+            if (!hasUnsavedChanges.value) {
+                selectedPermissions.value = [...(current.permissions || [])];
+            }
+        }
+    }
+}, { deep: true });
 
 // Auto-select first role on mount if none selected
 onMounted(() => {

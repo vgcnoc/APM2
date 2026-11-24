@@ -125,7 +125,13 @@ class RoleController extends Controller
                 'required',
                 'string',
                 'max:100',
-                Rule::unique('roles', 'name')->where('company_id', $cId),
+                Rule::unique('roles', 'name')->where(function ($q) use ($cId) {
+                    if ($cId === 1) {
+                        $q->where(fn($sub) => $sub->where('company_id', 1)->orWhereNull('company_id'));
+                    } else {
+                        $q->where('company_id', $cId);
+                    }
+                }),
             ],
             'permissions' => 'array',
         ]);
@@ -169,7 +175,13 @@ class RoleController extends Controller
                 'required',
                 'string',
                 'max:100',
-                Rule::unique('roles', 'name')->where('company_id', $cId)->ignore($role->id),
+                Rule::unique('roles', 'name')->where(function ($q) use ($cId) {
+                    if ($cId === 1) {
+                        $q->where(fn($sub) => $sub->where('company_id', 1)->orWhereNull('company_id'));
+                    } else {
+                        $q->where('company_id', $cId);
+                    }
+                })->ignore($role->id),
             ],
             'permissions' => 'array',
         ]);
@@ -212,8 +224,25 @@ class RoleController extends Controller
             return redirect()->back()->with('error', "Nama role tujuan tidak boleh sama persis dengan role sumber.");
         }
 
-        $sourcePermissions = $role->permissions->pluck('name')->toArray();
-        $existingRole = Role::where('company_id', $cId)->where('name', $targetName)->first();
+        // Proteksi: Role Super Admin tidak boleh ditimpa
+        if (in_array($targetName, ['admin', 'super admin', 'superadmin'], true)) {
+            return redirect()->back()->with('error', "Role Super Admin tidak dapat ditimpa melalui duplikasi.");
+        }
+
+        // Jika sumber adalah Admin/Super Admin, pastikan menduplikasi seluruh 704 izin
+        if (in_array(strtolower($role->name), ['admin', 'super admin', 'superadmin'], true)) {
+            $sourcePermissions = \App\Support\PermissionRegistry::allNames();
+        } else {
+            $sourcePermissions = $role->permissions->pluck('name')->toArray();
+        }
+
+        $existingRole = Role::where(function ($q) use ($cId) {
+            if ($cId === 1) {
+                $q->where('company_id', 1)->orWhereNull('company_id');
+            } else {
+                $q->where('company_id', $cId);
+            }
+        })->where('name', $targetName)->first();
 
         if ($existingRole) {
             $existingRole->syncPermissions($sourcePermissions);
@@ -269,7 +298,7 @@ class RoleController extends Controller
         }
 
         $permissions = $presets[$presetKey];
-        if ($role->name === 'admin') {
+        if (in_array(strtolower($role->name), ['admin', 'super admin', 'superadmin'], true)) {
             $role->syncPermissions(\Spatie\Permission\Models\Permission::all());
         } else {
             $role->syncPermissions($permissions);
@@ -277,13 +306,25 @@ class RoleController extends Controller
 
             // Samakan teknisi-2 dengan teknisi secara otomatis jika di company yang sama
             if ($role->name === 'teknisi') {
-                $t2 = Role::where('company_id', $cId)->where('name', 'teknisi-2')->first();
+                $t2 = Role::where(function ($q) use ($cId) {
+                    if ($cId === 1) {
+                        $q->where('company_id', 1)->orWhereNull('company_id');
+                    } else {
+                        $q->where('company_id', $cId);
+                    }
+                })->where('name', 'teknisi-2')->first();
                 if ($t2) {
                     $t2->syncPermissions($permissions);
                     $this->markRoleCustomized($t2);
                 }
             } elseif ($role->name === 'teknisi-2') {
-                $t = Role::where('company_id', $cId)->where('name', 'teknisi')->first();
+                $t = Role::where(function ($q) use ($cId) {
+                    if ($cId === 1) {
+                        $q->where('company_id', 1)->orWhereNull('company_id');
+                    } else {
+                        $q->where('company_id', $cId);
+                    }
+                })->where('name', 'teknisi')->first();
                 if ($t) {
                     $t->syncPermissions($permissions);
                     $this->markRoleCustomized($t);
@@ -310,8 +351,8 @@ class RoleController extends Controller
             }
         }
 
-        if ($role->name === 'admin') {
-            return redirect()->back()->with('error', 'Role Admin tidak dapat dihapus.');
+        if (in_array(strtolower($role->name), ['admin', 'super admin', 'superadmin'], true)) {
+            return redirect()->back()->with('error', 'Role Admin / Super Admin tidak dapat dihapus demi keamanan sistem.');
         }
 
         $usersInThisCompany = $role->users()->where(function ($uq) use ($cId) {
