@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToCompany;
 
 class SpecialTeam extends Model
 {
+    use BelongsToCompany;
+
     protected $guarded = ['id'];
 
     public function members()
