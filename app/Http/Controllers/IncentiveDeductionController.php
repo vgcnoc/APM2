@@ -419,24 +419,12 @@ class IncentiveDeductionController extends Controller
                 return back()->with('error', 'Semua data insentif yang dipilih sudah dicairkan sebelumnya atau tidak berstatus pending.');
             }
 
-            // Resolve Expense Category (misal 'Operasional Lapangan', 'Insentif', dll)
-            $category = ExpenseCategory::where('is_active', true)
-                ->where(function($q) {
-                    $q->where('name', 'like', '%insentif%')
-                      ->orWhere('name', 'like', '%operasional%')
-                      ->orWhere('name', 'like', '%transport%')
-                      ->orWhere('name', 'like', '%gaji%');
-                })
-                ->orderByRaw("CASE 
-                    WHEN name LIKE '%insentif%' THEN 1 
-                    WHEN name LIKE '%operasional%' THEN 2 
-                    WHEN name LIKE '%transport%' THEN 3 
-                    ELSE 4 END")
-                ->first();
-
             $totalDisbursed = 0;
             $count = 0;
             $cairDateStr = \Carbon\Carbon::parse($disburseDate)->format('d/m/Y');
+
+            // Cache kategori pengeluaran per company agar efisien
+            $categoryCache = [];
 
             foreach ($incentives as $inc) {
                 // Perlindungan ganda: jika status bukan pending, skip
@@ -457,9 +445,30 @@ class IncentiveDeductionController extends Controller
                 $dateStr = $inc->incentive_date ? \Carbon\Carbon::parse($inc->incentive_date)->format('d/m/Y') : date('d/m/Y');
                 $expenseDesc = "Pencairan Insentif {$userName}{$cleanDesc} (Periode: {$dateStr}, Dicairkan: {$cairDateStr})";
 
+                // Resolve Company ID & Category secara spesifik berdasarkan deskripsi insentif
+                $targetCompanyId = $inc->company_id ?: ($user?->company_id ?: ($authUser->company_id ?: 1));
+                if (!isset($categoryCache[$targetCompanyId])) {
+                    $categoryCache[$targetCompanyId] = ExpenseCategory::withoutGlobalScopes()
+                        ->where('is_active', true)
+                        ->where('company_id', $targetCompanyId)
+                        ->get();
+
+                    if ($categoryCache[$targetCompanyId]->isEmpty() && $targetCompanyId !== 1) {
+                        $categoryCache[$targetCompanyId] = ExpenseCategory::withoutGlobalScopes()
+                            ->where('is_active', true)
+                            ->where('company_id', 1)
+                            ->get();
+                    }
+                }
+
+                $category = $this->resolveIncentiveExpenseCategory($inc, $categoryCache[$targetCompanyId]);
+
                 $expense = Expense::create([
+                    'company_id' => $targetCompanyId,
                     'amount' => $amount,
                     'expense_category_id' => $category?->id,
+                    'area_id' => $user?->area_id,
+                    'area' => $user?->area?->name,
                     'description' => $expenseDesc,
                     'expense_date' => $disburseDate,
                     'user_id' => $authUser->id,
@@ -486,5 +495,119 @@ class IncentiveDeductionController extends Controller
             $formattedTotal = number_format($totalDisbursed, 0, ',', '.');
             return back()->with('success', "Berhasil mencairkan {$count} insentif dengan total Rp {$formattedTotal} ke Buku Kas Umum pada tanggal {$cairDateStr}.");
         });
+    }
+
+    /**
+     * Resolusi kategori pengeluaran secara akurat dan dinamis berdasarkan deskripsi insentif
+     *
+     * @param Incentive $inc
+     * @param \Illuminate\Support\Collection $categories
+     * @return ExpenseCategory|null
+     */
+    protected function resolveIncentiveExpenseCategory(Incentive $inc, $categories): ?ExpenseCategory
+    {
+        if ($categories->isEmpty()) {
+            return null;
+        }
+
+        $desc = strtoupper(trim((string) $inc->description));
+
+        // 1. UANG MINGGUAN 2 / MINGGUAN 2 / MNG-2
+        if (str_contains($desc, 'MINGGUAN 2') || str_contains($desc, 'MINGGUAN-2') || str_contains($desc, 'MNG-2') || str_contains($desc, 'MNG 2')) {
+            $cat = $categories->first(function ($c) {
+                $name = strtoupper($c->name);
+                $code = strtoupper($c->code);
+                return $code === 'MNG-2' || (str_contains($name, 'MINGGUAN') && (str_contains($name, '2') || str_contains($name, '-2')));
+            });
+            if ($cat) return $cat;
+        }
+
+        // 2. UANG MINGGUAN 1 / MINGGUAN 1 / MNG-1 / MINGGUAN UMUM
+        if (str_contains($desc, 'MINGGUAN') || str_contains($desc, 'MNG')) {
+            if (str_contains($desc, '1')) {
+                $cat = $categories->first(function ($c) {
+                    $name = strtoupper($c->name);
+                    $code = strtoupper($c->code);
+                    return $code === 'MNG-1' || (str_contains($name, 'MINGGUAN') && (str_contains($name, '1') || str_contains($name, '-1')));
+                });
+                if ($cat) return $cat;
+            }
+
+            // Fallback ke Uang Mingguan-1 atau kategori mingguan apapun
+            $cat = $categories->first(function ($c) {
+                $name = strtoupper($c->name);
+                $code = strtoupper($c->code);
+                return $code === 'MNG-1' || str_contains($name, 'MINGGUAN');
+            });
+            if ($cat) return $cat;
+        }
+
+        // 3. TRANSPORT 2 / TSP-2
+        if (str_contains($desc, 'TRANSPORT 2') || str_contains($desc, 'TRANSPORT-2') || str_contains($desc, 'TSP-2') || str_contains($desc, 'TSP 2')) {
+            $cat = $categories->first(function ($c) {
+                $name = strtoupper($c->name);
+                $code = strtoupper($c->code);
+                return $code === 'TSP-2' || (str_contains($name, 'TRANSPORT') && (str_contains($name, '2') || str_contains($name, '-2')));
+            });
+            if ($cat) return $cat;
+        }
+
+        // 4. TRANSPORT 1 / TSP-1 / TRANSPORT UMUM
+        if (str_contains($desc, 'TRANSPORT') || str_contains($desc, 'TSP')) {
+            if (str_contains($desc, '1')) {
+                $cat = $categories->first(function ($c) {
+                    $name = strtoupper($c->name);
+                    $code = strtoupper($c->code);
+                    return $code === 'TSP-1' || (str_contains($name, 'TRANSPORT') && (str_contains($name, '1') || str_contains($name, '-1')));
+                });
+                if ($cat) return $cat;
+            }
+
+            $cat = $categories->first(function ($c) {
+                $name = strtoupper($c->name);
+                $code = strtoupper($c->code);
+                return $code === 'TSP-1' || str_contains($name, 'TRANSPORT');
+            });
+            if ($cat) return $cat;
+        }
+
+        // 5. BENSIN
+        if (str_contains($desc, 'BENSIN') || str_contains($desc, 'BNS')) {
+            $cat = $categories->first(function ($c) {
+                $name = strtoupper($c->name);
+                $code = strtoupper($c->code);
+                return $code === 'BNS' || str_contains($name, 'BENSIN');
+            });
+            if ($cat) return $cat;
+        }
+
+        // 6. FEE / KOMISI / INSENTIF / BONUS / SURVEY / PASANG / BOOKING
+        if (str_contains($desc, 'FEE') || str_contains($desc, 'KOMISI') || str_contains($desc, 'INSENTIF') || str_contains($desc, 'BONUS') || str_contains($desc, 'SURVEY') || str_contains($desc, 'PASANG') || str_contains($desc, 'BOOKING')) {
+            // Prioritas 1: Kategori yang bernama 'insentif', 'komisi', atau 'fee'
+            $cat = $categories->first(function ($c) {
+                $name = strtoupper($c->name);
+                return str_contains($name, 'INSENTIF') || str_contains($name, 'KOMISI') || str_contains($name, 'FEE');
+            });
+            if ($cat) return $cat;
+
+            // Prioritas 2: Gaji Karyawan / Operasional / Pengeluaran Rutinan
+            $cat = $categories->first(function ($c) {
+                $name = strtoupper($c->name);
+                return str_contains($name, 'GAJI') || str_contains($name, 'OPERASIONAL') || str_contains($name, 'RUTINAN');
+            });
+            if ($cat) return $cat;
+        }
+
+        // 7. General fallback
+        $fallbackKeywords = ['INSENTIF', 'OPERASIONAL', 'GAJI', 'RUTINAN', 'TRANSPORT'];
+        foreach ($fallbackKeywords as $kw) {
+            $cat = $categories->first(function ($c) use ($kw) {
+                return str_contains(strtoupper($c->name), $kw);
+            });
+            if ($cat) return $cat;
+        }
+
+        // 8. Absolute fallback: kategori aktif pertama
+        return $categories->first();
     }
 }

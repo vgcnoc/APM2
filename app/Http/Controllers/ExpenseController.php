@@ -77,7 +77,15 @@ class ExpenseController extends Controller
 
         $amountFormatted = number_format($expense->amount, 0, ',', '.');
         $desc = $expense->description;
+        $expenseId = $expense->id;
         $expense->delete();
+
+        // Kembalikan status insentif ke 'pending' jika pengeluaran ini berasal dari pencairan insentif
+        \App\Models\Incentive::where('reference_id', 'exp_' . $expenseId)->update([
+            'status' => 'pending',
+            'disbursed_at' => null,
+            'reference_id' => null,
+        ]);
 
         return back()->with('success', "Catatan pengeluaran '{$desc}' (Rp {$amountFormatted}) berhasil dihapus.");
     }
