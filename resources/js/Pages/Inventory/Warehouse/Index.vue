@@ -361,9 +361,14 @@
                                                 </span>
                                             </div>
                                             <div v-if="filterAreaId" class="inline-flex items-center gap-1 text-[10px] text-indigo-700 font-semibold mt-1 bg-indigo-50/70 px-1.5 py-0.5 rounded border border-indigo-100" title="Total stok fisik barang ini di seluruh area/cabang yang siap pakai di gudang">
-                                                <span>🏢 Total All Area:</span>
+                                                <span>🏢 Total All Cabang:</span>
                                                 <span class="font-bold font-mono">{{ formatNum(getAllAreasTotalStock(material)) }}</span>
                                                 <span class="text-[8px] uppercase font-bold text-indigo-400">{{ material.unit }}</span>
+                                            </div>
+                                            <div v-if="Number(material.stock) > 0" class="inline-flex items-center gap-1 text-[10px] text-emerald-800 font-semibold mt-1 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200" title="Stok buffer tersedia di Gudang Pusat (siap di-order / dialokasikan ke cabang)">
+                                                <span>🏛️ Gudang Pusat:</span>
+                                                <span class="font-bold font-mono">{{ formatNum(material.stock) }}</span>
+                                                <span class="text-[8px] uppercase font-bold text-emerald-600">{{ material.unit }}</span>
                                             </div>
                                         </div>
                                     </td>
@@ -594,7 +599,7 @@
                             <select v-model="distributeMaterialId" @change="onDistributeMaterialSelect" class="w-full text-sm px-3.5 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-semibold" required>
                                 <option value="" disabled>-- Pilih Barang --</option>
                                 <option v-for="mat in materials.data" :key="mat.id" :value="mat.id">
-                                    {{ mat.name }} (Total Stok: {{ formatNum(getTotalStock(mat)) }} {{ mat.unit }})
+                                    {{ mat.name }} (Pusat: {{ formatNum(mat.stock) }} | Cabang: {{ formatNum(getAllAreasTotalStock(mat)) }} {{ mat.unit }})
                                 </option>
                             </select>
                         </div>

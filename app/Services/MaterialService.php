@@ -571,21 +571,28 @@ class MaterialService
 
     /**
      * Tentukan apakah materials.stock (master) boleh disinkronkan dari sum(material_stocks.stock).
-     * Selalu sinkronkan master stock dengan total stok fisik area untuk mencegah ghost stock.
+     * Produk katalog Gudang Pusat yang memiliki buffer pusat tersendiri TIDAK ditimpa dari stok cabang,
+     * agar stok buffer Gudang Pusat tetap terjaga terpisah dari stok cabang yang sudah dialokasikan.
      */
     public static function shouldSyncMasterStockFromAreas(Material $material): bool
     {
+        if ($material->is_catalog && !$material->is_migration && (int) $material->id > 260) {
+            return false;
+        }
+
         return true;
     }
 
     /**
-     * Sinkronkan materials.stock dengan total stok seluruh area fisik gudang.
+     * Sinkronkan materials.stock dengan total stok seluruh area fisik gudang (hanya untuk material non-katalog/area-only).
      */
     public static function syncMasterStockIfAreaOnly(Material $material): void
     {
-        $totalAreaStock = (float) MaterialStock::where('material_id', $material->id)->sum('stock');
-        $material->stock = max(0.0, $totalAreaStock);
-        $material->recalcUnitTotals()->save();
+        if (self::shouldSyncMasterStockFromAreas($material)) {
+            $totalAreaStock = (float) MaterialStock::where('material_id', $material->id)->sum('stock');
+            $material->stock = max(0.0, $totalAreaStock);
+            $material->recalcUnitTotals()->save();
+        }
     }
 
     /**

@@ -640,6 +640,10 @@ class MaterialController extends Controller
                 $lockedMat->initial_stock = (float) ($lockedMat->initial_stock ?? 0) + $addedStock;
                 \App\Services\MaterialService::syncMasterStockIfAreaOnly($lockedMat);
             } else {
+                // Alokasi / pemindahan dari buffer Gudang Pusat ke Cabang
+                if ((float) $lockedMat->stock >= $addedStock) {
+                    $lockedMat->stock = max(0.0, (float) $lockedMat->stock - $addedStock);
+                }
                 $lockedMat->recalcUnitTotals()->save();
             }
 
