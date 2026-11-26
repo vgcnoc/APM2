@@ -9,33 +9,48 @@ use Inertia\Inertia;
 
 class WarehouseStockController extends Controller
 {
-    public function index(Request $request)
+    /**
+     * Filter material gudang yang relevan:
+     * - Barang katalog / standar non-migrasi: Tampil di gudang jika aktif
+     * - Barang migrasi / bekas / batch sisa: HANYA tampil jika BENAR-BENAR memiliki sisa stok fisik di gudang (> 0)
+     *   dan khusus perangkat modem ONT migrasi, WAJIB memiliki unit fisik nyata yang unassigned di tabel onts.
+     */
+    protected function getWarehouseFilter(?array $scopedAreaIds = null)
     {
-        $user = auth()->user();
-        $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('warehouse_stocks_view_all') || $user->can('materials_view_all');
-        $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
-
-        $selectedAreaId = $request->filled('area_id') ? $request->area_id : null;
-        $scopedAreaIds = $selectedAreaId ? [$selectedAreaId] : (!$isGlobal && !empty($accessibleAreas) ? $accessibleAreas : null);
-
-        // Filter material gudang yang relevan:
-        // - Barang katalog (ID > 260 dan bukan migrasi): Tampil jika ada alokasi di area
-        // - Barang migrasi (ID <= 260 atau is_migration = true): HANYA tampil jika BENAR-BENAR memiliki sisa stok fisik di gudang (> 0)
-        //   dan khusus perangkat modem ONT migrasi, WAJIB memiliki unit fisik nyata yang unassigned (belum terpasang) di tabel onts.
-        $warehouseFilter = function ($q) use ($scopedAreaIds) {
+        return function ($q) use ($scopedAreaIds) {
             $q->where(function ($sub) use ($scopedAreaIds) {
+                // 1. Barang Katalog / Standar Non-Migrasi Aktif
                 $sub->where(function ($catQ) {
-                    $catQ->where('id', '>', 260)
-                         ->where(function ($mq) {
-                             $mq->where('is_migration', false)->orWhereNull('is_migration');
-                         });
+                    $catQ->where(function ($mq) {
+                        $mq->where('is_migration', false)->orWhereNull('is_migration');
+                    })
+                    ->where(function ($nameQ) {
+                        $nameQ->where('name', 'not like', '%(migrasi%')
+                              ->where('name', 'not like', '%(bekas%')
+                              ->where('name', 'not like', '%(batch%')
+                              ->where('name', 'not like', '%-Nay%')
+                              ->where('name', 'not like', '%-Yud%')
+                              ->where('name', 'not like', '%-A12%')
+                              ->where('name', 'not like', '%-By%')
+                              ->where('name', 'not like', '%-SNW%');
+                    });
                 })
+                // 2. Barang Migrasi / Bekas: HANYA tampil jika memiliki sisa stok fisik nyata di gudang (> 0)
                 ->orWhere(function ($migQ) use ($scopedAreaIds) {
                     $migQ->where(function ($mq) {
-                        $mq->where('id', '<=', 260)->orWhere('is_migration', true);
+                        $mq->where('is_migration', true)
+                           ->orWhere('id', '<=', 260)
+                           ->orWhere('name', 'like', '%(migrasi%')
+                           ->orWhere('name', 'like', '%(bekas%')
+                           ->orWhere('name', 'like', '%(batch%')
+                           ->orWhere('name', 'like', '%-Nay%')
+                           ->orWhere('name', 'like', '%-Yud%')
+                           ->orWhere('name', 'like', '%-A12%')
+                           ->orWhere('name', 'like', '%-By%')
+                           ->orWhere('name', 'like', '%-SNW%');
                     })
                     ->where(function ($tq) use ($scopedAreaIds) {
-                        // Barang non-ONT migrasi (misal kabel atau aksesoris fisik di gudang)
+                        // Barang non-ONT migrasi
                         $tq->where(function ($nonOnt) {
                             $nonOnt->where('category', '!=', 'ONT')
                                    ->where('category', 'not like', '%ont%')
@@ -72,6 +87,18 @@ class WarehouseStockController extends Controller
                 });
             });
         };
+    }
+
+    public function index(Request $request)
+    {
+        $user = auth()->user();
+        $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('warehouse_stocks_view_all') || $user->can('materials_view_all');
+        $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
+
+        $selectedAreaId = $request->filled('area_id') ? (int) $request->area_id : null;
+        $scopedAreaIds = $selectedAreaId ? [$selectedAreaId] : (!$isGlobal && !empty($accessibleAreas) ? $accessibleAreas : null);
+
+        $warehouseFilter = $this->getWarehouseFilter($scopedAreaIds);
 
         // Tampilkan barang yang aktif dan memenuhi kriteria gudang:
         $query = Material::where(function ($q) {
@@ -86,7 +113,7 @@ class WarehouseStockController extends Controller
             $sq->with('area');
         }]);
 
-        // 1. Scope restriction & Area filter
+        // 1. Scope restriction & Area list
         if (!$isGlobal && !empty($accessibleAreas)) {
             $query->whereHas('stocks', function ($sq) use ($accessibleAreas, $selectedAreaId) {
                 if ($selectedAreaId) {
@@ -97,14 +124,6 @@ class WarehouseStockController extends Controller
             });
             $areas = Area::whereIn('id', $accessibleAreas)->orderBy('name')->get(['id', 'name']);
         } else {
-            // Filter Area Gudang jika dipilih, atau pastikan barang memiliki alokasi stok di area
-            if ($selectedAreaId) {
-                $query->whereHas('stocks', function ($q) use ($selectedAreaId) {
-                    $q->where('area_id', $selectedAreaId);
-                });
-            } else {
-                $query->whereHas('stocks');
-            }
             $areas = Area::orderBy('name')->get(['id', 'name']);
         }
 
@@ -230,13 +249,13 @@ class WarehouseStockController extends Controller
         })->visibleInMaterialsTable()
         ->where($warehouseFilter);
 
-        $categories = (clone $baseSummaryQuery)->whereHas('stocks')->whereNotNull('category')->where('category', '!=', '')->distinct()->pluck('category')->sort()->values();
-        $units = (clone $baseSummaryQuery)->whereHas('stocks')->whereNotNull('unit')->where('unit', '!=', '')->distinct()->pluck('unit')->sort()->values();
+        $categories = (clone $baseSummaryQuery)->whereNotNull('category')->where('category', '!=', '')->distinct()->pluck('category')->sort()->values();
+        $units = (clone $baseSummaryQuery)->whereNotNull('unit')->where('unit', '!=', '')->distinct()->pluck('unit')->sort()->values();
 
-        // Summary counts (Hanya hitung material yang masuk kriteria area warehouse)
+        // Summary counts (Hitung material yang masuk kriteria area warehouse)
         if ($scopedAreaIds) {
-            $totalMaterials = (clone $baseSummaryQuery)->whereHas('stocks', fn($sq) => $sq->whereIn('area_id', $scopedAreaIds))->count();
-            $outOfStockCount = (clone $baseSummaryQuery)->whereHas('stocks', fn($sq) => $sq->whereIn('area_id', $scopedAreaIds))
+            $totalMaterials = (clone $baseSummaryQuery)->count();
+            $outOfStockCount = (clone $baseSummaryQuery)
                 ->whereDoesntHave('stocks', function ($sq) use ($scopedAreaIds) {
                     $sq->whereIn('area_id', $scopedAreaIds)->where('stock', '>', 0);
                 })->count();
@@ -244,8 +263,8 @@ class WarehouseStockController extends Controller
                 $sq->whereIn('area_id', $scopedAreaIds)->where('stock', '>', 0);
             })->count();
         } else {
-            $totalMaterials = (clone $baseSummaryQuery)->whereHas('stocks')->count();
-            $outOfStockCount = (clone $baseSummaryQuery)->whereHas('stocks')
+            $totalMaterials = (clone $baseSummaryQuery)->count();
+            $outOfStockCount = (clone $baseSummaryQuery)
                 ->whereDoesntHave('stocks', function ($sq) {
                     $sq->where('stock', '>', 0);
                 })->count();
@@ -254,7 +273,7 @@ class WarehouseStockController extends Controller
             })->count();
         }
 
-        $baseCondQuery = (clone $baseSummaryQuery)->when($scopedAreaIds, fn($q) => $q->whereHas('stocks', fn($sq) => $sq->whereIn('area_id', $scopedAreaIds)), fn($q) => $q->whereHas('stocks'));
+        $baseCondQuery = clone $baseSummaryQuery;
         
         $conditionStats = [
             'all' => (clone $baseCondQuery)->count(),
@@ -363,30 +382,10 @@ class WarehouseStockController extends Controller
         $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('warehouse_stocks_view_all') || $user->can('materials_view_all');
         $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
 
-        $selectedAreaId = $request->filled('area_id') ? $request->area_id : null;
+        $selectedAreaId = $request->filled('area_id') ? (int) $request->area_id : null;
         $scopedAreaIds = $selectedAreaId ? [$selectedAreaId] : (!$isGlobal && !empty($accessibleAreas) ? $accessibleAreas : null);
 
-        $warehouseFilter = function ($q) use ($scopedAreaIds) {
-            $q->where(function ($sub) use ($scopedAreaIds) {
-                $sub->where(function ($catQ) {
-                    $catQ->where('id', '>', 260)
-                         ->where(function ($mq) {
-                             $mq->where('is_migration', false)->orWhereNull('is_migration');
-                         });
-                })
-                ->orWhere(function ($migQ) use ($scopedAreaIds) {
-                    $migQ->where(function ($mq) {
-                        $mq->where('id', '<=', 260)->orWhere('is_migration', true);
-                    })
-                    ->whereHas('stocks', function ($sq) use ($scopedAreaIds) {
-                        if ($scopedAreaIds) {
-                            $sq->whereIn('area_id', $scopedAreaIds);
-                        }
-                        $sq->where('stock', '>', 0);
-                    });
-                });
-            });
-        };
+        $warehouseFilter = $this->getWarehouseFilter($scopedAreaIds);
 
         $query = Material::where(function ($q) {
             $q->where('is_active', true)->orWhereNull('is_active');
@@ -411,13 +410,6 @@ class WarehouseStockController extends Controller
             });
             $areas = Area::whereIn('id', $accessibleAreas)->orderBy('name')->get(['id', 'name']);
         } else {
-            if ($selectedAreaId) {
-                $query->whereHas('stocks', function ($q) use ($selectedAreaId) {
-                    $q->where('area_id', $selectedAreaId);
-                });
-            } else {
-                $query->whereHas('stocks');
-            }
             $areas = Area::orderBy('name')->get(['id', 'name']);
         }
 
@@ -553,8 +545,13 @@ class WarehouseStockController extends Controller
         }
 
         $totalItems = $materials->count();
-        $availableItems = $materials->filter(fn($m) => $m->stocks->sum('stock') > 0)->count();
-        $outOfStockItems = $materials->filter(fn($m) => $m->stocks->sum('stock') <= 0)->count();
+        $availableItems = $materials->filter(function ($m) use ($selectedAreaId) {
+            if ($selectedAreaId) {
+                return (float) ($m->stocks->where('area_id', $selectedAreaId)->first()?->stock ?? 0) > 0;
+            }
+            return $m->stocks->sum('stock') > 0;
+        })->count();
+        $outOfStockItems = $totalItems - $availableItems;
         $layakItems = $materials->filter(fn($m) => $m->condition_label === 'Layak Pakai')->count();
         $tidakLayakItems = $materials->filter(fn($m) => $m->condition_label === 'Tidak Layak')->count();
         $rusakItems = $materials->filter(fn($m) => $m->condition_label === 'Rusak')->count();

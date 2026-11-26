@@ -515,6 +515,18 @@
                             </div>
                         </div>
 
+                        <!-- Area Gudang Cabang -->
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Area / Gudang Cabang <span class="text-red-500">*</span></label>
+                            <select v-model="statusForm.area_id" class="w-full text-sm px-3.5 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 font-semibold bg-white" required>
+                                <option value="" disabled>-- Pilih Area Gudang --</option>
+                                <option v-for="area in areas" :key="area.id" :value="area.id">
+                                    {{ area.name }}
+                                </option>
+                            </select>
+                            <p class="text-[11px] text-gray-400 mt-1">Stok fisik di area ini yang akan dipotong atau ditambahkan.</p>
+                        </div>
+
                         <!-- Jumlah & Petugas -->
                         <div class="grid grid-cols-2 gap-3">
                             <div>
@@ -992,6 +1004,7 @@ const selectedMaterialId = ref('');
 const statusForm = useForm({
     type: 'in',
     date: new Date().toISOString().split('T')[0],
+    area_id: '',
     technician_name: '',
     purpose: 'Retur Sisa Pasang (Layak)',
     notes: '',
@@ -1004,6 +1017,7 @@ const openStatusModal = (material) => {
     selectedMaterial.value = material;
     selectedMaterialId.value = material ? material.id : '';
     statusForm.date = new Date().toISOString().split('T')[0];
+    statusForm.area_id = filterAreaId.value || (material?.stocks && material.stocks.length > 0 ? material.stocks[0].area_id : (props.areas[0]?.id || ''));
     statusForm.technician_name = '';
     statusForm.type = 'in';
     statusForm.condition = 'Layak Pakai';
@@ -1017,6 +1031,9 @@ const onWarehouseMaterialSelect = () => {
     const found = props.materials.data.find(m => m.id === Number(selectedMaterialId.value) || m.id === selectedMaterialId.value);
     if (found) {
         selectedMaterial.value = found;
+        if (!statusForm.area_id && found.stocks && found.stocks.length > 0) {
+            statusForm.area_id = found.stocks[0].area_id;
+        }
     }
 };
 
@@ -1024,6 +1041,10 @@ const submitStatusForm = () => {
     const target = selectedMaterial.value || props.materials.data.find(m => m.id === Number(selectedMaterialId.value) || m.id === selectedMaterialId.value);
     if (!target) {
         alert('Silakan pilih material terlebih dahulu');
+        return;
+    }
+    if (!statusForm.area_id) {
+        alert('Silakan pilih area gudang terlebih dahulu');
         return;
     }
     if (!statusForm.quantity || Number(statusForm.quantity) <= 0) {

@@ -571,46 +571,29 @@ class MaterialService
 
     /**
      * Tentukan apakah materials.stock (master) boleh disinkronkan dari sum(material_stocks.stock).
-     * Produk katalog Gudang Pusat / Order Toko TIDAK disinkronkan agar stok Gudang Pusat tetap terpisah dari stok cabang.
+     * Selalu sinkronkan master stock dengan total stok fisik area untuk mencegah ghost stock.
      */
     public static function shouldSyncMasterStockFromAreas(Material $material): bool
     {
-        if ($material->is_catalog && !$material->is_migration && (int) $material->id > 260) {
-            return false;
-        }
-
-        if ($material->is_migration || (int) $material->id <= 260) {
-            return true;
-        }
-
-        $hasOrderToko = MaterialTransactionItem::where('material_id', $material->id)
-            ->whereHas('transaction', function ($q) {
-                $q->where('purpose', 'Pembelian Toko / Supplier');
-            })
-            ->exists();
-
-        if ($hasOrderToko) {
-            return false;
-        }
-
-        return MaterialTransactionItem::where('material_id', $material->id)
-            ->whereHas('transaction', function ($q) {
-                $q->where('transaction_number', 'like', 'IN-AREA-%')
-                  ->orWhere('purpose', 'like', '%Material Fisik Area%');
-            })
-            ->exists();
+        return true;
     }
 
     /**
-     * Sinkronkan materials.stock dengan total stok seluruh area khusus untuk material fisik area / migrasi.
+     * Sinkronkan materials.stock dengan total stok seluruh area fisik gudang.
      */
     public static function syncMasterStockIfAreaOnly(Material $material): void
     {
-        if (self::shouldSyncMasterStockFromAreas($material)) {
-            $totalAreaStock = (float) MaterialStock::where('material_id', $material->id)->sum('stock');
-            $material->stock = max(0.0, $totalAreaStock);
-            $material->recalcUnitTotals()->save();
-        }
+        $totalAreaStock = (float) MaterialStock::where('material_id', $material->id)->sum('stock');
+        $material->stock = max(0.0, $totalAreaStock);
+        $material->recalcUnitTotals()->save();
+    }
+
+    /**
+     * Helper untuk sinkronisasi total stok material dari seluruh area.
+     */
+    public static function syncTotalStock(Material $material): void
+    {
+        self::syncMasterStockIfAreaOnly($material);
     }
 
     /**
