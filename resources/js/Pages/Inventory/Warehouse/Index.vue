@@ -211,6 +211,143 @@
                         </div>
                     </div>
 
+                    <!-- Smart Date Filter Section -->
+                    <div class="pt-3.5 border-t border-slate-100/90">
+                        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-gradient-to-r from-slate-50 via-indigo-50/40 to-slate-50 p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs">
+                            <!-- Left: Title & Mode Toggle -->
+                            <div class="flex flex-wrap items-center gap-2.5">
+                                <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 shadow-2xs text-xs font-black text-slate-800">
+                                    <span class="text-indigo-600 text-sm">📅</span>
+                                    <span>Filter Tanggal:</span>
+                                </div>
+
+                                <div class="inline-flex p-0.5 bg-white/90 rounded-xl border border-slate-200 text-xs font-bold shadow-2xs">
+                                    <button 
+                                        type="button" 
+                                        @click="setDateFilterBy('transaction')"
+                                        class="px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                                        :class="filterDateBy === 'transaction' ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-600 hover:text-indigo-600'"
+                                        title="Filter berdasarkan pergerakan stok keluar/masuk gudang pada periode tanggal"
+                                    >
+                                        <span>🔄</span>
+                                        <span>Mutasi Stok</span>
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        @click="setDateFilterBy('created_at')"
+                                        class="px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                                        :class="filterDateBy === 'created_at' ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-600 hover:text-indigo-600'"
+                                        title="Filter berdasarkan tanggal barang pertama kali didaftarkan"
+                                    >
+                                        <span>📦</span>
+                                        <span>Didaftarkan</span>
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        @click="setDateFilterBy('updated_at')"
+                                        class="px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                                        :class="filterDateBy === 'updated_at' ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-600 hover:text-indigo-600'"
+                                        title="Filter berdasarkan tanggal data barang terakhir kali diubah"
+                                    >
+                                        <span>⏱️</span>
+                                        <span>Terakhir Update</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Right: Quick Presets -->
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                <button 
+                                    type="button" 
+                                    @click="setQuickDatePreset('all')"
+                                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                    :class="[!filterDateFrom && !filterDateTo ? 'bg-slate-900 text-white shadow-2xs' : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200']"
+                                >
+                                    Semua Waktu
+                                </button>
+                                <button 
+                                    type="button" 
+                                    @click="setQuickDatePreset('today')"
+                                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                    :class="[activeDatePreset === 'today' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200']"
+                                >
+                                    Hari Ini
+                                </button>
+                                <button 
+                                    type="button" 
+                                    @click="setQuickDatePreset('yesterday')"
+                                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                    :class="[activeDatePreset === 'yesterday' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200']"
+                                >
+                                    Kemarin
+                                </button>
+                                <button 
+                                    type="button" 
+                                    @click="setQuickDatePreset('week')"
+                                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                    :class="[activeDatePreset === 'week' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200']"
+                                >
+                                    7 Hari
+                                </button>
+                                <button 
+                                    type="button" 
+                                    @click="setQuickDatePreset('this_month')"
+                                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                    :class="[activeDatePreset === 'this_month' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200']"
+                                >
+                                    Bulan Ini
+                                </button>
+                                <button 
+                                    type="button" 
+                                    @click="setQuickDatePreset('last_month')"
+                                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                    :class="[activeDatePreset === 'last_month' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200']"
+                                >
+                                    Bulan Lalu
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Date range input pickers row -->
+                        <div class="mt-2.5 flex flex-wrap items-center gap-2 text-xs">
+                            <div class="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
+                                <span class="text-slate-400 font-bold uppercase text-[10px]">Dari:</span>
+                                <input 
+                                    type="date" 
+                                    v-model="filterDateFrom" 
+                                    @change="onDateInputChange"
+                                    class="border-0 p-0 text-xs font-bold text-slate-800 focus:ring-0 cursor-pointer"
+                                />
+                            </div>
+                            <span class="text-slate-400 font-bold text-xs">s/d</span>
+                            <div class="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
+                                <span class="text-slate-400 font-bold uppercase text-[10px]">Sampai:</span>
+                                <input 
+                                    type="date" 
+                                    v-model="filterDateTo" 
+                                    @change="onDateInputChange"
+                                    class="border-0 p-0 text-xs font-bold text-slate-800 focus:ring-0 cursor-pointer"
+                                />
+                            </div>
+
+                            <button 
+                                v-if="filterDateFrom || filterDateTo" 
+                                type="button" 
+                                @click="clearDateFilter"
+                                class="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 text-xs font-bold transition-colors inline-flex items-center gap-1 cursor-pointer"
+                                title="Reset Filter Tanggal"
+                            >
+                                <span>✕</span>
+                                <span>Hapus Tanggal</span>
+                            </button>
+
+                            <span v-if="filterDateFrom || filterDateTo" class="inline-flex items-center gap-1.5 text-[11px] font-bold text-indigo-800 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-200/70 shadow-2xs ml-auto">
+                                <span>📌 Mode {{ filterDateByLabel }}:</span>
+                                <span class="font-mono">{{ formatDateRange(filterDateFrom, filterDateTo) }}</span>
+                            </span>
+                        </div>
+                    </div>
+
                     <!-- Active Filter Chips & Reset -->
                     <div v-if="activeFilterCount > 0" class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
                         <div class="flex flex-wrap items-center gap-2">
@@ -218,6 +355,10 @@
                             <span v-if="filterSearch" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 font-semibold border border-indigo-100">
                                 Cari: "{{ filterSearch }}"
                                 <button @click="filterSearch = ''; applyFilters()" class="hover:text-indigo-900">✕</button>
+                            </span>
+                            <span v-if="filterDateFrom || filterDateTo" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-100/80 text-indigo-900 font-bold border border-indigo-300">
+                                <span>📅 {{ filterDateByLabel }}: {{ formatDateRange(filterDateFrom, filterDateTo) }}</span>
+                                <button @click="clearDateFilter" class="hover:text-rose-600 ml-0.5">✕</button>
                             </span>
                             <span v-if="filterCategory" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 font-semibold border border-indigo-100">
                                 Kategori: {{ filterCategory }}
@@ -369,6 +510,35 @@
                                                 <span>🏛️ Gudang Pusat:</span>
                                                 <span class="font-bold font-mono">{{ formatNum(material.stock) }}</span>
                                                 <span class="text-[8px] uppercase font-bold text-emerald-600">{{ material.unit }}</span>
+                                            </div>
+
+                                            <!-- Period Mutation Stats (When Date Filter is Active) -->
+                                            <div v-if="(filterDateFrom || filterDateTo) && filterDateBy === 'transaction'" class="mt-2 p-2 rounded-xl bg-gradient-to-br from-indigo-50/90 to-purple-50/50 border border-indigo-100 text-left w-full">
+                                                <div class="flex items-center justify-between text-[10px] font-bold text-indigo-950 mb-1">
+                                                    <span class="flex items-center gap-1">
+                                                        <span>📊</span>
+                                                        <span>Mutasi Periode:</span>
+                                                    </span>
+                                                    <span v-if="material.latest_activity" class="text-[9px] text-slate-500 font-mono">
+                                                        {{ formatShortDate(material.latest_activity) }}
+                                                    </span>
+                                                </div>
+                                                <div class="flex items-center justify-between gap-1 text-[10px] font-mono">
+                                                    <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold" title="Total Barang Masuk">
+                                                        <span>📥 +{{ formatNum(material.period_in || 0) }}</span>
+                                                    </span>
+                                                    <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 font-bold" title="Total Barang Keluar">
+                                                        <span>📤 -{{ formatNum(material.period_out || 0) }}</span>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div v-else-if="(filterDateFrom || filterDateTo) && filterDateBy === 'created_at'" class="mt-1 text-[10px] text-slate-500 font-medium text-right">
+                                                <span>📦 Didaftarkan: </span>
+                                                <span class="font-bold text-slate-700">{{ formatShortDate(material.created_at) }}</span>
+                                            </div>
+                                            <div v-else-if="(filterDateFrom || filterDateTo) && filterDateBy === 'updated_at'" class="mt-1 text-[10px] text-slate-500 font-medium text-right">
+                                                <span>⏱️ Diperbarui: </span>
+                                                <span class="font-bold text-slate-700">{{ formatShortDate(material.updated_at) }}</span>
                                             </div>
                                         </div>
                                     </td>
@@ -876,6 +1046,97 @@ const filterUnit = ref(props.filters?.unit || '');
 const filterCondition = ref(props.filters?.condition || '');
 const filterSortBy = ref(props.filters?.sort_by || 'name_asc');
 
+// Smart Date Filter State
+const filterDateFrom = ref(props.filters?.date_from || '');
+const filterDateTo = ref(props.filters?.date_to || '');
+const filterDateBy = ref(props.filters?.date_filter_by || 'transaction'); // 'transaction', 'created_at', 'updated_at'
+const activeDatePreset = ref(props.filters?.date_preset || '');
+
+const filterDateByLabel = computed(() => {
+    switch (filterDateBy.value) {
+        case 'created_at': return 'Didaftarkan';
+        case 'updated_at': return 'Terakhir Update';
+        case 'transaction':
+        default:
+            return 'Mutasi Stok';
+    }
+});
+
+const pad2 = (n) => String(n).padStart(2, '0');
+const formatYmd = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
+const setDateFilterBy = (mode) => {
+    filterDateBy.value = mode;
+    if (filterDateFrom.value || filterDateTo.value) {
+        applyFilters();
+    }
+};
+
+const setQuickDatePreset = (preset) => {
+    activeDatePreset.value = preset;
+    const today = new Date();
+
+    if (preset === 'today') {
+        filterDateFrom.value = formatYmd(today);
+        filterDateTo.value = formatYmd(today);
+    } else if (preset === 'yesterday') {
+        const yest = new Date();
+        yest.setDate(today.getDate() - 1);
+        filterDateFrom.value = formatYmd(yest);
+        filterDateTo.value = formatYmd(yest);
+    } else if (preset === 'week') {
+        const last7 = new Date();
+        last7.setDate(today.getDate() - 6);
+        filterDateFrom.value = formatYmd(last7);
+        filterDateTo.value = formatYmd(today);
+    } else if (preset === 'this_month') {
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        filterDateFrom.value = formatYmd(firstDay);
+        filterDateTo.value = formatYmd(today);
+    } else if (preset === 'last_month') {
+        const firstDayLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const lastDayLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+        filterDateFrom.value = formatYmd(firstDayLastMonth);
+        filterDateTo.value = formatYmd(lastDayLastMonth);
+    } else { // 'all'
+        filterDateFrom.value = '';
+        filterDateTo.value = '';
+        activeDatePreset.value = '';
+    }
+    applyFilters();
+};
+
+const onDateInputChange = () => {
+    activeDatePreset.value = 'custom';
+    applyFilters();
+};
+
+const clearDateFilter = () => {
+    filterDateFrom.value = '';
+    filterDateTo.value = '';
+    activeDatePreset.value = '';
+    applyFilters();
+};
+
+const formatDateRange = (from, to) => {
+    if (!from && !to) return '';
+    const formatSingle = (s) => {
+        if (!s) return '...';
+        const d = new Date(s);
+        return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    };
+    if (from && to && from === to) {
+        return formatSingle(from);
+    }
+    return `${formatSingle(from)} s/d ${formatSingle(to)}`;
+};
+
+const formatShortDate = (dt) => {
+    if (!dt) return '-';
+    const d = new Date(dt);
+    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
 const setConditionFilter = (cond) => {
     filterCondition.value = filterCondition.value === cond ? '' : cond;
     applyFilters();
@@ -889,6 +1150,7 @@ const activeFilterCount = computed(() => {
     if (filterStockStatus.value) count++;
     if (filterUnit.value) count++;
     if (filterCondition.value) count++;
+    if (filterDateFrom.value || filterDateTo.value) count++;
     if (filterSortBy.value && filterSortBy.value !== 'name_asc') count++;
     return count;
 });
@@ -949,6 +1211,10 @@ const applyFilters = () => {
     if (filterUnit.value) params.unit = filterUnit.value;
     if (filterCondition.value) params.condition = filterCondition.value;
     if (filterSortBy.value && filterSortBy.value !== 'name_asc') params.sort_by = filterSortBy.value;
+    if (filterDateFrom.value) params.date_from = filterDateFrom.value;
+    if (filterDateTo.value) params.date_to = filterDateTo.value;
+    if (filterDateBy.value && filterDateBy.value !== 'transaction') params.date_filter_by = filterDateBy.value;
+    if (activeDatePreset.value) params.date_preset = activeDatePreset.value;
 
     router.get('/warehouse-stocks', params, {
         preserveState: true,
@@ -968,6 +1234,10 @@ const resetFilters = () => {
     filterStockStatus.value = '';
     filterUnit.value = '';
     filterCondition.value = '';
+    filterDateFrom.value = '';
+    filterDateTo.value = '';
+    filterDateBy.value = 'transaction';
+    activeDatePreset.value = '';
     filterSortBy.value = 'name_asc';
     applyFilters();
 };
@@ -1205,6 +1475,10 @@ const executePrint = (directAutoprint = true) => {
         if (filterUnit.value) params.set('unit', filterUnit.value);
         if (filterCondition.value) params.set('condition', filterCondition.value);
         if (filterSortBy.value && filterSortBy.value !== 'name_asc') params.set('sort_by', filterSortBy.value);
+        if (filterDateFrom.value) params.set('date_from', filterDateFrom.value);
+        if (filterDateTo.value) params.set('date_to', filterDateTo.value);
+        if (filterDateBy.value) params.set('date_filter_by', filterDateBy.value);
+        if (activeDatePreset.value) params.set('date_preset', activeDatePreset.value);
     }
 
     if (printCity.value) params.set('city', printCity.value);

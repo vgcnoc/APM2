@@ -104,7 +104,7 @@
             </div>
 
             <!-- 3. PARAMETER & METADATA LAPORAN -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs mb-5 print:bg-slate-50">
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs mb-5 print:bg-slate-50">
                 <div>
                     <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Cakupan Wilayah / Area:</span>
                     <span class="font-bold text-slate-900">
@@ -115,6 +115,16 @@
                     <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Filter Kategori:</span>
                     <span class="font-bold text-slate-900">
                         {{ filters?.category ? filters.category : 'Semua Kategori' }}
+                    </span>
+                </div>
+                <div>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Periode Tanggal:</span>
+                    <span class="font-bold text-slate-900">
+                        <span v-if="meta?.has_date_filter" class="text-indigo-800">
+                            📅 {{ meta?.date_from || '...' }} s/d {{ meta?.date_to || '...' }}
+                            <span class="text-[9px] block text-indigo-600 font-semibold font-mono">({{ meta?.date_filter_by === 'created_at' ? 'Didaftarkan' : (meta?.date_filter_by === 'updated_at' ? 'Terakhir Update' : 'Mutasi Stok') }})</span>
+                        </span>
+                        <span v-else class="text-slate-500">Semua Waktu</span>
                     </span>
                 </div>
                 <div>
@@ -214,6 +224,10 @@
                                     </span>
                                 </div>
                                 <span v-else class="text-[10px] text-slate-400 italic">Belum dialokasikan</span>
+                                <div v-if="meta?.has_date_filter && item.has_period_activity" class="mt-1 flex items-center gap-1.5 text-[9px] font-mono">
+                                    <span class="text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">📥 +{{ formatNumber(item.period_in || 0) }} {{ item.unit }}</span>
+                                    <span class="text-rose-800 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">📤 -{{ formatNumber(item.period_out || 0) }} {{ item.unit }}</span>
+                                </div>
                             </td>
                             <td class="py-2 px-3 text-right font-mono">
                                 <span class="text-xs font-black" :class="getItemTotalStock(item) > 0 ? 'text-slate-900' : 'text-rose-600'">

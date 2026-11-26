@@ -215,7 +215,70 @@ class WarehouseStockController extends Controller
             }
         }
 
-        // 7. Pengurutan (Sorting)
+        // 7. Filter Tanggal Cerdas (Date Range Filter: Mutasi Stok, Tanggal Didaftarkan, Terakhir Update)
+        $dateFrom = $request->filled('date_from') ? trim($request->date_from) : null;
+        $dateTo = $request->filled('date_to') ? trim($request->date_to) : null;
+        $dateFilterBy = $request->get('date_filter_by', 'transaction'); // 'transaction', 'created_at', 'updated_at'
+        $datePreset = $request->get('date_preset', '');
+
+        if ($dateFrom || $dateTo) {
+            if ($dateFilterBy === 'created_at') {
+                $query->where(function ($q) use ($dateFrom, $dateTo) {
+                    if ($dateFrom && $dateTo) {
+                        $q->whereBetween(\Illuminate\Support\Facades\DB::raw('DATE(materials.created_at)'), [$dateFrom, $dateTo]);
+                    } elseif ($dateFrom) {
+                        $q->where(\Illuminate\Support\Facades\DB::raw('DATE(materials.created_at)'), '>=', $dateFrom);
+                    } elseif ($dateTo) {
+                        $q->where(\Illuminate\Support\Facades\DB::raw('DATE(materials.created_at)'), '<=', $dateTo);
+                    }
+                });
+            } elseif ($dateFilterBy === 'updated_at') {
+                $query->where(function ($q) use ($dateFrom, $dateTo) {
+                    if ($dateFrom && $dateTo) {
+                        $q->whereBetween(\Illuminate\Support\Facades\DB::raw('DATE(materials.updated_at)'), [$dateFrom, $dateTo]);
+                    } elseif ($dateFrom) {
+                        $q->where(\Illuminate\Support\Facades\DB::raw('DATE(materials.updated_at)'), '>=', $dateFrom);
+                    } elseif ($dateTo) {
+                        $q->where(\Illuminate\Support\Facades\DB::raw('DATE(materials.updated_at)'), '<=', $dateTo);
+                    }
+                });
+            } else { // default: 'transaction' (Mutasi / Transaksi Stok Fisik Gudang)
+                $query->whereHas('transactionItems', function ($tiq) use ($dateFrom, $dateTo, $scopedAreaIds) {
+                    $tiq->whereHas('transaction', function ($tq) use ($dateFrom, $dateTo, $scopedAreaIds) {
+                        if ($dateFrom && $dateTo) {
+                            $tq->where(function ($sub) use ($dateFrom, $dateTo) {
+                                $sub->whereBetween(\Illuminate\Support\Facades\DB::raw('DATE(material_transactions.date)'), [$dateFrom, $dateTo])
+                                    ->orWhere(function ($orQ) use ($dateFrom, $dateTo) {
+                                        $orQ->whereNull('material_transactions.date')
+                                            ->whereBetween(\Illuminate\Support\Facades\DB::raw('DATE(material_transactions.created_at)'), [$dateFrom, $dateTo]);
+                                    });
+                            });
+                        } elseif ($dateFrom) {
+                            $tq->where(function ($sub) use ($dateFrom) {
+                                $sub->where(\Illuminate\Support\Facades\DB::raw('DATE(material_transactions.date)'), '>=', $dateFrom)
+                                    ->orWhere(function ($orQ) use ($dateFrom) {
+                                        $orQ->whereNull('material_transactions.date')
+                                            ->where(\Illuminate\Support\Facades\DB::raw('DATE(material_transactions.created_at)'), '>=', $dateFrom);
+                                    });
+                            });
+                        } elseif ($dateTo) {
+                            $tq->where(function ($sub) use ($dateTo) {
+                                $sub->where(\Illuminate\Support\Facades\DB::raw('DATE(material_transactions.date)'), '<=', $dateTo)
+                                    ->orWhere(function ($orQ) use ($dateTo) {
+                                        $orQ->whereNull('material_transactions.date')
+                                            ->where(\Illuminate\Support\Facades\DB::raw('DATE(material_transactions.created_at)'), '<=', $dateTo);
+                                    });
+                            });
+                        }
+                        if (!empty($scopedAreaIds)) {
+                            $tq->whereIn('material_transactions.area_id', $scopedAreaIds);
+                        }
+                    });
+                });
+            }
+        }
+
+        // 8. Pengurutan (Sorting)
         $sortBy = $request->get('sort_by', 'name_asc');
         switch ($sortBy) {
             case 'name_desc':
@@ -232,7 +295,48 @@ class WarehouseStockController extends Controller
 
         $materials = $query->paginate(15)->withQueryString();
 
-        $materials->getCollection()->transform(function ($material) {
+        // Ambil kalkulasi mutasi per item pada halaman aktif jika filter tanggal mutasi digunakan
+        $periodStats = collect();
+        if (($dateFrom || $dateTo) && $dateFilterBy === 'transaction') {
+            $materialIds = $materials->getCollection()->pluck('id')->filter()->all();
+            if (!empty($materialIds)) {
+                $periodStats = \App\Models\MaterialTransactionItem::join('material_transactions', 'material_transaction_items.material_transaction_id', '=', 'material_transactions.id')
+                    ->whereIn('material_transaction_items.material_id', $materialIds)
+                    ->where(function ($sub) use ($dateFrom, $dateTo) {
+                        if ($dateFrom && $dateTo) {
+                            $sub->whereBetween(\Illuminate\Support\Facades\DB::raw('DATE(material_transactions.date)'), [$dateFrom, $dateTo])
+                                ->orWhere(function ($orQ) use ($dateFrom, $dateTo) {
+                                    $orQ->whereNull('material_transactions.date')
+                                        ->whereBetween(\Illuminate\Support\Facades\DB::raw('DATE(material_transactions.created_at)'), [$dateFrom, $dateTo]);
+                                });
+                        } elseif ($dateFrom) {
+                            $sub->where(\Illuminate\Support\Facades\DB::raw('DATE(material_transactions.date)'), '>=', $dateFrom)
+                                ->orWhere(function ($orQ) use ($dateFrom) {
+                                    $orQ->whereNull('material_transactions.date')
+                                        ->where(\Illuminate\Support\Facades\DB::raw('DATE(material_transactions.created_at)'), '>=', $dateFrom);
+                                });
+                        } elseif ($dateTo) {
+                            $sub->where(\Illuminate\Support\Facades\DB::raw('DATE(material_transactions.date)'), '<=', $dateTo)
+                                ->orWhere(function ($orQ) use ($dateTo) {
+                                    $orQ->whereNull('material_transactions.date')
+                                        ->where(\Illuminate\Support\Facades\DB::raw('DATE(material_transactions.created_at)'), '<=', $dateTo);
+                                });
+                        }
+                    })
+                    ->when(!empty($scopedAreaIds), fn($q) => $q->whereIn('material_transactions.area_id', $scopedAreaIds))
+                    ->select(
+                        'material_transaction_items.material_id',
+                        \Illuminate\Support\Facades\DB::raw("SUM(CASE WHEN material_transactions.type = 'in' THEN material_transaction_items.quantity ELSE 0 END) as total_in"),
+                        \Illuminate\Support\Facades\DB::raw("SUM(CASE WHEN material_transactions.type = 'out' THEN material_transaction_items.quantity ELSE 0 END) as total_out"),
+                        \Illuminate\Support\Facades\DB::raw("MAX(COALESCE(material_transactions.date, material_transactions.created_at)) as latest_activity")
+                    )
+                    ->groupBy('material_transaction_items.material_id')
+                    ->get()
+                    ->keyBy('material_id');
+            }
+        }
+
+        $materials->getCollection()->transform(function ($material) use ($periodStats) {
             $nameLower = strtolower($material->name . ' ' . ($material->description ?? ''));
             if (str_contains($nameLower, 'rusak') || str_contains($nameLower, 'afkir') || str_contains($nameLower, 'scrap')) {
                 $material->condition_label = 'Rusak';
@@ -241,6 +345,20 @@ class WarehouseStockController extends Controller
             } else {
                 $material->condition_label = 'Layak Pakai';
             }
+
+            $st = $periodStats->get($material->id);
+            if ($st) {
+                $material->period_in = (float) $st->total_in;
+                $material->period_out = (float) $st->total_out;
+                $material->latest_activity = $st->latest_activity;
+                $material->has_period_activity = true;
+            } else {
+                $material->period_in = 0.0;
+                $material->period_out = 0.0;
+                $material->latest_activity = null;
+                $material->has_period_activity = false;
+            }
+
             return $material;
         });
 
@@ -308,13 +426,18 @@ class WarehouseStockController extends Controller
             'categories' => $categories,
             'units' => $units,
             'areas' => $areas,
-            'filters' => $request->only(['search', 'category', 'unit', 'area_id', 'stock_status', 'sort_by', 'condition']),
+            'filters' => $request->only(['search', 'category', 'unit', 'area_id', 'stock_status', 'sort_by', 'condition', 'date_from', 'date_to', 'date_filter_by', 'date_preset']),
             'summary' => [
                 'total_materials' => $totalMaterials,
                 'out_of_stock' => $outOfStockCount,
                 'available' => $availableCount,
                 'filtered_count' => $materials->total(),
                 'condition_stats' => $conditionStats,
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+                'date_filter_by' => $dateFilterBy,
+                'date_preset' => $datePreset,
+                'has_date_filter' => (bool) ($dateFrom || $dateTo),
             ]
         ]);
     }
@@ -501,7 +624,69 @@ class WarehouseStockController extends Controller
             }
         }
 
-        // 7. Sorting
+        // 7. Filter Tanggal Cerdas pada Laporan Cetak
+        $dateFrom = $request->filled('date_from') ? trim($request->date_from) : null;
+        $dateTo = $request->filled('date_to') ? trim($request->date_to) : null;
+        $dateFilterBy = $request->get('date_filter_by', 'transaction');
+
+        if ($dateFrom || $dateTo) {
+            if ($dateFilterBy === 'created_at') {
+                $query->where(function ($q) use ($dateFrom, $dateTo) {
+                    if ($dateFrom && $dateTo) {
+                        $q->whereBetween(\Illuminate\Support\Facades\DB::raw('DATE(materials.created_at)'), [$dateFrom, $dateTo]);
+                    } elseif ($dateFrom) {
+                        $q->where(\Illuminate\Support\Facades\DB::raw('DATE(materials.created_at)'), '>=', $dateFrom);
+                    } elseif ($dateTo) {
+                        $q->where(\Illuminate\Support\Facades\DB::raw('DATE(materials.created_at)'), '<=', $dateTo);
+                    }
+                });
+            } elseif ($dateFilterBy === 'updated_at') {
+                $query->where(function ($q) use ($dateFrom, $dateTo) {
+                    if ($dateFrom && $dateTo) {
+                        $q->whereBetween(\Illuminate\Support\Facades\DB::raw('DATE(materials.updated_at)'), [$dateFrom, $dateTo]);
+                    } elseif ($dateFrom) {
+                        $q->where(\Illuminate\Support\Facades\DB::raw('DATE(materials.updated_at)'), '>=', $dateFrom);
+                    } elseif ($dateTo) {
+                        $q->where(\Illuminate\Support\Facades\DB::raw('DATE(materials.updated_at)'), '<=', $dateTo);
+                    }
+                });
+            } else { // default: 'transaction'
+                $query->whereHas('transactionItems', function ($tiq) use ($dateFrom, $dateTo, $scopedAreaIds) {
+                    $tiq->whereHas('transaction', function ($tq) use ($dateFrom, $dateTo, $scopedAreaIds) {
+                        if ($dateFrom && $dateTo) {
+                            $tq->where(function ($sub) use ($dateFrom, $dateTo) {
+                                $sub->whereBetween(\Illuminate\Support\Facades\DB::raw('DATE(material_transactions.date)'), [$dateFrom, $dateTo])
+                                    ->orWhere(function ($orQ) use ($dateFrom, $dateTo) {
+                                        $orQ->whereNull('material_transactions.date')
+                                            ->whereBetween(\Illuminate\Support\Facades\DB::raw('DATE(material_transactions.created_at)'), [$dateFrom, $dateTo]);
+                                    });
+                            });
+                        } elseif ($dateFrom) {
+                            $tq->where(function ($sub) use ($dateFrom) {
+                                $sub->where(\Illuminate\Support\Facades\DB::raw('DATE(material_transactions.date)'), '>=', $dateFrom)
+                                    ->orWhere(function ($orQ) use ($dateFrom) {
+                                        $orQ->whereNull('material_transactions.date')
+                                            ->where(\Illuminate\Support\Facades\DB::raw('DATE(material_transactions.created_at)'), '>=', $dateFrom);
+                                    });
+                            });
+                        } elseif ($dateTo) {
+                            $tq->where(function ($sub) use ($dateTo) {
+                                $sub->where(\Illuminate\Support\Facades\DB::raw('DATE(material_transactions.date)'), '<=', $dateTo)
+                                    ->orWhere(function ($orQ) use ($dateTo) {
+                                        $orQ->whereNull('material_transactions.date')
+                                            ->where(\Illuminate\Support\Facades\DB::raw('DATE(material_transactions.created_at)'), '<=', $dateTo);
+                                    });
+                            });
+                        }
+                        if (!empty($scopedAreaIds)) {
+                            $tq->whereIn('material_transactions.area_id', $scopedAreaIds);
+                        }
+                    });
+                });
+            }
+        }
+
+        // 8. Sorting
         $sortBy = $request->get('sort_by', 'name_asc');
         switch ($sortBy) {
             case 'name_desc':
@@ -518,7 +703,47 @@ class WarehouseStockController extends Controller
 
         $materials = $query->get();
 
-        $materials->transform(function ($material) {
+        $periodStats = collect();
+        if (($dateFrom || $dateTo) && $dateFilterBy === 'transaction') {
+            $materialIds = $materials->pluck('id')->filter()->all();
+            if (!empty($materialIds)) {
+                $periodStats = \App\Models\MaterialTransactionItem::join('material_transactions', 'material_transaction_items.material_transaction_id', '=', 'material_transactions.id')
+                    ->whereIn('material_transaction_items.material_id', $materialIds)
+                    ->where(function ($sub) use ($dateFrom, $dateTo) {
+                        if ($dateFrom && $dateTo) {
+                            $sub->whereBetween(\Illuminate\Support\Facades\DB::raw('DATE(material_transactions.date)'), [$dateFrom, $dateTo])
+                                ->orWhere(function ($orQ) use ($dateFrom, $dateTo) {
+                                    $orQ->whereNull('material_transactions.date')
+                                        ->whereBetween(\Illuminate\Support\Facades\DB::raw('DATE(material_transactions.created_at)'), [$dateFrom, $dateTo]);
+                                });
+                        } elseif ($dateFrom) {
+                            $sub->where(\Illuminate\Support\Facades\DB::raw('DATE(material_transactions.date)'), '>=', $dateFrom)
+                                ->orWhere(function ($orQ) use ($dateFrom) {
+                                    $orQ->whereNull('material_transactions.date')
+                                        ->where(\Illuminate\Support\Facades\DB::raw('DATE(material_transactions.created_at)'), '>=', $dateFrom);
+                                });
+                        } elseif ($dateTo) {
+                            $sub->where(\Illuminate\Support\Facades\DB::raw('DATE(material_transactions.date)'), '<=', $dateTo)
+                                ->orWhere(function ($orQ) use ($dateTo) {
+                                    $orQ->whereNull('material_transactions.date')
+                                        ->where(\Illuminate\Support\Facades\DB::raw('DATE(material_transactions.created_at)'), '<=', $dateTo);
+                                });
+                        }
+                    })
+                    ->when(!empty($scopedAreaIds), fn($q) => $q->whereIn('material_transactions.area_id', $scopedAreaIds))
+                    ->select(
+                        'material_transaction_items.material_id',
+                        \Illuminate\Support\Facades\DB::raw("SUM(CASE WHEN material_transactions.type = 'in' THEN material_transaction_items.quantity ELSE 0 END) as total_in"),
+                        \Illuminate\Support\Facades\DB::raw("SUM(CASE WHEN material_transactions.type = 'out' THEN material_transaction_items.quantity ELSE 0 END) as total_out"),
+                        \Illuminate\Support\Facades\DB::raw("MAX(COALESCE(material_transactions.date, material_transactions.created_at)) as latest_activity")
+                    )
+                    ->groupBy('material_transaction_items.material_id')
+                    ->get()
+                    ->keyBy('material_id');
+            }
+        }
+
+        $materials->transform(function ($material) use ($periodStats) {
             $nameLower = strtolower($material->name . ' ' . ($material->description ?? ''));
             if (str_contains($nameLower, 'rusak') || str_contains($nameLower, 'afkir') || str_contains($nameLower, 'scrap')) {
                 $material->condition_label = 'Rusak';
@@ -527,6 +752,20 @@ class WarehouseStockController extends Controller
             } else {
                 $material->condition_label = 'Layak Pakai';
             }
+
+            $st = $periodStats->get($material->id);
+            if ($st) {
+                $material->period_in = (float) $st->total_in;
+                $material->period_out = (float) $st->total_out;
+                $material->latest_activity = $st->latest_activity;
+                $material->has_period_activity = true;
+            } else {
+                $material->period_in = 0.0;
+                $material->period_out = 0.0;
+                $material->latest_activity = null;
+                $material->has_period_activity = false;
+            }
+
             return $material;
         });
 
@@ -574,7 +813,7 @@ class WarehouseStockController extends Controller
             'areas' => $areas,
             'company' => $company,
             'user' => $user,
-            'filters' => $request->only(['search', 'category', 'unit', 'area_id', 'stock_status', 'sort_by', 'condition']),
+            'filters' => $request->only(['search', 'category', 'unit', 'area_id', 'stock_status', 'sort_by', 'condition', 'date_from', 'date_to', 'date_filter_by', 'date_preset']),
             'selectedArea' => $selectedArea,
             'summary' => [
                 'total' => $totalItems,
@@ -583,6 +822,10 @@ class WarehouseStockController extends Controller
                 'layak' => $layakItems,
                 'tidak_layak' => $tidakLayakItems,
                 'rusak' => $rusakItems,
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+                'date_filter_by' => $dateFilterBy,
+                'has_date_filter' => (bool) ($dateFrom || $dateTo),
             ],
             'meta' => [
                 'city' => trim($signerCity),
@@ -594,6 +837,10 @@ class WarehouseStockController extends Controller
                 'approver_title' => $request->get('approver_title', 'Pimpinan / Manager Operasional'),
                 'printed_at' => now()->format('Y-m-d H:i:s'),
                 'report_number' => 'INV-RPT-' . now()->format('Ymd-His'),
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+                'date_filter_by' => $dateFilterBy,
+                'has_date_filter' => (bool) ($dateFrom || $dateTo),
             ]
         ]);
     }
