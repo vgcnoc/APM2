@@ -547,16 +547,17 @@
                                     </div>
                                 </div>
 
-                                <!-- Area / Wilayah Penempatan -->
+                                <!-- Area / Cabang Penempatan Fisik -->
                                 <div>
                                     <label class="block text-sm font-bold text-gray-700 mb-1">
-                                        Area / Wilayah Penempatan Fisik
+                                        Cabang / Area Penempatan Fisik <span class="text-rose-500">*</span>
                                     </label>
-                                    <select v-model="form.area_id" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 bg-white text-sm font-medium">
-                                        <option value="">🏢 Gudang Utama / Pusat (Tanpa Area Khusus)</option>
+                                    <select v-model="form.area_id" required class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 bg-white text-sm font-medium">
+                                        <option value="" disabled>-- Pilih Cabang Gudang (Wajib) --</option>
                                         <option v-for="area in areas" :key="area.id" :value="area.id">📍 {{ area.name }}</option>
                                     </select>
-                                    <p class="text-[11px] text-gray-400 mt-1">Pilih area cabang di mana material fisik ini berada.</p>
+                                    <p v-if="form.errors.area_id" class="text-xs text-rose-500 mt-1 font-semibold">{{ form.errors.area_id }}</p>
+                                    <p v-else class="text-[11px] text-gray-400 mt-1">Pilih cabang/area di mana material fisik ini berada agar stok otomatis tercatat di stok area.</p>
                                 </div>
                             </div>
                         </div>
@@ -1441,6 +1442,11 @@ const submitAddStock = () => {
 };
 
 const submit = () => {
+    if (!form.area_id && !isEditing.value) {
+        alert('Silakan pilih Cabang / Area penempatan fisik material terlebih dahulu.');
+        return;
+    }
+
     // Rumus Kabel: roll * meter_per_roll -> disimpan dalam meter
     if (isCable.value) {
         form.unit = 'meter';
