@@ -1342,19 +1342,25 @@
 
         <!-- Promise Modal -->
         <Teleport to="body">
+            <!-- Modal Atur Janji Bayar dengan TTD Digital Lapangan -->
             <div v-if="showPromiseModal" class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
                 <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="closePromiseModal"></div>
 
-                <div class="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-md relative z-10 animate-fade-in-up">
-                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-amber-50/60">
-                        <div>
-                            <div class="flex items-center gap-2">
-                                <h3 class="text-lg font-bold text-gray-900">Atur Janji Bayar</h3>
-                                <span v-if="selectedInvoice?.promise_date" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-200 text-amber-900">
-                                    Aktif
-                                </span>
+                <div class="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-2xl relative z-10 animate-fade-in-up">
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-amber-50/70">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center text-lg shrink-0 shadow-xs shadow-amber-200">
+                                ✍️
                             </div>
-                            <p class="text-[11px] font-medium text-gray-500 mt-0.5">{{ selectedInvoice?.invoice_number }} &bull; {{ selectedInvoice?.customer?.name }}</p>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h3 class="text-base font-bold text-gray-900">Atur Janji Bayar & TTD Digital</h3>
+                                    <span v-if="selectedInvoice?.customer_promise_signature" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                        ✓ Sudah TTD
+                                    </span>
+                                </div>
+                                <p class="text-[11px] font-medium text-gray-500 mt-0.5">#{{ selectedInvoice?.invoice_number }} &bull; {{ selectedInvoice?.customer?.name }}</p>
+                            </div>
                         </div>
                         <button @click="closePromiseModal" class="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-xl transition-colors cursor-pointer">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -1375,6 +1381,7 @@
                             <div v-if="Object.keys(promiseForm.errors).length > 0" class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold">
                                 <p v-for="(err, key) in promiseForm.errors" :key="key">{{ err }}</p>
                             </div>
+
                             <!-- Info Sisa Tagihan -->
                             <div class="p-3 bg-amber-50/70 border border-amber-200/70 rounded-xl flex items-center justify-between">
                                 <span class="text-xs font-bold text-gray-600">Total Sisa Tagihan:</span>
@@ -1470,6 +1477,141 @@
                                 </div>
                             </div>
 
+                            <!-- ── SECTION TTD DIGITAL LAPANGAN ── -->
+                            <div class="border border-slate-200 bg-slate-50/70 rounded-2xl p-3.5 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-pulse"></span>
+                                        <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                            Tanda Tangan Digital Lapangan (TTD)
+                                        </h4>
+                                    </div>
+                                    <span class="text-[10px] text-slate-500 font-medium">Bisa langsung gores di layar HP</span>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                                    <!-- 1. Tanda Tangan Pelanggan -->
+                                    <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs space-y-2.5">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5">
+                                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                                <span>TTD Pelanggan</span>
+                                            </span>
+                                            <button 
+                                                v-if="isResigningCustomer"
+                                                type="button" 
+                                                @click="clearCustomerCanvas"
+                                                class="text-[10px] font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
+                                            >
+                                                Hapus
+                                            </button>
+                                            <button 
+                                                v-else
+                                                type="button" 
+                                                @click="startResignCustomer"
+                                                class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
+                                            >
+                                                Ganti TTD
+                                            </button>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Nama Pelanggan / Yang Berjanji</label>
+                                            <input 
+                                                type="text" 
+                                                v-model="promiseForm.signer_name" 
+                                                class="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500" 
+                                                placeholder="Nama penandatangan..." 
+                                                required 
+                                            />
+                                        </div>
+
+                                        <!-- Preview TTD Lama jika Ada -->
+                                        <div v-if="existingCustomerSignature && !isResigningCustomer" class="bg-emerald-50/40 rounded-xl border border-emerald-200 p-2 flex flex-col items-center justify-center min-h-[110px]">
+                                            <img :src="existingCustomerSignature" class="max-h-20 object-contain mx-auto" alt="TTD Pelanggan" />
+                                            <div class="mt-1 flex items-center gap-1 text-[9px] text-emerald-700 font-bold">
+                                                <span>✓ TTD Pelanggan Tersimpan</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Canvas TTD Pelanggan -->
+                                        <div v-show="isResigningCustomer" class="relative bg-white rounded-xl border-2 border-dashed border-slate-300 overflow-hidden touch-none">
+                                            <canvas 
+                                                ref="customerCanvasRef" 
+                                                class="w-full h-28 block cursor-crosshair bg-white"
+                                                @mousedown="startDrawingCustomer"
+                                                @mousemove="drawCustomer"
+                                                @mouseup="stopDrawingCustomer"
+                                                @mouseleave="stopDrawingCustomer"
+                                            ></canvas>
+                                            <div v-if="!customerHasDrawn" class="absolute inset-0 pointer-events-none flex items-center justify-center text-slate-300 text-[11px] font-medium italic">
+                                                Sentuh & gambar TTD pelanggan di sini
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- 2. Tanda Tangan Petugas / Penagih -->
+                                    <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs space-y-2.5">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-[11px] font-bold text-blue-800 flex items-center gap-1.5">
+                                                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                                                <span>TTD Petugas Penagih</span>
+                                            </span>
+                                            <button 
+                                                v-if="isResigningCollector"
+                                                type="button" 
+                                                @click="clearCollectorCanvas"
+                                                class="text-[10px] font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
+                                            >
+                                                Hapus
+                                            </button>
+                                            <button 
+                                                v-else
+                                                type="button" 
+                                                @click="startResignCollector"
+                                                class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
+                                            >
+                                                Ganti TTD
+                                            </button>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Nama Petugas Penagih</label>
+                                            <input 
+                                                type="text" 
+                                                v-model="promiseForm.collector_name" 
+                                                class="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                                                placeholder="Nama petugas penagih..." 
+                                                required 
+                                            />
+                                        </div>
+
+                                        <!-- Preview TTD Lama jika Ada -->
+                                        <div v-if="existingCollectorSignature && !isResigningCollector" class="bg-blue-50/40 rounded-xl border border-blue-200 p-2 flex flex-col items-center justify-center min-h-[110px]">
+                                            <img :src="existingCollectorSignature" class="max-h-20 object-contain mx-auto" alt="TTD Petugas" />
+                                            <div class="mt-1 flex items-center gap-1 text-[9px] text-blue-700 font-bold">
+                                                <span>✓ TTD Petugas Tersimpan</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Canvas TTD Petugas -->
+                                        <div v-show="isResigningCollector" class="relative bg-white rounded-xl border-2 border-dashed border-slate-300 overflow-hidden touch-none">
+                                            <canvas 
+                                                ref="collectorCanvasRef" 
+                                                class="w-full h-28 block cursor-crosshair bg-white"
+                                                @mousedown="startDrawingCollector"
+                                                @mousemove="drawCollector"
+                                                @mouseup="stopDrawingCollector"
+                                                @mouseleave="stopDrawingCollector"
+                                            ></canvas>
+                                            <div v-if="!collectorHasDrawn" class="absolute inset-0 pointer-events-none flex items-center justify-center text-slate-300 text-[11px] font-medium italic">
+                                                Sentuh & gambar TTD petugas di sini
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <p class="text-[11px] text-gray-500 leading-snug bg-amber-50/50 p-2.5 rounded-xl border border-amber-200/50">
                                 Tagihan ini akan ditandai dengan tanggal komitmen bayar. Jika melewati tanggal tersebut dan belum lunas, sistem otomatis mengisolir kembali.
                             </p>
@@ -1489,8 +1631,8 @@
                             </div>
                         </div>
 
-                        <div class="px-4 sm:px-6 py-3.5 border-t border-gray-100 bg-gray-50/50 flex flex-wrap items-center justify-between gap-2">
-                            <div class="flex items-center gap-2">
+                        <div class="px-4 sm:px-6 py-3.5 border-t border-gray-100 bg-gray-50/80 flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex flex-wrap items-center gap-2">
                                 <button 
                                     v-if="selectedInvoice?.promise_date"
                                     type="button" 
@@ -1508,6 +1650,15 @@
                                     <svg class="w-3.5 h-3.5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                     <span>Cetak Surat</span>
                                 </a>
+                                <button 
+                                    v-if="selectedInvoice?.promise_date"
+                                    type="button" 
+                                    @click="sendPromiseWhatsApp(selectedInvoice)" 
+                                    class="px-3.5 py-2 text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 rounded-xl transition-colors border border-emerald-300 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                                    title="Kirim Surat Pernyataan Janji Bayar via WhatsApp ke Pelanggan"
+                                >
+                                    <span>💬 Kirim WA</span>
+                                </button>
                             </div>
                             <div class="flex items-center gap-2">
                                 <button type="button" @click="closePromiseModal" class="px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-200 bg-gray-100 rounded-xl transition-colors cursor-pointer">
@@ -2257,8 +2408,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
-import { Link, router, useForm } from '@inertiajs/vue3';
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
+import { Link, router, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
 import CustomerQuickDetailModal from '@/Components/CustomerQuickDetailModal.vue';
@@ -2277,6 +2428,8 @@ const props = defineProps({
     available_banks: Array,
     invoice_issue_date: Number,
 });
+
+const page = usePage();
 
 function toLocalDateString(date = new Date()) {
     const d = date instanceof Date ? date : new Date(date);
@@ -2821,7 +2974,171 @@ const printAfterSave = ref(true);
 const promiseForm = useForm({
     promise_date: '',
     internet_action: 'on', // 'on' | 'off'
+    customer_signature: '',
+    collector_signature: '',
+    signer_name: '',
+    collector_name: '',
 });
+
+// Canvas Signature References & State
+const customerCanvasRef = ref(null);
+const collectorCanvasRef = ref(null);
+let customerCtx = null;
+let collectorCtx = null;
+let isDrawingCustomer = false;
+let isDrawingCollector = false;
+const customerHasDrawn = ref(false);
+const collectorHasDrawn = ref(false);
+const existingCustomerSignature = ref('');
+const existingCollectorSignature = ref('');
+const isResigningCustomer = ref(false);
+const isResigningCollector = ref(false);
+
+function setupCanvas(canvas) {
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    return ctx;
+}
+
+function getPos(canvas, event) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = event.clientX !== undefined ? event.clientX : event.touches?.[0]?.clientX;
+    const clientY = event.clientY !== undefined ? event.clientY : event.touches?.[0]?.clientY;
+    return {
+        x: clientX - rect.left,
+        y: clientY - rect.top,
+    };
+}
+
+function attachTouchListeners(canvas, type) {
+    if (!canvas || canvas._hasTouchListeners) return;
+    canvas._hasTouchListeners = true;
+
+    const onTouchStart = (e) => {
+        e.preventDefault();
+        const pos = getPos(canvas, e);
+        if (type === 'collector') {
+            isDrawingCollector = true;
+            collectorHasDrawn.value = true;
+            collectorCtx?.beginPath();
+            collectorCtx?.moveTo(pos.x, pos.y);
+        } else {
+            isDrawingCustomer = true;
+            customerHasDrawn.value = true;
+            customerCtx?.beginPath();
+            customerCtx?.moveTo(pos.x, pos.y);
+        }
+    };
+
+    const onTouchMove = (e) => {
+        e.preventDefault();
+        const pos = getPos(canvas, e);
+        if (type === 'collector' && isDrawingCollector) {
+            collectorCtx?.lineTo(pos.x, pos.y);
+            collectorCtx?.stroke();
+        } else if (type === 'customer' && isDrawingCustomer) {
+            customerCtx?.lineTo(pos.x, pos.y);
+            customerCtx?.stroke();
+        }
+    };
+
+    const onTouchEnd = (e) => {
+        e.preventDefault();
+        if (type === 'collector') {
+            isDrawingCollector = false;
+        } else {
+            isDrawingCustomer = false;
+        }
+    };
+
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+    canvas.addEventListener('touchend', onTouchEnd, { passive: false });
+    canvas.addEventListener('touchcancel', onTouchEnd, { passive: false });
+}
+
+function startDrawingCustomer(e) {
+    isDrawingCustomer = true;
+    customerHasDrawn.value = true;
+    const pos = getPos(customerCanvasRef.value, e);
+    customerCtx?.beginPath();
+    customerCtx?.moveTo(pos.x, pos.y);
+}
+function drawCustomer(e) {
+    if (!isDrawingCustomer) return;
+    const pos = getPos(customerCanvasRef.value, e);
+    customerCtx?.lineTo(pos.x, pos.y);
+    customerCtx?.stroke();
+}
+function stopDrawingCustomer() {
+    isDrawingCustomer = false;
+}
+
+function startDrawingCollector(e) {
+    isDrawingCollector = true;
+    collectorHasDrawn.value = true;
+    const pos = getPos(collectorCanvasRef.value, e);
+    collectorCtx?.beginPath();
+    collectorCtx?.moveTo(pos.x, pos.y);
+}
+function drawCollector(e) {
+    if (!isDrawingCollector) return;
+    const pos = getPos(collectorCanvasRef.value, e);
+    collectorCtx?.lineTo(pos.x, pos.y);
+    collectorCtx?.stroke();
+}
+function stopDrawingCollector() {
+    isDrawingCollector = false;
+}
+
+function clearCustomerCanvas() {
+    if (!customerCanvasRef.value || !customerCtx) return;
+    const rect = customerCanvasRef.value.getBoundingClientRect();
+    customerCtx.clearRect(0, 0, rect.width, rect.height);
+    customerHasDrawn.value = false;
+}
+
+function clearCollectorCanvas() {
+    if (!collectorCanvasRef.value || !collectorCtx) return;
+    const rect = collectorCanvasRef.value.getBoundingClientRect();
+    collectorCtx.clearRect(0, 0, rect.width, rect.height);
+    collectorHasDrawn.value = false;
+}
+
+function startResignCustomer() {
+    isResigningCustomer.value = true;
+    customerHasDrawn.value = false;
+    nextTick(() => {
+        if (customerCanvasRef.value) {
+            customerCtx = setupCanvas(customerCanvasRef.value);
+            attachTouchListeners(customerCanvasRef.value, 'customer');
+            clearCustomerCanvas();
+        }
+    });
+}
+
+function startResignCollector() {
+    isResigningCollector.value = true;
+    collectorHasDrawn.value = false;
+    nextTick(() => {
+        if (collectorCanvasRef.value) {
+            collectorCtx = setupCanvas(collectorCanvasRef.value);
+            attachTouchListeners(collectorCanvasRef.value, 'collector');
+            clearCollectorCanvas();
+        }
+    });
+}
 
 function setPromisePreset(days) {
     const d = new Date();
@@ -3046,11 +3363,41 @@ function openPromiseModal(invoice) {
     promiseForm.promise_date = invoice.promise_date || '';
     // Defaultkan 'on' untuk memberikan akses internet / kompensasi selama masa janji bayar
     promiseForm.internet_action = 'on';
+
+    existingCustomerSignature.value = invoice.customer_promise_signature || '';
+    existingCollectorSignature.value = invoice.collector_promise_signature || '';
+    isResigningCustomer.value = !invoice.customer_promise_signature;
+    isResigningCollector.value = !invoice.collector_promise_signature;
+    customerHasDrawn.value = false;
+    collectorHasDrawn.value = false;
+
+    promiseForm.signer_name = invoice.promise_signer_name || (invoice.customer?.name || '');
+    promiseForm.collector_name = invoice.promise_collector_name || (page.props.auth?.user?.name || '');
+    promiseForm.customer_signature = '';
+    promiseForm.collector_signature = '';
+
     showPromiseModal.value = true;
+
+    nextTick(() => {
+        if (isResigningCustomer.value && customerCanvasRef.value) {
+            customerCtx = setupCanvas(customerCanvasRef.value);
+            attachTouchListeners(customerCanvasRef.value, 'customer');
+            clearCustomerCanvas();
+        }
+        if (isResigningCollector.value && collectorCanvasRef.value) {
+            collectorCtx = setupCanvas(collectorCanvasRef.value);
+            attachTouchListeners(collectorCanvasRef.value, 'collector');
+            clearCollectorCanvas();
+        }
+    });
 }
 
 function closePromiseModal() {
     showPromiseModal.value = false;
+    customerHasDrawn.value = false;
+    collectorHasDrawn.value = false;
+    customerCtx = null;
+    collectorCtx = null;
     setTimeout(() => {
         if (!showPaymentModal.value) selectedInvoice.value = null;
         promiseForm.reset();
@@ -3074,6 +3421,29 @@ function removePromiseDate() {
 function submitPromise() {
     const targetInvoice = selectedInvoice.value;
     const shouldPrint = printAfterSave.value;
+
+    // Ambil TTD Pelanggan
+    if (isResigningCustomer.value) {
+        if (customerHasDrawn.value && customerCanvasRef.value) {
+            promiseForm.customer_signature = customerCanvasRef.value.toDataURL('image/png');
+        } else {
+            promiseForm.customer_signature = '';
+        }
+    } else {
+        promiseForm.customer_signature = existingCustomerSignature.value || '';
+    }
+
+    // Ambil TTD Petugas
+    if (isResigningCollector.value) {
+        if (collectorHasDrawn.value && collectorCanvasRef.value) {
+            promiseForm.collector_signature = collectorCanvasRef.value.toDataURL('image/png');
+        } else {
+            promiseForm.collector_signature = '';
+        }
+    } else {
+        promiseForm.collector_signature = existingCollectorSignature.value || '';
+    }
+
     promiseForm.post(`/invoices/${targetInvoice.id}/promise`, {
         preserveScroll: true,
         onSuccess: () => {
@@ -3083,6 +3453,21 @@ function submitPromise() {
             }
         },
     });
+}
+
+function sendPromiseWhatsApp(inv) {
+    if (!inv) return;
+    const phone = cleanPhone(inv.customer?.phone);
+    const custName = inv.customer?.name || 'Pelanggan';
+    const invNo = inv.invoice_number || '';
+    const dateFormatted = inv.promise_date ? new Date(inv.promise_date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '-';
+    const remaining = formatCurrency(inv.remaining || inv.total_amount || 0);
+    const linkSurat = `${window.location.origin}/invoices/${inv.id}/print-promise`;
+    
+    const text = `Halo Bapak/Ibu *${custName}*,\n\nTerima kasih telah melakukan konfirmasi komitmen pembayaran untuk tagihan *#${invNo}*.\n\nBerikut rincian Surat Komitmen Janji Bayar:\n• Sisa Tagihan: *${remaining}*\n• Batas Janji Bayar: *${dateFormatted}*\n• Status: *Telah Ditandatangani Digital*\n\nSurat Komitmen Janji Bayar resmi dapat Anda lihat/unduh melalui tautan resmi berikut:\n${linkSurat}\n\nMohon melakukan pelunasan sebelum jatuh tempo demi kelancaran layanan internet Anda. Terima kasih 🙏`;
+
+    const url = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
 }
 
 // Edit Modal Logic

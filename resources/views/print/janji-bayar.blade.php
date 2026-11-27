@@ -263,13 +263,42 @@
             width: 50%;
             text-align: center;
             vertical-align: top;
+            padding: 0 10px;
         }
         .sign-title {
             font-size: 11px;
             font-weight: bold;
             color: #475569;
-            margin-bottom: 58px;
+            margin-bottom: 8px;
             line-height: 1.4;
+        }
+        .sig-container {
+            min-height: 72px;
+            text-align: center;
+            margin: 4px auto 6px auto;
+        }
+        .sig-img {
+            max-height: 65px;
+            max-width: 190px;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto;
+        }
+        .sig-empty-space {
+            height: 60px;
+        }
+        .sig-verified-badge {
+            display: inline-block;
+            margin-top: 3px;
+            padding: 2px 8px;
+            background: #ecfdf5;
+            color: #047857;
+            border: 1px solid #a7f3d0;
+            border-radius: 4px;
+            font-size: 8px;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-family: Courier, monospace;
         }
         .sign-name {
             font-weight: bold;

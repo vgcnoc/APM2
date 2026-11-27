@@ -659,6 +659,10 @@ class InvoiceController extends Controller
             'promise_date' => 'nullable|date',
             'notes' => 'nullable|string|max:500',
             'internet_action' => 'nullable|in:on,off',
+            'customer_signature' => 'nullable|string',
+            'collector_signature' => 'nullable|string',
+            'signer_name' => 'nullable|string|max:150',
+            'collector_name' => 'nullable|string|max:150',
         ]);
 
         $updateData = [
@@ -666,6 +670,25 @@ class InvoiceController extends Controller
         ];
         if ($request->has('notes')) {
             $updateData['notes'] = $request->notes;
+        }
+
+        if ($request->filled('customer_signature')) {
+            $updateData['customer_promise_signature'] = $request->customer_signature;
+            $updateData['promise_signer_name'] = $request->input('signer_name') ?: ($invoice->customer?->name ?? 'Pelanggan');
+            $updateData['promise_signed_at'] = now();
+        }
+        if ($request->filled('collector_signature')) {
+            $updateData['collector_promise_signature'] = $request->collector_signature;
+            $updateData['promise_collector_name'] = $request->input('collector_name') ?: (auth()->user()?->name ?? 'Petugas Penagihan');
+            $updateData['promise_signed_at'] = now();
+        }
+
+        if (empty($request->promise_date)) {
+            $updateData['customer_promise_signature'] = null;
+            $updateData['collector_promise_signature'] = null;
+            $updateData['promise_signer_name'] = null;
+            $updateData['promise_collector_name'] = null;
+            $updateData['promise_signed_at'] = null;
         }
 
         $invoice->update($updateData);
