@@ -33,6 +33,15 @@ class MaterialController extends Controller
             if ($request->filled('area_id')) {
                 $query->whereHas('stocks', function ($sq) use ($request) {
                     $sq->where('area_id', $request->area_id);
+                    if ($request->stock_status === 'empty') {
+                        $sq->where('stock', '<=', 0);
+                    } elseif ($request->stock_status === 'low') {
+                        $sq->where('stock', '>', 0)->where('stock', '<=', 10);
+                    } elseif ($request->stock_status === 'available') {
+                        $sq->where('stock', '>', 10);
+                    } else {
+                        $sq->where('stock', '>', 0);
+                    }
                 });
             }
         } else {
@@ -46,6 +55,15 @@ class MaterialController extends Controller
             if ($request->filled('area_id')) {
                 $query->whereHas('stocks', function ($sq) use ($request) {
                     $sq->where('area_id', $request->area_id);
+                    if ($request->stock_status === 'empty') {
+                        $sq->where('stock', '<=', 0);
+                    } elseif ($request->stock_status === 'low') {
+                        $sq->where('stock', '>', 0)->where('stock', '<=', 10);
+                    } elseif ($request->stock_status === 'available') {
+                        $sq->where('stock', '>', 10);
+                    } else {
+                        $sq->where('stock', '>', 0);
+                    }
                 });
             }
         }
@@ -67,7 +85,7 @@ class MaterialController extends Controller
 
         $scopedAreaIds = $request->filled('area_id') ? [$request->area_id] : (!$isGlobal && !empty($accessibleAreas) ? $accessibleAreas : null);
 
-        if ($request->stock_status) {
+        if ($request->stock_status && !$request->filled('area_id')) {
             if ($scopedAreaIds) {
                 if ($request->stock_status === 'empty') {
                     $query->where(function ($q) use ($scopedAreaIds) {
@@ -533,7 +551,8 @@ class MaterialController extends Controller
                     })->visibleInMaterialsTable();
                 });
             
-            $totalItems = (clone $activeQuery)->count();
+            $availableItems = (clone $stockQuery)->where('stock', '>', 0)->distinct('material_id')->count('material_id');
+            $totalItems = $availableItems;
             $outOfStock = (clone $activeQuery)->whereDoesntHave('stocks', fn($sq) => $sq->whereIn('area_id', $scopedAreaIds)->where('stock', '>', 0))->count();
             $lowStock = (clone $stockQuery)->where('stock', '>', 0)->where('stock', '<=', 10)->distinct('material_id')->count('material_id');
             

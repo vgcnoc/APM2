@@ -38,22 +38,38 @@ class WarehouseStockController extends Controller
         })
         ->visibleInMaterialsTable()
         ->where($warehouseFilter)
-        ->with(['transactionItems:id,material_id,condition', 'stocks' => function ($sq) use ($accessibleAreas, $isGlobal) {
-            if (!$isGlobal && !empty($accessibleAreas)) {
+        ->with(['transactionItems:id,material_id,condition', 'stocks' => function ($sq) use ($accessibleAreas, $isGlobal, $selectedAreaId) {
+            if ($selectedAreaId) {
+                $sq->where('area_id', $selectedAreaId);
+            } elseif (!$isGlobal && !empty($accessibleAreas)) {
                 $sq->whereIn('area_id', $accessibleAreas);
             }
             $sq->with('area');
         }]);
 
-        // 1. Scope restriction & Area list
-        if (!$isGlobal && !empty($accessibleAreas)) {
-            $query->whereHas('stocks', function ($sq) use ($accessibleAreas, $selectedAreaId) {
-                if ($selectedAreaId) {
-                    $sq->where('area_id', $selectedAreaId);
-                } else {
-                    $sq->whereIn('area_id', $accessibleAreas);
-                }
+        // 1. Scope restriction & Area list filter
+        if ($selectedAreaId) {
+            if ($request->stock_status === 'out_of_stock') {
+                $query->whereHas('stocks', function ($sq) use ($selectedAreaId) {
+                    $sq->where('area_id', $selectedAreaId)->where('stock', '<=', 0);
+                });
+            } elseif ($request->stock_status === 'low_stock') {
+                $query->whereHas('stocks', function ($sq) use ($selectedAreaId) {
+                    $sq->where('area_id', $selectedAreaId)->where('stock', '>', 0)->where('stock', '<=', 20);
+                });
+            } else {
+                // Ketika area dipilih, tampilkan hanya material yang memang ada stok fisik di area tersebut
+                $query->whereHas('stocks', function ($sq) use ($selectedAreaId) {
+                    $sq->where('area_id', $selectedAreaId)->where('stock', '>', 0);
+                });
+            }
+        } elseif (!$isGlobal && !empty($accessibleAreas)) {
+            $query->whereHas('stocks', function ($sq) use ($accessibleAreas) {
+                $sq->whereIn('area_id', $accessibleAreas)->where('stock', '>', 0);
             });
+        }
+
+        if (!$isGlobal && !empty($accessibleAreas)) {
             $areas = Area::whereIn('id', $accessibleAreas)->orderBy('name')->get(['id', 'name']);
         } else {
             $areas = Area::orderBy('name')->get(['id', 'name']);
@@ -81,8 +97,8 @@ class WarehouseStockController extends Controller
             $query->where('unit', $request->unit);
         }
 
-        // 5. Filter Status Stok
-        if ($request->filled('stock_status')) {
+        // 5. Filter Status Stok (untuk filter global tanpa area spesifik)
+        if ($request->filled('stock_status') && !$selectedAreaId) {
             if ($scopedAreaIds) {
                 if ($request->stock_status === 'out_of_stock') {
                     $query->whereDoesntHave('stocks', function ($sq) use ($scopedAreaIds) {
@@ -306,7 +322,23 @@ class WarehouseStockController extends Controller
         $units = (clone $baseSummaryQuery)->whereNotNull('unit')->where('unit', '!=', '')->distinct()->pluck('unit')->sort()->values();
 
         // Summary counts (Hitung material yang masuk kriteria area warehouse)
-        if ($scopedAreaIds) {
+        if ($selectedAreaId) {
+            $availableCount = (clone $baseSummaryQuery)->whereHas('stocks', function ($sq) use ($selectedAreaId) {
+                $sq->where('area_id', $selectedAreaId)->where('stock', '>', 0);
+            })->count();
+            $outOfStockCount = (clone $baseSummaryQuery)->whereHas('stocks', function ($sq) use ($selectedAreaId) {
+                $sq->where('area_id', $selectedAreaId)->where('stock', '<=', 0);
+            })->count();
+            if ($request->stock_status === 'out_of_stock') {
+                $totalMaterials = $outOfStockCount;
+            } elseif ($request->stock_status === 'low_stock') {
+                $totalMaterials = (clone $baseSummaryQuery)->whereHas('stocks', function ($sq) use ($selectedAreaId) {
+                    $sq->where('area_id', $selectedAreaId)->where('stock', '>', 0)->where('stock', '<=', 20);
+                })->count();
+            } else {
+                $totalMaterials = $availableCount;
+            }
+        } elseif ($scopedAreaIds) {
             $totalMaterials = (clone $baseSummaryQuery)->count();
             $outOfStockCount = (clone $baseSummaryQuery)
                 ->whereDoesntHave('stocks', function ($sq) use ($scopedAreaIds) {
@@ -326,7 +358,18 @@ class WarehouseStockController extends Controller
             })->count();
         }
 
-        $baseCondQuery = clone $baseSummaryQuery;
+        if ($selectedAreaId) {
+            $baseCondQuery = (clone $baseSummaryQuery)->whereHas('stocks', function ($sq) use ($selectedAreaId, $request) {
+                $sq->where('area_id', $selectedAreaId);
+                if ($request->stock_status === 'out_of_stock') {
+                    $sq->where('stock', '<=', 0);
+                } else {
+                    $sq->where('stock', '>', 0);
+                }
+            });
+        } else {
+            $baseCondQuery = clone $baseSummaryQuery;
+        }
         
         $conditionStats = [
             'all' => (clone $baseCondQuery)->count(),
@@ -461,22 +504,38 @@ class WarehouseStockController extends Controller
         })
         ->visibleInMaterialsTable()
         ->where($warehouseFilter)
-        ->with(['transactionItems:id,material_id,condition', 'stocks' => function ($sq) use ($accessibleAreas, $isGlobal) {
-            if (!$isGlobal && !empty($accessibleAreas)) {
+        ->with(['transactionItems:id,material_id,condition', 'stocks' => function ($sq) use ($accessibleAreas, $isGlobal, $selectedAreaId) {
+            if ($selectedAreaId) {
+                $sq->where('area_id', $selectedAreaId);
+            } elseif (!$isGlobal && !empty($accessibleAreas)) {
                 $sq->whereIn('area_id', $accessibleAreas);
             }
             $sq->with('area');
         }]);
 
         // 1. Scope restriction & Area filter
-        if (!$isGlobal && !empty($accessibleAreas)) {
-            $query->whereHas('stocks', function ($sq) use ($accessibleAreas, $selectedAreaId) {
-                if ($selectedAreaId) {
-                    $sq->where('area_id', $selectedAreaId);
-                } else {
-                    $sq->whereIn('area_id', $accessibleAreas);
-                }
+        if ($selectedAreaId) {
+            if ($request->stock_status === 'out_of_stock') {
+                $query->whereHas('stocks', function ($sq) use ($selectedAreaId) {
+                    $sq->where('area_id', $selectedAreaId)->where('stock', '<=', 0);
+                });
+            } elseif ($request->stock_status === 'low_stock') {
+                $query->whereHas('stocks', function ($sq) use ($selectedAreaId) {
+                    $sq->where('area_id', $selectedAreaId)->where('stock', '>', 0)->where('stock', '<=', 20);
+                });
+            } else {
+                // Ketika area dipilih, tampilkan hanya material yang memang ada stok fisik di area tersebut
+                $query->whereHas('stocks', function ($sq) use ($selectedAreaId) {
+                    $sq->where('area_id', $selectedAreaId)->where('stock', '>', 0);
+                });
+            }
+        } elseif (!$isGlobal && !empty($accessibleAreas)) {
+            $query->whereHas('stocks', function ($sq) use ($accessibleAreas) {
+                $sq->whereIn('area_id', $accessibleAreas)->where('stock', '>', 0);
             });
+        }
+
+        if (!$isGlobal && !empty($accessibleAreas)) {
             $areas = Area::whereIn('id', $accessibleAreas)->orderBy('name')->get(['id', 'name']);
         } else {
             $areas = Area::orderBy('name')->get(['id', 'name']);
@@ -504,8 +563,8 @@ class WarehouseStockController extends Controller
             $query->where('unit', $request->unit);
         }
 
-        // 5. Stock Status
-        if ($request->filled('stock_status')) {
+        // 5. Stock Status (untuk filter global tanpa area spesifik)
+        if ($request->filled('stock_status') && !$selectedAreaId) {
             if ($scopedAreaIds) {
                 if ($request->stock_status === 'out_of_stock') {
                     $query->whereDoesntHave('stocks', function ($sq) use ($scopedAreaIds) {
