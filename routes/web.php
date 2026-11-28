@@ -566,6 +566,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('invoices/print-list', [\App\Http\Controllers\InvoiceController::class, 'printList'])->name('invoices.print-list');
         Route::get('invoices/{invoice}/print', [\App\Http\Controllers\InvoiceController::class, 'print'])->name('invoices.print');
         Route::get('invoices/{invoice}/print-promise', [\App\Http\Controllers\InvoiceController::class, 'printPromise'])->name('invoices.print-promise');
+        Route::post('invoices/{invoice}/promise-signature', [\App\Http\Controllers\InvoiceController::class, 'savePromiseSignature'])->name('invoices.promise-signature');
         Route::resource('invoices', \App\Http\Controllers\InvoiceController::class);
     });
 
@@ -632,6 +633,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/customer-billing/{invoice}/print-promise', [\App\Http\Controllers\InvoiceController::class, 'printPromise'])->name('customer-billing.print-promise');
         Route::post('/customer-billing/{invoice}/collect', [\App\Http\Controllers\CustomerBillingController::class, 'collect'])->name('customer-billing.collect');
         Route::post('/customer-billing/{invoice}/promise', [\App\Http\Controllers\InvoiceController::class, 'promise'])->name('customer-billing.promise');
+        Route::post('/customer-billing/{invoice}/promise-signature', [\App\Http\Controllers\InvoiceController::class, 'savePromiseSignature'])->name('customer-billing.promise-signature');
         Route::post('/customer-billing/{invoice}/rollback', [\App\Http\Controllers\InvoiceController::class, 'rollback'])->name('customer-billing.rollback');
     });
 

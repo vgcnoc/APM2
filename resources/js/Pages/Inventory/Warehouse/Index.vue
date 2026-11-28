@@ -642,7 +642,7 @@
                             <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Pilih Material / Barang <span class="text-red-500">*</span></label>
                             <select v-model="selectedMaterialId" @change="onWarehouseMaterialSelect" class="w-full text-sm px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 font-semibold" required>
                                 <option value="" disabled>-- Pilih Barang --</option>
-                                <option v-for="mat in materials.data" :key="mat.id" :value="mat.id">
+                                <option v-for="mat in getMaterialsPool()" :key="mat.id" :value="mat.id">
                                     {{ mat.name }} (Stok: {{ formatNum(getTotalStock(mat)) }} {{ mat.unit }})
                                 </option>
                             </select>
@@ -768,7 +768,7 @@
                             <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Pilih Material / Barang <span class="text-red-500">*</span></label>
                             <select v-model="distributeMaterialId" @change="onDistributeMaterialSelect" class="w-full text-sm px-3.5 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-semibold" required>
                                 <option value="" disabled>-- Pilih Barang --</option>
-                                <option v-for="mat in materials.data" :key="mat.id" :value="mat.id">
+                                <option v-for="mat in getMaterialsPool()" :key="mat.id" :value="mat.id">
                                     {{ mat.name }} (Pusat: {{ formatNum(mat.stock) }} | Cabang: {{ formatNum(getAllAreasTotalStock(mat)) }} {{ mat.unit }})
                                 </option>
                             </select>
@@ -1030,12 +1030,15 @@ const page = usePage();
 
 const props = defineProps({
     materials: Object,
+    allMaterials: { type: Array, default: () => [] },
     categories: { type: Array, default: () => [] },
     units: { type: Array, default: () => [] },
     areas: { type: Array, default: () => [] },
     filters: { type: Object, default: () => ({}) },
     summary: { type: Object, default: () => ({}) },
 });
+
+const getMaterialsPool = () => (props.allMaterials && props.allMaterials.length > 0 ? props.allMaterials : (props.materials?.data || []));
 
 // Comprehensive Filter State
 const filterSearch = ref(props.filters?.search || '');
@@ -1303,7 +1306,8 @@ const openStatusModal = (material) => {
 };
 
 const onWarehouseMaterialSelect = () => {
-    const found = props.materials.data.find(m => m.id === Number(selectedMaterialId.value) || m.id === selectedMaterialId.value);
+    const pool = getMaterialsPool();
+    const found = pool.find(m => m.id === Number(selectedMaterialId.value) || m.id === selectedMaterialId.value);
     if (found) {
         selectedMaterial.value = found;
         if (!statusForm.area_id && found.stocks && found.stocks.length > 0) {
@@ -1313,7 +1317,8 @@ const onWarehouseMaterialSelect = () => {
 };
 
 const submitStatusForm = () => {
-    const target = selectedMaterial.value || props.materials.data.find(m => m.id === Number(selectedMaterialId.value) || m.id === selectedMaterialId.value);
+    const pool = getMaterialsPool();
+    const target = selectedMaterial.value || pool.find(m => m.id === Number(selectedMaterialId.value) || m.id === selectedMaterialId.value);
     if (!target) {
         alert('Silakan pilih material terlebih dahulu');
         return;
@@ -1365,10 +1370,11 @@ const distributeForm = useForm({
 });
 
 const openDistributeModal = (material) => {
+    const pool = getMaterialsPool();
     distributeMaterial.value = material;
-    distributeMaterialId.value = material ? material.id : (props.materials.data[0]?.id || '');
-    if (!material && props.materials.data.length > 0) {
-        distributeMaterial.value = props.materials.data[0];
+    distributeMaterialId.value = material ? material.id : (pool[0]?.id || '');
+    if (!material && pool.length > 0) {
+        distributeMaterial.value = pool[0];
     }
     distributeForm.area_id = props.areas[0]?.id || '';
     distributeForm.added_stock = null;
@@ -1382,7 +1388,8 @@ const openDistributeModal = (material) => {
 };
 
 const onDistributeMaterialSelect = () => {
-    const found = props.materials.data.find(m => m.id === Number(distributeMaterialId.value) || m.id === distributeMaterialId.value);
+    const pool = getMaterialsPool();
+    const found = pool.find(m => m.id === Number(distributeMaterialId.value) || m.id === distributeMaterialId.value);
     if (found) {
         distributeMaterial.value = found;
         distributeForm.price_per_unit = found.price_per_unit || null;
@@ -1405,7 +1412,8 @@ const calculatePackDistribute = () => {
 };
 
 const submitDistributeForm = () => {
-    const target = distributeMaterial.value || props.materials.data.find(m => m.id === Number(distributeMaterialId.value) || m.id === distributeMaterialId.value);
+    const pool = getMaterialsPool();
+    const target = distributeMaterial.value || pool.find(m => m.id === Number(distributeMaterialId.value) || m.id === distributeMaterialId.value);
     if (!target) {
         alert('Silakan pilih material terlebih dahulu');
         return;

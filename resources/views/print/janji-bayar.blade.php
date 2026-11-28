@@ -77,6 +77,122 @@
             font-size: 12px;
             cursor: pointer;
         }
+        .btn-sig {
+            display: inline-block;
+            background: #4f46e5;
+            color: #ffffff;
+            border: none;
+            padding: 9px 16px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            text-decoration: none;
+            margin-left: 6px;
+            box-shadow: 0 2px 4px rgba(79, 70, 229, 0.25);
+        }
+        .btn-sig:hover {
+            background: #4338ca;
+        }
+
+        /* Modal TTD Digital */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .modal-box {
+            background: #ffffff;
+            width: 100%;
+            max-width: 600px;
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+        .modal-header {
+            padding: 16px 20px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .modal-title {
+            margin: 0;
+            font-size: 14px;
+            font-weight: 800;
+            color: #0f172a;
+        }
+        .modal-body {
+            padding: 20px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-footer {
+            padding: 14px 20px;
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .sig-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 8px;
+        }
+        .sig-tab-btn {
+            flex: 1;
+            padding: 8px 12px;
+            font-size: 11.5px;
+            font-weight: 700;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            color: #64748b;
+            cursor: pointer;
+            text-align: center;
+        }
+        .sig-tab-btn.active {
+            background: #4f46e5;
+            color: #ffffff;
+            border-color: #4f46e5;
+        }
+        .sig-canvas-wrap {
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            background: #fcfcfc;
+            position: relative;
+            touch-action: none;
+            overflow: hidden;
+        }
+        .sig-canvas {
+            width: 100%;
+            height: 180px;
+            display: block;
+            cursor: crosshair;
+        }
+        .sig-canvas-placeholder {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #94a3b8;
+            font-size: 11px;
+            font-weight: 600;
+            pointer-events: none;
+            user-select: none;
+        }
 
         /* Sheet Container */
         .sheet {
@@ -373,9 +489,10 @@
                         <a href="javascript:history.back()" class="back-btn">&larr; Kembali</a>
                     </td>
                     <td style="text-align: right;">
-                        <button class="btn-close" onclick="window.close()">Tutup Halaman</button>
+                        <button type="button" class="btn-sig" onclick="openSignatureModal()">✍️ Tanda Tangan Digital Lapangan</button>
                         <button class="btn-print" onclick="window.print()">Cetak Dokumen (Print)</button>
                         <a href="{{ request()->fullUrlWithQuery(['mode' => 'pdf']) }}" class="btn-pdf">Download PDF</a>
+                        <button class="btn-close" onclick="window.close()">Tutup Halaman</button>
                     </td>
                 </tr>
             </table>
@@ -515,9 +632,21 @@
                 <td>
                     <div class="sign-title">
                         Pihak Pelanggan / Yang Berjanji,<br>
-                        Tanggal: {{ $todayFormatted }}
+                        Tanggal: {{ $invoice->promise_signed_at ? \Carbon\Carbon::parse($invoice->promise_signed_at)->translatedFormat('d F Y') : $todayFormatted }}
                     </div>
-                    <div class="sign-name">{{ $customer->name ?? 'Nama Pelanggan' }}</div>
+                    @if(!empty($invoice->customer_promise_signature))
+                        <div class="sig-container">
+                            <img src="{{ $invoice->customer_promise_signature }}" class="sig-img" alt="TTD Pelanggan">
+                            <span class="sig-verified-badge">✓ Terverifikasi Digital</span>
+                        </div>
+                    @else
+                        <div class="sig-empty-space" @if(!($isPdf ?? false)) onclick="openSignatureModal('customer')" style="cursor: pointer; border: 1.5px dashed #cbd5e1; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 4px auto 6px; max-width: 220px; min-height: 60px;" title="Klik untuk tanda tangan digital langsung" @endif>
+                            @if(!($isPdf ?? false))
+                                <span style="font-size: 11px; color: #4f46e5; font-weight: bold;">✍️ Klik untuk TTD Pelanggan</span>
+                            @endif
+                        </div>
+                    @endif
+                    <div class="sign-name">{{ $invoice->promise_signer_name ?: ($customer->name ?? 'Nama Pelanggan') }}</div>
                     <div class="sign-role">Pelanggan / Penanggung Jawab</div>
                 </td>
                 <td>
@@ -525,7 +654,19 @@
                         Petugas / Bagian Billing Penagihan,<br>
                         {{ $company['name'] ?? 'ISP Provider' }}
                     </div>
-                    <div class="sign-name">{{ auth()->user()->name ?? 'Petugas Penagihan' }}</div>
+                    @if(!empty($invoice->collector_promise_signature))
+                        <div class="sig-container">
+                            <img src="{{ $invoice->collector_promise_signature }}" class="sig-img" alt="TTD Petugas">
+                            <span class="sig-verified-badge">✓ Terverifikasi Digital</span>
+                        </div>
+                    @else
+                        <div class="sig-empty-space" @if(!($isPdf ?? false)) onclick="openSignatureModal('collector')" style="cursor: pointer; border: 1.5px dashed #cbd5e1; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 4px auto 6px; max-width: 220px; min-height: 60px;" title="Klik untuk tanda tangan digital langsung" @endif>
+                            @if(!($isPdf ?? false))
+                                <span style="font-size: 11px; color: #4f46e5; font-weight: bold;">✍️ Klik untuk TTD Petugas</span>
+                            @endif
+                        </div>
+                    @endif
+                    <div class="sign-name">{{ $invoice->promise_collector_name ?: (auth()->user()->name ?? 'Petugas Penagihan') }}</div>
                     <div class="sign-role">Staff Operasional / Billing Admin</div>
                 </td>
             </tr>
@@ -538,6 +679,256 @@
             </tr>
         </table>
     </div>
+
+    @if(!($isPdf ?? false))
+        <!-- Modal Tanda Tangan Digital Lapangan -->
+        <div id="sigModal" class="modal-overlay no-print" style="display: none;">
+            <div class="modal-box">
+                <div class="modal-header">
+                    <div>
+                        <h3 class="modal-title">✍️ Tanda Tangan Digital Lapangan</h3>
+                        <p style="margin: 2px 0 0; font-size: 11px; color: #64748b;">Surat Janji Bayar #{{ $invoice->invoice_number }} &bull; {{ $customer->name ?? 'Pelanggan' }}</p>
+                    </div>
+                    <button type="button" onclick="closeSignatureModal()" style="border: none; background: transparent; font-size: 20px; color: #94a3b8; cursor: pointer;">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="sig-tabs">
+                        <button type="button" id="tabCustomerBtn" class="sig-tab-btn active" onclick="switchSigTab('customer')">
+                            1. TTD Pelanggan
+                        </button>
+                        <button type="button" id="tabCollectorBtn" class="sig-tab-btn" onclick="switchSigTab('collector')">
+                            2. TTD Petugas Penagihan
+                        </button>
+                    </div>
+
+                    <!-- Panel TTD Pelanggan -->
+                    <div id="panelCustomer">
+                        <div style="margin-bottom: 12px;">
+                            <label style="display: block; font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 4px;">Nama Lengkap Pelanggan / Yang Berjanji <span style="color: #ef4444;">*</span></label>
+                            <input type="text" id="signerNameInput" value="{{ $invoice->promise_signer_name ?: ($customer->name ?? '') }}" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px; font-weight: bold; box-sizing: border-box;" placeholder="Masukkan nama pelanggan...">
+                        </div>
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                            <span style="font-size: 11px; font-weight: bold; color: #475569;">Gores Tanda Tangan Pelanggan di Bawah:</span>
+                            <button type="button" onclick="clearSig('customer')" style="background: none; border: none; color: #ef4444; font-size: 11px; font-weight: bold; cursor: pointer;">Hapus Goresan</button>
+                        </div>
+                        <div class="sig-canvas-wrap">
+                            <canvas id="canvasCustomer" class="sig-canvas"></canvas>
+                            <div id="placeholderCustomer" class="sig-canvas-placeholder">Sentuh & gores tanda tangan di sini (layar HP/mouse)</div>
+                        </div>
+                    </div>
+
+                    <!-- Panel TTD Petugas -->
+                    <div id="panelCollector" style="display: none;">
+                        <div style="margin-bottom: 12px;">
+                            <label style="display: block; font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 4px;">Nama Petugas / Billing Lapangan <span style="color: #ef4444;">*</span></label>
+                            <input type="text" id="collectorNameInput" value="{{ $invoice->promise_collector_name ?: (auth()->user()->name ?? 'Petugas Penagihan') }}" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px; font-weight: bold; box-sizing: border-box;" placeholder="Masukkan nama petugas...">
+                        </div>
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                            <span style="font-size: 11px; font-weight: bold; color: #475569;">Gores Tanda Tangan Petugas di Bawah:</span>
+                            <button type="button" onclick="clearSig('collector')" style="background: none; border: none; color: #ef4444; font-size: 11px; font-weight: bold; cursor: pointer;">Hapus Goresan</button>
+                        </div>
+                        <div class="sig-canvas-wrap">
+                            <canvas id="canvasCollector" class="sig-canvas"></canvas>
+                            <div id="placeholderCollector" class="sig-canvas-placeholder">Sentuh & gores tanda tangan di sini (layar HP/mouse)</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" onclick="closeSignatureModal()" style="padding: 8px 14px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px; font-weight: bold; color: #64748b; cursor: pointer;">Batal</button>
+                    <button type="button" id="saveSigBtn" onclick="saveSignatures()" style="padding: 8px 18px; background: #4f46e5; border: none; border-radius: 8px; font-size: 12px; font-weight: bold; color: #ffffff; cursor: pointer; box-shadow: 0 2px 4px rgba(79, 70, 229, 0.25);">Simpan & Terapkan TTD Digital</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            let currentTab = 'customer';
+            let customerHasDrawn = false;
+            let collectorHasDrawn = false;
+            const existingCustomerSig = @json($invoice->customer_promise_signature ?? '');
+            const existingCollectorSig = @json($invoice->collector_promise_signature ?? '');
+
+            function setupSignaturePad(canvasId, placeholderId, isCollector) {
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) return null;
+                const ctx = canvas.getContext('2d');
+                const placeholder = document.getElementById(placeholderId);
+
+                // Set logical resolution matching display
+                function resize() {
+                    const rect = canvas.getBoundingClientRect();
+                    const dpr = window.devicePixelRatio || 1;
+                    canvas.width = rect.width * dpr;
+                    canvas.height = rect.height * dpr;
+                    ctx.scale(dpr, dpr);
+                    ctx.strokeStyle = '#0f172a';
+                    ctx.lineWidth = 2.5;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                }
+                resize();
+
+                let drawing = false;
+
+                function getPos(e) {
+                    const rect = canvas.getBoundingClientRect();
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    return {
+                        x: clientX - rect.left,
+                        y: clientY - rect.top
+                    };
+                }
+
+                function start(e) {
+                    drawing = true;
+                    const pos = getPos(e);
+                    ctx.beginPath();
+                    ctx.moveTo(pos.x, pos.y);
+                    if (placeholder) placeholder.style.display = 'none';
+                    if (isCollector) collectorHasDrawn = true;
+                    else customerHasDrawn = true;
+                }
+
+                function move(e) {
+                    if (!drawing) return;
+                    e.preventDefault();
+                    const pos = getPos(e);
+                    ctx.lineTo(pos.x, pos.y);
+                    ctx.stroke();
+                }
+
+                function stop() {
+                    drawing = false;
+                }
+
+                canvas.addEventListener('mousedown', start);
+                canvas.addEventListener('mousemove', move);
+                window.addEventListener('mouseup', stop);
+
+                canvas.addEventListener('touchstart', (e) => {
+                    start(e);
+                    e.preventDefault();
+                }, { passive: false });
+                canvas.addEventListener('touchmove', (e) => {
+                    move(e);
+                    e.preventDefault();
+                }, { passive: false });
+                window.addEventListener('touchend', stop);
+
+                return { canvas, ctx, resize };
+            }
+
+            let padCustomer, padCollector;
+
+            function openSignatureModal(targetTab) {
+                const modal = document.getElementById('sigModal');
+                modal.style.display = 'flex';
+                if (!padCustomer) padCustomer = setupSignaturePad('canvasCustomer', 'placeholderCustomer', false);
+                if (!padCollector) padCollector = setupSignaturePad('canvasCollector', 'placeholderCollector', true);
+
+                setTimeout(() => {
+                    if (padCustomer) padCustomer.resize();
+                    if (padCollector) padCollector.resize();
+                    if (targetTab) switchSigTab(targetTab);
+                }, 100);
+            }
+
+            function closeSignatureModal() {
+                document.getElementById('sigModal').style.display = 'none';
+            }
+
+            function switchSigTab(tab) {
+                currentTab = tab;
+                const tabC = document.getElementById('tabCustomerBtn');
+                const tabP = document.getElementById('tabCollectorBtn');
+                const panelC = document.getElementById('panelCustomer');
+                const panelP = document.getElementById('panelCollector');
+
+                if (tab === 'customer') {
+                    tabC.classList.add('active');
+                    tabP.classList.remove('active');
+                    panelC.style.display = 'block';
+                    panelP.style.display = 'none';
+                    if (padCustomer) padCustomer.resize();
+                } else {
+                    tabP.classList.add('active');
+                    tabC.classList.remove('active');
+                    panelC.style.display = 'none';
+                    panelP.style.display = 'block';
+                    if (padCollector) padCollector.resize();
+                }
+            }
+
+            function clearSig(tab) {
+                if (tab === 'customer') {
+                    const canvas = document.getElementById('canvasCustomer');
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    customerHasDrawn = false;
+                    document.getElementById('placeholderCustomer').style.display = 'block';
+                } else {
+                    const canvas = document.getElementById('canvasCollector');
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    collectorHasDrawn = false;
+                    document.getElementById('placeholderCollector').style.display = 'block';
+                }
+            }
+
+            function saveSignatures() {
+                const saveBtn = document.getElementById('saveSigBtn');
+                saveBtn.disabled = true;
+                saveBtn.innerText = 'Menyimpan TTD...';
+
+                let customerSig = existingCustomerSig;
+                let collectorSig = existingCollectorSig;
+
+                if (customerHasDrawn) {
+                    const c = document.getElementById('canvasCustomer');
+                    customerSig = c.toDataURL('image/png');
+                }
+                if (collectorHasDrawn) {
+                    const c = document.getElementById('canvasCollector');
+                    collectorSig = c.toDataURL('image/png');
+                }
+
+                const signerName = document.getElementById('signerNameInput').value;
+                const collectorName = document.getElementById('collectorNameInput').value;
+
+                fetch("{{ route('invoices.promise-signature', $invoice) }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        customer_signature: customerSig,
+                        collector_signature: collectorSig,
+                        signer_name: signerName,
+                        collector_name: collectorName
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Tanda tangan digital berhasil disimpan!');
+                        window.location.reload();
+                    } else {
+                        alert('Gagal menyimpan tanda tangan: ' + (data.message || 'Terjadi kesalahan'));
+                        saveBtn.disabled = false;
+                        saveBtn.innerText = 'Simpan & Terapkan TTD Digital';
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('Terjadi kesalahan jaringan saat menyimpan tanda tangan.');
+                    saveBtn.disabled = false;
+                    saveBtn.innerText = 'Simpan & Terapkan TTD Digital';
+                });
+            }
+        </script>
+    @endif
 
 </body>
 </html>

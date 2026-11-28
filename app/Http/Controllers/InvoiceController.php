@@ -785,10 +785,73 @@ class InvoiceController extends Controller
                 }
             }
 
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Janji bayar berhasil disimpan.' . $internetMessage,
+                    'invoice' => $invoice->fresh(),
+                ]);
+            }
+
             return back()->with('success', 'Janji bayar berhasil disimpan.' . $internetMessage);
         }
 
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Janji bayar berhasil dihapus.',
+                'invoice' => $invoice->fresh(),
+            ]);
+        }
+
         return back()->with('success', 'Janji bayar berhasil dihapus.');
+    }
+
+    /**
+     * Simpan Tanda Tangan Digital Lapangan dari Surat Janji Bayar
+     */
+    public function savePromiseSignature(Request $request, Invoice $invoice)
+    {
+        $request->validate([
+            'customer_signature' => 'nullable|string',
+            'collector_signature' => 'nullable|string',
+            'signer_name' => 'nullable|string|max:150',
+            'collector_name' => 'nullable|string|max:150',
+        ]);
+
+        $updateData = [];
+        if ($request->filled('customer_signature')) {
+            $updateData['customer_promise_signature'] = $request->customer_signature;
+            $updateData['promise_signer_name'] = $request->input('signer_name') ?: ($invoice->customer?->name ?? 'Pelanggan');
+            $updateData['promise_signed_at'] = now();
+        }
+        if ($request->filled('collector_signature')) {
+            $updateData['collector_promise_signature'] = $request->collector_signature;
+            $updateData['promise_collector_name'] = $request->input('collector_name') ?: (auth()->user()?->name ?? 'Petugas Penagihan');
+            $updateData['promise_signed_at'] = now();
+        }
+
+        if (!empty($updateData)) {
+            $invoice->update($updateData);
+
+            \App\Models\AuditLog::createLog(
+                'TTD Digital Janji Bayar',
+                $invoice,
+                null,
+                now()->toDateTimeString(),
+                "Tanda tangan digital janji bayar dibubuhkan langsung di lapangan untuk tagihan #{$invoice->invoice_number}"
+            );
+        }
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Tanda tangan digital berhasil disimpan.',
+                'invoice' => $invoice->fresh(),
+            ]);
+        }
+
+        return back()->with('success', 'Tanda tangan digital janji bayar berhasil disimpan.');
     }
 
     public function update(Request $request, Invoice $invoice)

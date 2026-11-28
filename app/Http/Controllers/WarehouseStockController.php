@@ -11,89 +11,13 @@ class WarehouseStockController extends Controller
 {
     /**
      * Filter material gudang yang relevan:
-     * - Barang katalog / standar non-migrasi: Tampil di gudang jika aktif
-     * - Barang migrasi / bekas / batch sisa: HANYA tampil jika BENAR-BENAR memiliki sisa stok fisik di gudang (> 0)
-     *   dan khusus perangkat modem ONT migrasi, WAJIB memiliki unit fisik nyata yang unassigned di tabel onts.
+     * Seluruh master material aktif di Data Material (scope visibleInMaterialsTable)
+     * otomatis terdaftar dan terpantau di stok barang gudang per area.
      */
     protected function getWarehouseFilter(?array $scopedAreaIds = null)
     {
-        return function ($q) use ($scopedAreaIds) {
-            $q->where(function ($sub) use ($scopedAreaIds) {
-                // 1. Barang Katalog / Standar Non-Migrasi Aktif
-                $sub->where(function ($catQ) {
-                    $catQ->where(function ($mq) {
-                        $mq->where('is_migration', false)->orWhereNull('is_migration');
-                    })
-                    ->where(function ($nameQ) {
-                        $nameQ->where('name', 'not like', '%(migrasi%')
-                              ->where('name', 'not like', '%(bekas%')
-                              ->where('name', 'not like', '%(batch%')
-                              ->where('name', 'not like', '%-Nay%')
-                              ->where('name', 'not like', '%-Yud%')
-                              ->where('name', 'not like', '%-A12%')
-                              ->where('name', 'not like', '%-By%')
-                              ->where('name', 'not like', '%-SNW%');
-                    });
-                })
-                // 2. Barang Migrasi / Bekas: HANYA tampil jika memiliki sisa stok fisik nyata di gudang (> 0)
-                ->orWhere(function ($migQ) use ($scopedAreaIds) {
-                    $migQ->where(function ($mq) {
-                        $mq->where('is_migration', true)
-                           ->orWhere('id', '<=', 260)
-                           ->orWhere('name', 'like', '%(migrasi%')
-                           ->orWhere('name', 'like', '%(bekas%')
-                           ->orWhere('name', 'like', '%(batch%')
-                           ->orWhere('name', 'like', '%-Nay%')
-                           ->orWhere('name', 'like', '%-Yud%')
-                           ->orWhere('name', 'like', '%-A12%')
-                           ->orWhere('name', 'like', '%-By%')
-                           ->orWhere('name', 'like', '%-SNW%');
-                    })
-                    ->where(function ($tq) use ($scopedAreaIds) {
-                        // Barang non-ONT migrasi
-                        $tq->where(function ($nonOnt) {
-                            $nonOnt->where('category', '!=', 'ONT')
-                                   ->where('category', 'not like', '%ont%')
-                                   ->where('name', 'not like', 'ONT %');
-                        })
-                        // Atau jika ONT migrasi: tampil jika memiliki sisa stok fisik di gudang (> 0) ATAU ada unit fisik unassigned di tabel onts
-                        ->orWhere(function ($ontQ) use ($scopedAreaIds) {
-                            $ontQ->where(function ($oq) {
-                                $oq->where('category', 'ONT')
-                                   ->orWhere('category', 'like', '%ont%')
-                                   ->orWhere('name', 'like', 'ONT %');
-                            })
-                            ->where(function ($condQ) use ($scopedAreaIds) {
-                                $condQ->whereHas('stocks', function ($sq) use ($scopedAreaIds) {
-                                    if ($scopedAreaIds) {
-                                        $sq->whereIn('area_id', $scopedAreaIds);
-                                    }
-                                    $sq->where('stock', '>', 0);
-                                })
-                                ->orWhereExists(function ($subOntQ) use ($scopedAreaIds) {
-                                    $subOntQ->select(\Illuminate\Support\Facades\DB::raw(1))
-                                        ->from('onts')
-                                        ->whereNull('onts.customer_id')
-                                        ->whereNotIn('onts.status', ['installed', 'rusak', 'afkir'])
-                                        ->when($scopedAreaIds, function ($sq) use ($scopedAreaIds) {
-                                            $sq->whereIn('onts.area_id', $scopedAreaIds);
-                                        })
-                                        ->where(function ($matchQ) {
-                                            $matchQ->whereColumn('onts.model', 'materials.name')
-                                                   ->orWhereRaw("onts.model = REPLACE(REPLACE(materials.name, 'ONT ', ''), ' (Bekas Layak Pakai)', '')");
-                                        });
-                                });
-                            });
-                        });
-                    })
-                    ->whereHas('stocks', function ($sq) use ($scopedAreaIds) {
-                        if ($scopedAreaIds) {
-                            $sq->whereIn('area_id', $scopedAreaIds);
-                        }
-                        $sq->where('stock', '>', 0);
-                    });
-                });
-            });
+        return function ($q) {
+            $q->whereNotNull('materials.id');
         };
     }
 
@@ -197,11 +121,14 @@ class WarehouseStockController extends Controller
                 $query->where(function ($kq) {
                     $kq->where('name', 'not like', '%rusak%')
                        ->where('name', 'not like', '%afkir%')
+                       ->where('name', 'not like', '%scrap%')
                        ->where('name', 'not like', '%tidak layak%')
                        ->where(function ($dq) {
                            $dq->whereNull('description')
                               ->orWhere(function ($ddq) {
                                   $ddq->where('description', 'not like', '%rusak%')
+                                      ->where('description', 'not like', '%afkir%')
+                                      ->where('description', 'not like', '%scrap%')
                                       ->where('description', 'not like', '%tidak layak%');
                               });
                        });
@@ -406,11 +333,14 @@ class WarehouseStockController extends Controller
             'layak' => (clone $baseCondQuery)->where(function ($kq) {
                 $kq->where('name', 'not like', '%rusak%')
                    ->where('name', 'not like', '%afkir%')
+                   ->where('name', 'not like', '%scrap%')
                    ->where('name', 'not like', '%tidak layak%')
                    ->where(function ($dq) {
                        $dq->whereNull('description')
                           ->orWhere(function ($ddq) {
                               $ddq->where('description', 'not like', '%rusak%')
+                                  ->where('description', 'not like', '%afkir%')
+                                  ->where('description', 'not like', '%scrap%')
                                   ->where('description', 'not like', '%tidak layak%');
                           });
                    });
@@ -429,8 +359,16 @@ class WarehouseStockController extends Controller
             })->count(),
         ];
 
+        // Sediakan daftar seluruh varian material untuk pilihan di modal (Alokasi Stok, Buat Status, dll)
+        $allWarehouseMaterials = (clone $baseSummaryQuery)
+            ->select('id', 'name', 'category', 'unit', 'meter_per_roll', 'pcs_per_pack', 'stock')
+            ->with(['stocks:id,material_id,area_id,stock', 'stocks.area:id,name'])
+            ->orderBy('name')
+            ->get();
+
         return Inertia::render('Inventory/Warehouse/Index', [
             'materials' => $materials,
+            'allMaterials' => $allWarehouseMaterials,
             'categories' => $categories,
             'units' => $units,
             'areas' => $areas,
@@ -606,11 +544,14 @@ class WarehouseStockController extends Controller
                 $query->where(function ($kq) {
                     $kq->where('name', 'not like', '%rusak%')
                        ->where('name', 'not like', '%afkir%')
+                       ->where('name', 'not like', '%scrap%')
                        ->where('name', 'not like', '%tidak layak%')
                        ->where(function ($dq) {
                            $dq->whereNull('description')
                               ->orWhere(function ($ddq) {
                                   $ddq->where('description', 'not like', '%rusak%')
+                                      ->where('description', 'not like', '%afkir%')
+                                      ->where('description', 'not like', '%scrap%')
                                       ->where('description', 'not like', '%tidak layak%');
                               });
                        });
