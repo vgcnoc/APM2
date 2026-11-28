@@ -50,11 +50,14 @@ class MaterialController extends Controller
             }
         }
 
-        if ($request->search) {
-            $query->where(function($q) use ($request) {
-                $q->where('name', 'like', "%{$request->search}%")
-                  ->orWhere('category', 'like', "%{$request->search}%")
-                  ->orWhere('supplier', 'like', "%{$request->search}%");
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('category', 'like', "%{$search}%")
+                  ->orWhere('supplier', 'like', "%{$search}%")
+                  ->orWhere('unit', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
             });
         }
         
@@ -118,8 +121,8 @@ class MaterialController extends Controller
             } elseif ($cond === 'rusak') {
                 $query->where(function ($sq) {
                     $sq->where('name', 'like', '%rusak%')
-                       ->where('name', 'like', '%afkir%')
-                       ->where('name', 'like', '%scrap%')
+                       ->orWhere('name', 'like', '%afkir%')
+                       ->orWhere('name', 'like', '%scrap%')
                        ->orWhere('description', 'like', '%rusak%')
                        ->orWhere('description', 'like', '%afkir%')
                        ->orWhere('description', 'like', '%scrap%');
@@ -192,8 +195,8 @@ class MaterialController extends Controller
             })->count(),
             'rusak' => (clone $baseCondQuery)->where(function ($sq) {
                 $sq->where('name', 'like', '%rusak%')
-                   ->where('name', 'like', '%afkir%')
-                   ->where('name', 'like', '%scrap%')
+                   ->orWhere('name', 'like', '%afkir%')
+                   ->orWhere('name', 'like', '%scrap%')
                    ->orWhere('description', 'like', '%rusak%')
                    ->orWhere('description', 'like', '%afkir%')
                    ->orWhere('description', 'like', '%scrap%');
@@ -391,6 +394,9 @@ class MaterialController extends Controller
                 ? (float) $validated['initial_stock']
                 : null;
 
+            $validated['is_active'] = true;
+            $validated['is_migration'] = false;
+
             // Bila mengedit dalam konteks Area untuk Produk Katalog, JANGAN timpa stok Gudang Pusat (materials.stock)
             $syncMasterFromAreas = \App\Services\MaterialService::shouldSyncMasterStockFromAreas($lockedMat);
             if ($areaId && !$syncMasterFromAreas) {
@@ -527,7 +533,7 @@ class MaterialController extends Controller
                     })->visibleInMaterialsTable();
                 });
             
-            $totalItems = (clone $stockQuery)->where('stock', '>', 0)->distinct('material_id')->count('material_id');
+            $totalItems = (clone $activeQuery)->count();
             $outOfStock = (clone $activeQuery)->whereDoesntHave('stocks', fn($sq) => $sq->whereIn('area_id', $scopedAreaIds)->where('stock', '>', 0))->count();
             $lowStock = (clone $stockQuery)->where('stock', '>', 0)->where('stock', '<=', 10)->distinct('material_id')->count('material_id');
             
