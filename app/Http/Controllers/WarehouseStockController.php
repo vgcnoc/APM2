@@ -56,25 +56,33 @@ class WarehouseStockController extends Controller
                                    ->where('category', 'not like', '%ont%')
                                    ->where('name', 'not like', 'ONT %');
                         })
-                        // Atau jika ONT migrasi, WAJIB ada unit fisik unassigned di tabel onts pada area terkait
+                        // Atau jika ONT migrasi: tampil jika memiliki sisa stok fisik di gudang (> 0) ATAU ada unit fisik unassigned di tabel onts
                         ->orWhere(function ($ontQ) use ($scopedAreaIds) {
                             $ontQ->where(function ($oq) {
                                 $oq->where('category', 'ONT')
                                    ->orWhere('category', 'like', '%ont%')
                                    ->orWhere('name', 'like', 'ONT %');
                             })
-                            ->whereExists(function ($subOntQ) use ($scopedAreaIds) {
-                                $subOntQ->select(\Illuminate\Support\Facades\DB::raw(1))
-                                    ->from('onts')
-                                    ->whereNull('onts.customer_id')
-                                    ->whereNotIn('onts.status', ['installed', 'rusak', 'afkir'])
-                                    ->when($scopedAreaIds, function ($sq) use ($scopedAreaIds) {
-                                        $sq->whereIn('onts.area_id', $scopedAreaIds);
-                                    })
-                                    ->where(function ($matchQ) {
-                                        $matchQ->whereColumn('onts.model', 'materials.name')
-                                               ->orWhereRaw("onts.model = REPLACE(REPLACE(materials.name, 'ONT ', ''), ' (Bekas Layak Pakai)', '')");
-                                    });
+                            ->where(function ($condQ) use ($scopedAreaIds) {
+                                $condQ->whereHas('stocks', function ($sq) use ($scopedAreaIds) {
+                                    if ($scopedAreaIds) {
+                                        $sq->whereIn('area_id', $scopedAreaIds);
+                                    }
+                                    $sq->where('stock', '>', 0);
+                                })
+                                ->orWhereExists(function ($subOntQ) use ($scopedAreaIds) {
+                                    $subOntQ->select(\Illuminate\Support\Facades\DB::raw(1))
+                                        ->from('onts')
+                                        ->whereNull('onts.customer_id')
+                                        ->whereNotIn('onts.status', ['installed', 'rusak', 'afkir'])
+                                        ->when($scopedAreaIds, function ($sq) use ($scopedAreaIds) {
+                                            $sq->whereIn('onts.area_id', $scopedAreaIds);
+                                        })
+                                        ->where(function ($matchQ) {
+                                            $matchQ->whereColumn('onts.model', 'materials.name')
+                                                   ->orWhereRaw("onts.model = REPLACE(REPLACE(materials.name, 'ONT ', ''), ' (Bekas Layak Pakai)', '')");
+                                        });
+                                });
                             });
                         });
                     })

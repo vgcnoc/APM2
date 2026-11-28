@@ -257,13 +257,11 @@ class MaterialService
             $initialStock = max(0.0, (float) ($validated['initial_stock'] ?? $inputStock));
 
             $lockedTarget->is_active = true;
+            $lockedTarget->is_migration = false;
 
-            // Pastikan jika ada flag is_catalog dan is_migration di validated, sinkronkan ke target
+            // Pastikan jika ada flag is_catalog di validated, sinkronkan ke target
             if (isset($validated['is_catalog'])) {
                 $lockedTarget->is_catalog = (bool) $validated['is_catalog'];
-            }
-            if (isset($validated['is_migration']) && $validated['is_migration'] === false) {
-                $lockedTarget->is_migration = false;
             }
 
             // Update harga beli, harga jual, dan kategori jika disediakan di form

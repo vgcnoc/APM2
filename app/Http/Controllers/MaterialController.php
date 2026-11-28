@@ -646,6 +646,9 @@ class MaterialController extends Controller
             $materialStock->initial_stock = (float) ($materialStock->initial_stock ?? 0) + $addedStock;
             \App\Services\MaterialService::recalcAreaStockUnits($materialStock, $lockedMat)->save();
 
+            $lockedMat->is_active = true;
+            $lockedMat->is_migration = false;
+
             // Hanya sinkronkan materials.stock untuk material non-katalog / area-only (jangan menggandakan stok Gudang Pusat)
             if (\App\Services\MaterialService::shouldSyncMasterStockFromAreas($lockedMat)) {
                 $lockedMat->initial_stock = (float) ($lockedMat->initial_stock ?? 0) + $addedStock;
